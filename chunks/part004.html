@@ -367,6 +367,12 @@ const state = {
 // Multi-selection is an editing/UI state only; it is intentionally not written into project JSON.
 const multiSelectedCourtIds=new Set();
 
+// Mobile/touch multi-select: long-press one court to enter the mode,
+// then tap additional courts to add/remove them from the selection.
+let touchCourtMultiSelectMode=false;
+const TOUCH_MULTI_SELECT_HOLD_MS=520;
+const TOUCH_MULTI_SELECT_MOVE_PX=10;
+
 function syncCourtSelectionSet(){
   const validIds=new Set(state.courts.filter(c=>!c.hidden).map(c=>c.id));
   [...multiSelectedCourtIds].forEach(id=>{ if(!validIds.has(id)) multiSelectedCourtIds.delete(id); });
@@ -413,6 +419,7 @@ function toggleCourtSelection(id){
 
   if(!multiSelectedCourtIds.size){
     state.selectedId=null;
+    touchCourtMultiSelectMode=false;
   }else if(multiSelectedCourtIds.has(id)){
     state.selectedId=id;
   }else{
@@ -421,6 +428,7 @@ function toggleCourtSelection(id){
 }
 
 function clearCourtSelection(){
+  touchCourtMultiSelectMode=false;
   multiSelectedCourtIds.clear();
   state.selectedId=null;
 }
