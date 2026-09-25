@@ -1,0 +1,800 @@
+      value:Math.round(currentValue*1000)/1000
+    });
+    render();
+    commitHistory();
+  };
+
+  const cancel=()=>{
+    cancelled=true;
+    cleanup();
+  };
+
+  sourceCanvas.addEventListener("pointermove",move);
+  sourceCanvas.addEventListener("pointerup",finish);
+  sourceCanvas.addEventListener("pointercancel",cancel);
+  document.addEventListener("keydown",onKey,true);
+}
+
+function bindRulerGuideDragging(){
+  const top=$("stageRulerTop");
+  const left=$("stageRulerLeft");
+  if(top && !top.dataset.guideDragBound){
+    top.dataset.guideDragBound="1";
+    top.addEventListener("pointerdown",event=>beginRulerGuideDrag(event,"horizontal",top));
+  }
+  if(left && !left.dataset.guideDragBound){
+    left.dataset.guideDragBound="1";
+    left.addEventListener("pointerdown",event=>beginRulerGuideDrag(event,"vertical",left));
+  }
+}
+
+function rulerDisplayValue(meters){
+  return isFeetUnit() ? meters*FEET_PER_METER : meters;
+}
+
+function chooseRulerMajorStep(pxPerDisplayUnit){
+  const steps=[0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000];
+  const target=88;
+  let best=steps[steps.length-1];
+  for(const step of steps){
+    best=step;
+    if(step*pxPerDisplayUnit>=target) break;
+  }
+  return best;
+}
+
+function formatRulerNumber(value,step){
+  const safe=Math.abs(value)<1e-9 ? 0 : value;
+  if(step<1) return safe.toFixed(step<0.2 ? 2 : 1).replace(/\.0+$/," ").trim();
+  if(Math.abs(safe-Math.round(safe))<1e-7) return String(Math.round(safe));
+  return safe.toFixed(1).replace(/\.0$/,'');
+}
+
+function prepareRulerCanvas(canvas){
+  if(!canvas) return null;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const targetW=Math.max(1,Math.round(rect.width*dpr));
+  const targetH=Math.max(1,Math.round(rect.height*dpr));
+  if(canvas.width!==targetW) canvas.width=targetW;
+  if(canvas.height!==targetH) canvas.height=targetH;
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,rect.width,rect.height);
+  return {ctx,width:rect.width,height:rect.height};
+}
+
+function updateStageRulers(){
+  const wrap=$("stageWrap");
+  const topCanvas=$("stageRulerTop");
+  const leftCanvas=$("stageRulerLeft");
+  const corner=$("stageRulerCorner");
+  if(!wrap || !topCanvas || !leftCanvas || !corner) return;
+
+  const visible=state.showRulers!==false;
+  wrap.classList.toggle("rulers-hidden",!visible);
+  corner.textContent=currentLengthUnit();
+  if(!visible) return;
+
+  if(!courtViewport.initialized || !(courtViewport.w>0) || !(courtViewport.h>0)) return;
+  const svgRect=svg.getBoundingClientRect();
+  const wrapRect=wrap.getBoundingClientRect();
+  if(!svgRect.width || !svgRect.height || !wrapRect.width || !wrapRect.height) return;
+
+  const top=prepareRulerCanvas(topCanvas);
+  const left=prepareRulerCanvas(leftCanvas);
+  if(!top || !left) return;
+
+  /*
+    IMPORTANT:
+    The SVG uses preserveAspectRatio, so on a wide stage the actual drawing
+    scale can be controlled by the SVG HEIGHT while getBoundingClientRect().width
+    still reports the full stage width. Using svgRect.width/viewBoxWidth therefore
+    made the TOP ruler too large even though the LEFT ruler looked correct.
+
+    Use the SVG screen CTM instead. This is the same coordinate transform used
+    by the drawing itself, so both rulers now stay exactly aligned with the site,
+    dimensions, zoom and pan.
+  */
+  const matrix=svg.getScreenCTM();
+  if(!matrix) return;
+  let inverse=null;
+  try{ inverse=matrix.inverse(); }catch(_){ return; }
+
+  const topRect=topCanvas.getBoundingClientRect();
+  const leftRect=leftCanvas.getBoundingClientRect();
+  const unitFactor=isFeetUnit() ? FEET_PER_METER : 1;
+
+  const xScalePxPerMeter=Math.hypot(matrix.a,matrix.b);
+  const yScalePxPerMeter=Math.hypot(matrix.c,matrix.d);
+  const pxPerDisplayX=xScalePxPerMeter/unitFactor;
+  const pxPerDisplayY=yScalePxPerMeter/unitFactor;
+  const majorX=chooseRulerMajorStep(pxPerDisplayX);
+  const majorY=chooseRulerMajorStep(pxPerDisplayY);
+
+  function clientToWorld(clientX,clientY){
+    if(typeof DOMPoint!=="undefined"){
+      return new DOMPoint(clientX,clientY).matrixTransform(inverse);
+    }
+    const p=svg.createSVGPoint();
+    p.x=clientX;p.y=clientY;
+    return p.matrixTransform(inverse);
+  }
+
+  function worldToClient(worldX,worldY){
+    if(typeof DOMPoint!=="undefined"){
+      return new DOMPoint(worldX,worldY).matrixTransform(matrix);
+    }
+    const p=svg.createSVGPoint();
+    p.x=worldX;p.y=worldY;
+    return p.matrixTransform(matrix);
+  }
+
+  function paintBackground(ctx,w,h){
+    ctx.fillStyle="rgba(248,250,252,.97)";
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle="#aeb7c2";
+    ctx.lineWidth=1;
+  }
+
+  // Horizontal ruler — map every tick through the actual SVG CTM.
+  {
+    const {ctx,width,height}=top;
+    paintBackground(ctx,width,height);
+    ctx.beginPath();
+    ctx.moveTo(0,height-.5);ctx.lineTo(width,height-.5);ctx.stroke();
+    ctx.font="10px Arial, Helvetica, sans-serif";
+    ctx.fillStyle="#475467";
+    ctx.textAlign="left";
+    ctx.textBaseline="top";
+
+    const sampleY=svgRect.top+svgRect.height/2;
+    const startWorld=clientToWorld(topRect.left,sampleY).x;
+    const endWorld=clientToWorld(topRect.right,sampleY).x;
+    const minWorld=Math.min(startWorld,endWorld);
+    const maxWorld=Math.max(startWorld,endWorld);
+    const startDisplay=rulerDisplayValue(minWorld);
+    const endDisplay=rulerDisplayValue(maxWorld);
+    const minorDiv=(majorX*pxPerDisplayX>=70) ? 10 : 5;
+    const minor=majorX/minorDiv;
+    const first=Math.floor(startDisplay/minor)*minor;
+    const maxTicks=1600;
+    let ticks=0;
+
+    for(let value=first; value<=endDisplay+minor*.5 && ticks<maxTicks; value+=minor,ticks++){
+      const worldMeters=value/unitFactor;
+      const client=worldToClient(worldMeters,courtViewport.y);
+      const localX=client.x-topRect.left;
+      if(localX<-1 || localX>width+1) continue;
+
+      const majorIndex=Math.round(value/majorX);
+      const isMajor=Math.abs(value-majorIndex*majorX)<minor*.08;
+      const halfIndex=Math.round(value/(majorX/2));
+      const isHalf=!isMajor && minorDiv>=10 && Math.abs(value-halfIndex*(majorX/2))<minor*.08;
+      const tickH=isMajor ? 12 : (isHalf ? 8 : 5);
+      ctx.strokeStyle=isMajor ? "#667085" : "#98a2b3";
+      ctx.beginPath();
+      ctx.moveTo(Math.round(localX)+.5,height);
+      ctx.lineTo(Math.round(localX)+.5,height-tickH);
+      ctx.stroke();
+      if(isMajor){
+        const label=formatRulerNumber(value,majorX);
+        ctx.fillText(label,localX+3,2);
+      }
+    }
+  }
+
+  // Vertical ruler — use the same CTM-based mapping for consistency.
+  {
+    const {ctx,width,height}=left;
+    paintBackground(ctx,width,height);
+    ctx.beginPath();
+    ctx.moveTo(width-.5,0);ctx.lineTo(width-.5,height);ctx.stroke();
+    ctx.font="10px Arial, Helvetica, sans-serif";
+    ctx.fillStyle="#475467";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+
+    const sampleX=svgRect.left+svgRect.width/2;
+    const startWorld=clientToWorld(sampleX,leftRect.top).y;
+    const endWorld=clientToWorld(sampleX,leftRect.bottom).y;
+    const minWorld=Math.min(startWorld,endWorld);
+    const maxWorld=Math.max(startWorld,endWorld);
+    const startDisplay=rulerDisplayValue(minWorld);
+    const endDisplay=rulerDisplayValue(maxWorld);
+    const minorDiv=(majorY*pxPerDisplayY>=70) ? 10 : 5;
+    const minor=majorY/minorDiv;
+    const first=Math.floor(startDisplay/minor)*minor;
+    const maxTicks=1600;
+    let ticks=0;
+
+    for(let value=first; value<=endDisplay+minor*.5 && ticks<maxTicks; value+=minor,ticks++){
+      const worldMeters=value/unitFactor;
+      const client=worldToClient(courtViewport.x,worldMeters);
+      const localY=client.y-leftRect.top;
+      if(localY<-1 || localY>height+1) continue;
+
+      const majorIndex=Math.round(value/majorY);
+      const isMajor=Math.abs(value-majorIndex*majorY)<minor*.08;
+      const halfIndex=Math.round(value/(majorY/2));
+      const isHalf=!isMajor && minorDiv>=10 && Math.abs(value-halfIndex*(majorY/2))<minor*.08;
+      const tickW=isMajor ? 12 : (isHalf ? 8 : 5);
+      ctx.strokeStyle=isMajor ? "#667085" : "#98a2b3";
+      ctx.beginPath();
+      ctx.moveTo(width,Math.round(localY)+.5);
+      ctx.lineTo(width-tickW,Math.round(localY)+.5);
+      ctx.stroke();
+      if(isMajor){
+        const label=formatRulerNumber(value,majorY);
+        ctx.save();
+        ctx.translate(8,localY+2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText(label,0,0);
+        ctx.restore();
+      }
+    }
+  }
+}
+function bindStageRulers(){
+  const wrap=$("stageWrap");
+  if(!wrap) return;
+  bindRulerGuideDragging();
+  if(typeof ResizeObserver!=="undefined"){
+    const observer=new ResizeObserver(()=>updateStageRulers());
+    observer.observe(wrap);
+  }else{
+    window.addEventListener("resize",updateStageRulers);
+  }
+  requestAnimationFrame(updateStageRulers);
+}
+
+
+let stageSpaceHeld=false;
+let stagePanActive=false;
+let stagePanPointerId=null;
+let stagePanStartClientX=0;
+let stagePanStartClientY=0;
+let stagePanStartViewX=0;
+let stagePanStartViewY=0;
+let stageTouchPanMode=false;
+
+function stageKeyTargetIsEditable(target){
+  if(!target) return false;
+  const tag=String(target.tagName || "").toLowerCase();
+
+  // Only fields where Space is genuinely used for typing/editing should
+  // block the Hand Tool. Buttons are deliberately NOT included here:
+  // otherwise a focused Duplicate button receives Space and duplicates
+  // the selected court.
+  return tag==="input" || tag==="textarea" || tag==="select" || target.isContentEditable;
+}
+
+function updateStageCursor(){
+  const wrap=$("stageWrap");
+  if(!wrap) return;
+
+  // Remove forced tool cursors first so Hand Tool / pan can still override them.
+  wrap.classList.remove("custom-site-pencil-cursor");
+  wrap.classList.remove("measure-tool-active");
+  wrap.classList.remove("text-tool-active");
+  wrap.classList.remove("touch-pan-active");
+  wrap.classList.remove("is-panning");
+
+  if(stagePanActive){
+    wrap.style.cursor="grabbing";
+    return;
+  }
+
+  if(stageSpaceHeld || stageTouchPanMode){
+    wrap.classList.toggle("touch-pan-active",!!stageTouchPanMode);
+    wrap.style.cursor="grab";
+    return;
+  }
+
+  if(typeof measureToolState!=="undefined" && measureToolState.active){
+    wrap.classList.add("measure-tool-active");
+    wrap.style.cursor="crosshair";
+    return;
+  }
+
+  if(typeof textToolState!=="undefined" && textToolState.active){
+    wrap.classList.add("text-tool-active");
+    // Keep the normal mouse arrow visible over the artwork.
+    // Existing text objects provide their own move cursor when hovered.
+    wrap.style.cursor="default";
+    return;
+  }
+
+  if(typeof customSiteDrawing!=="undefined" && customSiteDrawing){
+    // Pencil cursor is visual only; mouse-wheel zoom remains handled by
+    // handleStageWheel() exactly as before.
+    wrap.classList.add("custom-site-pencil-cursor");
+    wrap.style.cursor='url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4Ij4KPHBhdGggZD0iTTMuNSAyNC41bDUuMy0xLjRMMjQgNy45YTIuNSAyLjUgMCAwIDAgMC0zLjVsLS40LS40YTIuNSAyLjUgMCAwIDAtMy41IDBMNC45IDE5LjIgMy41IDI0LjV6IiBmaWxsPSIjZjVjNTQyIiBzdHJva2U9IiMxMTE4MjciIHN0cm9rZS13aWR0aD0iMS42IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNy45IDYuMmwzLjkgMy45IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTE4MjciIHN0cm9rZS13aWR0aD0iMS42Ii8+CjxwYXRoIGQ9Ik00LjkgMTkuMmwzLjkgMy45IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTE4MjciIHN0cm9rZS13aWR0aD0iMS4zIi8+Cjwvc3ZnPg==") 4 24, crosshair';
+    return;
+  }
+
+  const base=fullCourtViewBox();
+  const zoomed=courtViewport.initialized && courtViewport.w<base.w-.001;
+  wrap.style.cursor=zoomed ? "zoom-out" : "zoom-in";
+}
+
+function clampStagePan(){
+  // Intentionally no positional clamp.
+  // Space + drag is an unlimited Hand Tool, similar to Adobe Illustrator:
+  // users can move the pasteboard far beyond every edge of the site.
+  const base=fullCourtViewBox();
+  if(!Number.isFinite(courtViewport.x)) courtViewport.x=base.x;
+  if(!Number.isFinite(courtViewport.y)) courtViewport.y=base.y;
+}
+
+function startStagePan(event){
+  if((!stageSpaceHeld && !stageTouchPanMode) || stagePanActive) return false;
+
+  if(!courtViewport.initialized){
+    resetCourtZoom();
+  }
+
+  stagePanActive=true;
+  $("stageWrap")?.classList.add("is-panning");
+  stagePanPointerId=event.pointerId;
+  stagePanStartClientX=event.clientX;
+  stagePanStartClientY=event.clientY;
+  stagePanStartViewX=courtViewport.x;
+  stagePanStartViewY=courtViewport.y;
+
+  try{$("stageWrap").setPointerCapture(event.pointerId);}catch(_){}
+  updateStageCursor();
+  return true;
+}
+
+function moveStagePan(event){
+  if(!stagePanActive) return;
+  if(stagePanPointerId!==null && event.pointerId!==stagePanPointerId) return;
+
+  const rect=svg.getBoundingClientRect();
+  if(!rect.width || !rect.height) return;
+
+  const dx=(event.clientX-stagePanStartClientX)*(courtViewport.w/rect.width);
+  const dy=(event.clientY-stagePanStartClientY)*(courtViewport.h/rect.height);
+
+  // Photoshop-style Hand Tool: drag the artwork with the mouse.
+  courtViewport.x=stagePanStartViewX-dx;
+  courtViewport.y=stagePanStartViewY-dy;
+  clampStagePan();
+  setCourtViewBox();
+}
+
+function finishStagePan(event){
+  if(!stagePanActive) return;
+  if(stagePanPointerId!==null && event.pointerId!==stagePanPointerId) return;
+
+  try{$("stageWrap").releasePointerCapture(stagePanPointerId);}catch(_){}
+  stagePanActive=false;
+  stagePanPointerId=null;
+  $("stageWrap")?.classList.remove("is-panning");
+  updateStageCursor();
+}
+
+function bindStageHandTool(){
+  const wrap=$("stageWrap");
+  if(!wrap) return;
+
+  // Capture phase is intentional: while Space is held, panning wins over
+  // dragging/selecting an individual court, just like Adobe's Hand Tool.
+  wrap.addEventListener("pointerdown",event=>{
+    if(!stageSpaceHeld && !stageTouchPanMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    startStagePan(event);
+  },true);
+
+  wrap.addEventListener("pointermove",event=>{
+    if(!stagePanActive) return;
+    event.preventDefault();
+    moveStagePan(event);
+  },{passive:false});
+
+  wrap.addEventListener("pointerup",finishStagePan);
+  wrap.addEventListener("pointercancel",finishStagePan);
+
+  document.addEventListener("keydown",event=>{
+    if(event.code!=="Space" || event.repeat) return;
+    if(stageKeyTargetIsEditable(event.target)) return;
+
+    stageSpaceHeld=true;
+
+    // A browser normally treats Space on a focused <button> as a click.
+    // Prevent that native action so Space is reserved for the Hand Tool.
+    if(String(event.target?.tagName || "").toLowerCase()==="button"){
+      try{event.target.blur();}catch(_){}
+    }
+    event.preventDefault();
+    updateStageCursor();
+  });
+
+  document.addEventListener("keyup",event=>{
+    if(event.code!=="Space") return;
+    if(!stageSpaceHeld) return;
+
+    stageSpaceHeld=false;
+    if(!stagePanActive) updateStageCursor();
+    event.preventDefault();
+  });
+
+  window.addEventListener("blur",()=>{
+    stageSpaceHeld=false;
+    stagePanActive=false;
+    stagePanPointerId=null;
+    updateStageCursor();
+  });
+}
+
+// ------------------------------------------------------------
+// Editable Measurement Tool
+// Persistent dimension objects: drag to create, double-click the number to
+// type an exact length, drag the line to move, or drag either endpoint.
+// Measurements are stored per Option and may optionally be included in export.
+// ------------------------------------------------------------
+const measureToolState={
+  active:false,
+  dragging:false,
+  pointerId:null,
+  start:null,
+  end:null
+};
+let selectedMeasurementId=null;
+let measurementListCollapsed=false;
+let activeMeasureInlineEditor=null;
+
+function normalizeMeasurement(m,index=0){
+  const raw=m && typeof m==="object" ? m : {};
+  const start={
+    x:Number.isFinite(Number(raw.start?.x)) ? Number(raw.start.x) : 0,
+    y:Number.isFinite(Number(raw.start?.y)) ? Number(raw.start.y) : 0
+  };
+  const end={
+    x:Number.isFinite(Number(raw.end?.x)) ? Number(raw.end.x) : start.x+1,
+    y:Number.isFinite(Number(raw.end?.y)) ? Number(raw.end.y) : start.y
+  };
+  return {
+    id:Math.max(1,parseInt(raw.id,10) || (index+1)),
+    start,end,
+    hidden:!!raw.hidden,
+    locked:!!raw.locked
+  };
+}
+
+function normalizeMeasurements(){
+  state.measurements=Array.isArray(state.measurements)
+    ? state.measurements.map((m,index)=>{
+        const normalized=normalizeMeasurement(m,index);
+        // Preserve object identity so an active drag/editor keeps pointing to
+        // the same measurement object even when the layer list refreshes.
+        if(m && typeof m==="object"){
+          Object.assign(m,normalized);
+          return m;
+        }
+        return normalized;
+      })
+    : [];
+  const used=new Set();
+  state.measurements.forEach((m,index)=>{
+    let id=m.id;
+    while(used.has(id)) id++;
+    m.id=id;
+    used.add(id);
+  });
+  state.nextMeasureId=Math.max(
+    parseInt(state.nextMeasureId || 1,10) || 1,
+    ...state.measurements.map(m=>m.id+1),
+    1
+  );
+  if(selectedMeasurementId!==null && !state.measurements.some(m=>m.id===selectedMeasurementId)){
+    selectedMeasurementId=null;
+  }
+}
+
+function selectedMeasurement(){
+  normalizeMeasurements();
+  return state.measurements.find(m=>m.id===selectedMeasurementId) || null;
+}
+
+function measurementLength(m){
+  if(!m) return 0;
+  return Math.hypot(m.end.x-m.start.x,m.end.y-m.start.y);
+}
+
+function updateToolsMenuState(){
+  const main=$("toolsMenuButton");
+  const measure=$("measureTool");
+  const textBtn=$("textTool");
+  const imageBtn=$("imageTool");
+  const panBtn=$("touchPanTool");
+  if(measure){
+    measure.classList.toggle("is-active",!!measureToolState.active);
+    measure.setAttribute("aria-pressed",measureToolState.active?"true":"false");
+  }
+  if(textBtn){
+    textBtn.classList.toggle("is-active",!!textToolState.active);
+    textBtn.setAttribute("aria-pressed",textToolState.active?"true":"false");
+  }
+  if(imageBtn){
+    imageBtn.classList.remove("is-active");
+    imageBtn.setAttribute("aria-pressed","false");
+  }
+  if(panBtn){
+    panBtn.classList.toggle("is-active",!!stageTouchPanMode);
+    panBtn.setAttribute("aria-pressed",stageTouchPanMode?"true":"false");
+  }
+  if(main){
+    const any=!!measureToolState.active || !!textToolState.active || !!stageTouchPanMode;
+    main.classList.toggle("tool-active",any);
+    main.title=measureToolState.active ? "Tools · Ukur aktif" : (textToolState.active ? "Tools · Text aktif" : (stageTouchPanMode ? "Tools · Hand aktif" : "Tools"));
+  }
+  updateStageCursor();
+}
+
+function updateMeasureToolButton(){ updateToolsMenuState(); }
+
+function setMeasureToolActive(active){
+  if(active && typeof customSiteDrawing!=="undefined" && customSiteDrawing){
+    alert("Selesaikan atau Batal Draw Site dahulu sebelum guna tool Ukur.");
+    return;
+  }
+  if(active && typeof textToolState!=="undefined") textToolState.active=false;
+  if(active) stageTouchPanMode=false;
+  closeTextInlineEditor(false);
+  measureToolState.active=!!active;
+  measureToolState.dragging=false;
+  measureToolState.pointerId=null;
+  measureToolState.start=null;
+  measureToolState.end=null;
+  closeMeasureInlineEditor(false);
+  updateToolsMenuState();
+  render();
+}
+
+function clearMeasureTool({deactivate=false}={}){
+  measureToolState.dragging=false;
+  measureToolState.pointerId=null;
+  measureToolState.start=null;
+  measureToolState.end=null;
+  if(deactivate) measureToolState.active=false;
+  updateToolsMenuState();
+  render();
+}
+
+// ------------------------------------------------------------
+// Text Tool — persistent canvas annotations.
+// Click canvas to add text. Drag existing text to move; double-click to edit. Select text to change its size from the top toolbar.
+// Text is part of artwork and is included in PNG/PDF exports.
+// ------------------------------------------------------------
+const textToolState={active:false};
+let selectedTextId=null;
+let activeTextInlineEditor=null;
+
+function normalizeTextAnnotation(item,index=0){
+  const raw=item && typeof item==="object" ? item : {};
+  return {
+    id:Math.max(1,parseInt(raw.id,10)||(index+1)),
+    x:Number.isFinite(Number(raw.x))?Number(raw.x):0,
+    y:Number.isFinite(Number(raw.y))?Number(raw.y):0,
+    text:String(raw.text??"").slice(0,500),
+    fontSize:Math.max(.24,Math.min(3.6,Number(raw.fontSize)||.72)),
+    fill:typeof raw.fill==="string"?raw.fill:"#111827",
+    hidden:!!raw.hidden,
+    locked:!!raw.locked
+  };
+}
+
+function normalizeTextAnnotations(){
+  state.textAnnotations=Array.isArray(state.textAnnotations)
+    ? state.textAnnotations.map((item,index)=>normalizeTextAnnotation(item,index)) : [];
+  const used=new Set();
+  state.textAnnotations.forEach(item=>{while(used.has(item.id)) item.id++;used.add(item.id);});
+  state.nextTextId=Math.max(parseInt(state.nextTextId||1,10)||1,...state.textAnnotations.map(item=>item.id+1),1);
+  if(selectedTextId!==null && !state.textAnnotations.some(item=>item.id===selectedTextId)) selectedTextId=null;
+}
+
+function closeTextInlineEditor(commit=false){
+  if(!activeTextInlineEditor) return;
+  const editor=activeTextInlineEditor;
+  activeTextInlineEditor=null;
+  if(commit) editor.commit(); else editor.input.remove();
+}
+
+function openTextInlineEditor(point,item=null){
+  closeTextInlineEditor(false);
+  const input=document.createElement("input");
+  input.type="text";
+  input.className="text-inline-editor";
+  input.placeholder="Taip text…";
+  input.value=item?.text || "";
+  input.maxLength=500;
+  input.style.left=`${Math.min(window.innerWidth-250,Math.max(8,point.clientX))}px`;
+  input.style.top=`${Math.min(window.innerHeight-52,Math.max(8,point.clientY))}px`;
+  document.body.appendChild(input);
+  let done=false;
+  const commit=()=>{
+    if(done) return; done=true;
+    const value=input.value.replace(/\s+/g," ").trim();
+    input.remove(); activeTextInlineEditor=null;
+    if(!value){ render(); return; }
+    normalizeTextAnnotations();
+    if(item){ item.text=value; selectedTextId=item.id; selectedImageId=null; }
+    else{
+      const annotation=normalizeTextAnnotation({id:state.nextTextId++,x:point.x,y:point.y,text:value},state.textAnnotations.length);
+      state.textAnnotations.push(annotation); selectedTextId=annotation.id; selectedImageId=null;
+    }
+    clearCourtSelection(); selectedMeasurementId=null;
+    render(); commitHistory();
+  };
+  const cancel=()=>{if(done)return;done=true;input.remove();activeTextInlineEditor=null;render();};
+  activeTextInlineEditor={input,commit,cancel};
+  input.addEventListener("keydown",event=>{
+    if(event.key==="Enter"){event.preventDefault();commit();}
+    else if(event.key==="Escape"){event.preventDefault();cancel();}
+  });
+  input.addEventListener("blur",()=>{if(!done) commit();});
+  requestAnimationFrame(()=>input.focus());
+}
+
+function setTextToolActive(active){
+  if(active && typeof customSiteDrawing!=="undefined" && customSiteDrawing){
+    alert("Selesaikan atau Batal Draw Site dahulu sebelum guna tool Text.");
+    return;
+  }
+  if(active){
+    stageTouchPanMode=false;
+    measureToolState.active=false; measureToolState.dragging=false; measureToolState.start=null; measureToolState.end=null;
+    closeMeasureInlineEditor(false);
+  }
+  textToolState.active=!!active;
+  closeTextInlineEditor(false);
+  updateToolsMenuState();
+  render();
+}
+
+function textAnnotationById(id){normalizeTextAnnotations();return state.textAnnotations.find(item=>item.id===id)||null;}
+
+const TEXT_SIZE_SCALE=.03;
+function textSizeValue(item){
+  return Math.max(8,Math.min(120,Math.round((Number(item?.fontSize)||.72)/TEXT_SIZE_SCALE)));
+}
+function setSelectedTextSize(value,{commit=false}={}){
+  const item=textAnnotationById(selectedTextId);
+  if(!item || item.locked) return;
+  let size=parseFloat(value);
+  if(!Number.isFinite(size)) size=textSizeValue(item);
+  size=Math.max(8,Math.min(120,size));
+  item.fontSize=size*TEXT_SIZE_SCALE;
+  render();
+  if(commit) commitHistory();
+}
+function updateTextFormatToolbar(){
+  const bar=$("textFormatToolbar");
+  const select=$("textFontSize");
+  if(!bar || !select) return;
+  const item=selectedTextId!==null ? textAnnotationById(selectedTextId) : null;
+  bar.hidden=!item;
+  if(!item) return;
+  const size=textSizeValue(item);
+  let opt=Array.from(select.options).find(o=>Number(o.value)===size);
+  if(!opt){
+    opt=document.createElement("option");
+    opt.value=String(size); opt.textContent=String(size);
+    select.appendChild(opt);
+  }
+  select.value=String(size);
+  select.disabled=!!item.locked;
+  if($("textSizeDown")) $("textSizeDown").disabled=!!item.locked || size<=8;
+  if($("textSizeUp")) $("textSizeUp").disabled=!!item.locked || size>=120;
+}
+
+function deleteTextAnnotation(id){
+  const item=textAnnotationById(id); if(!item || item.locked) return;
+  state.textAnnotations=state.textAnnotations.filter(t=>t.id!==id);
+  if(selectedTextId===id) selectedTextId=null;
+  render(); commitHistory();
+}
+
+function bindTextDrag(hit,item){
+  hit.addEventListener("pointerdown",event=>{
+    if(item.locked || event.button!==0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const textId=item.id;
+    selectedTextId=textId;
+    selectedImageId=null;
+    selectedMeasurementId=null;
+    clearCourtSelection();
+
+    // IMPORTANT: do not call render() while the pointer is moving.
+    // render() rebuilds all SVG text nodes and normalises annotation objects,
+    // which used to detach the object being dragged after the first mouse move.
+    const liveItem=state.textAnnotations.find(t=>t.id===textId) || item;
+    const start=stagePointFromClient(event.clientX,event.clientY);
+    const x0=Number(liveItem.x)||0;
+    const y0=Number(liveItem.y)||0;
+    const pid=event.pointerId;
+    const group=hit.closest?.("[data-text-id]") || hit.parentNode;
+    let moved=false;
+
+    try{ hit.setPointerCapture?.(pid); }catch(_){ }
+
+    const move=e=>{
+      if(e.pointerId!==pid) return;
+      e.preventDefault?.();
+      const p=stagePointFromClient(e.clientX,e.clientY);
+      const nx=x0+(p.x-start.x);
+      const ny=y0+(p.y-start.y);
+      const current=state.textAnnotations.find(t=>t.id===textId);
+      if(!current) return;
+      if(Math.abs(nx-current.x)>.001 || Math.abs(ny-current.y)>.001) moved=true;
+      current.x=nx;
+      current.y=ny;
+
+      // Move the existing SVG node directly for a smooth mouse drag.
+      // The full render is only done after pointerup.
+      if(group) group.setAttribute("transform",`translate(${nx} ${ny})`);
+    };
+
+    const end=e=>{
+      if(e.pointerId!==pid) return;
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+      try{ hit.releasePointerCapture?.(pid); }catch(_){ }
+      render();
+      if(moved) commitHistory();
+    };
+
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+    updateTextFormatToolbar();
+  });
+}
+
+function createTextAnnotationGroup(item){
+  const group=ns("g",{class:"text-annotation","data-text-id":item.id,transform:`translate(${item.x} ${item.y})`});
+  const approxW=Math.max(item.fontSize*1.2,item.text.length*item.fontSize*.58);
+  const hitPad=Math.max(.16,item.fontSize*.20);
+
+  // Transparent mouse hit-area: user does not have to click exactly on the letters.
+  const hit=ns("rect",{
+    class:"text-hit-area",
+    x:-hitPad,
+    y:-item.fontSize-hitPad*.55,
+    width:approxW+hitPad*2,
+    height:item.fontSize*1.35+hitPad,
+    fill:"rgba(0,0,0,0)",
+    stroke:"none",
+    "pointer-events":"all"
+  });
+  hit.style.cursor=item.locked?"default":"move";
+  group.appendChild(hit);
+
+  const textEl=ns("text",{class:"text-content",x:0,y:0,fill:item.fill,"font-size":item.fontSize,"font-weight":"700","dominant-baseline":"alphabetic","pointer-events":"all"});
+  textEl.textContent=item.text;
+  textEl.style.cursor=item.locked?"default":"move";
+  group.appendChild(textEl);
+
+  const openEditor=event=>{
+    event.preventDefault();event.stopPropagation();
+    const pt=svg.getScreenCTM();
+    const screen=pt && typeof DOMPoint!=="undefined" ? new DOMPoint(item.x,item.y).matrixTransform(pt) : {x:event.clientX,y:event.clientY};
+    openTextInlineEditor({x:item.x,y:item.y,clientX:screen.x,clientY:screen.y},item);
+  };
+  textEl.addEventListener("dblclick",openEditor);
+  hit.addEventListener("dblclick",openEditor);
+
+  // Both the visible text and its transparent hit-area can be dragged with the mouse.
+  bindTextDrag(hit,item);
+  bindTextDrag(textEl,item);
+
+  if(item.id===selectedTextId){
+    group.insertBefore(ns("rect",{class:"editing-only",x:-.16,y:-item.fontSize*.95,width:approxW+.32,height:item.fontSize*1.25,fill:"none",stroke:"#2563eb","stroke-width":.045,"stroke-dasharray":".16 .10","pointer-events":"none"}),textEl);

@@ -1,0 +1,800 @@
+}
+
+function captureCurrentOptionData(){
+  syncActiveSiteAreaFromLegacy();
+  return {
+    siteW:state.siteW,
+    siteH:state.siteH,
+    siteSizeMode:normalizeSiteSizeMode(state.siteSizeMode),
+    siteTargetArea:Math.max(25,Number(state.siteTargetArea)||state.siteW*state.siteH),
+    siteLockedRatio:Math.max(.01,Number(state.siteLockedRatio)||state.siteW/state.siteH),
+    siteColor:state.siteColor,
+    siteBrand:siteBrand(),
+    siteShapeMode:state.siteShapeMode || "rect",
+    sitePolygon:cloneData(state.sitePolygon || []),
+    customSiteEdgeConstraints:cloneData(state.customSiteEdgeConstraints || {}),
+    siteAreas:cloneData(state.siteAreas || []),
+    activeSiteAreaId:state.activeSiteAreaId,
+    nextSiteAreaId:state.nextSiteAreaId,
+    courts:cloneData(state.courts || []),
+    nextId:state.nextId,
+    measurements:cloneData(state.measurements || []),
+    nextMeasureId:state.nextMeasureId,
+    textAnnotations:cloneData(state.textAnnotations || []),
+    nextTextId:state.nextTextId,
+    imageAnnotations:cloneData(state.imageAnnotations || []),
+    nextImageId:state.nextImageId,
+    walkwayConstraints:cloneData(state.walkwayConstraints || {})
+  };
+}
+
+function normalizeOptionData(option){
+  const data=option || {};
+  const legacyPolygon=Array.isArray(data.sitePolygon)
+    ? data.sitePolygon.map(p=>({x:Number(p?.x)||0,y:Number(p?.y)||0})).slice(0,120)
+    : [];
+  const optionSiteBrand=normalizeBrand(data.siteBrand,state.siteBrand || state.brand);
+  const areas=normalizeSiteAreas(data.siteAreas,legacyPolygon,data.customSiteEdgeConstraints,optionSiteBrand);
+  const requestedActive=parseInt(data.activeSiteAreaId,10);
+  const activeId=areas.some(a=>a.id===requestedActive) ? requestedActive : (areas[0]?.id ?? null);
+  const active=areas.find(a=>a.id===activeId) || null;
+  const nextAreaId=Math.max(
+    parseInt(data.nextSiteAreaId || 1,10) || 1,
+    ...areas.map(a=>a.id+1),
+    1
+  );
+
+  return {
+    siteW:Math.max(5,parseFloat(data.siteW ?? state.siteW) || 40),
+    siteH:Math.max(5,parseFloat(data.siteH ?? state.siteH) || 40),
+    siteSizeMode:normalizeSiteSizeMode(data.siteSizeMode ?? state.siteSizeMode),
+    siteTargetArea:Math.max(25,parseFloat(data.siteTargetArea ?? state.siteTargetArea) || ((parseFloat(data.siteW)||40)*(parseFloat(data.siteH)||40))),
+    siteLockedRatio:Math.max(.01,parseFloat(data.siteLockedRatio ?? state.siteLockedRatio) || ((parseFloat(data.siteW)||40)/(parseFloat(data.siteH)||40))),
+    siteColor:typeof data.siteColor==="string" ? data.siteColor : state.siteColor,
+    siteBrand:optionSiteBrand,
+    siteShapeMode:data.siteShapeMode==="custom" ? "custom" : "rect",
+    sitePolygon:cloneData(active?.polygon || legacyPolygon),
+    customSiteEdgeConstraints:cloneData(active?.edgeConstraints || {}),
+    siteAreas:areas,
+    activeSiteAreaId:activeId,
+    nextSiteAreaId:nextAreaId,
+    courts:(data.courts || []).map(c=>normalizeCourt(cloneData(c))),
+    measurements:(data.measurements || []).map((m,index)=>normalizeMeasurement(cloneData(m),index)),
+    textAnnotations:(data.textAnnotations || []).map((item,index)=>normalizeTextAnnotation(cloneData(item),index)),
+    imageAnnotations:(data.imageAnnotations || []).map((item,index)=>normalizeImageAnnotation(cloneData(item),index)),
+    walkwayConstraints:normalizeWalkwayConstraints(data.walkwayConstraints),
+    nextId:Math.max(
+      parseInt(data.nextId || 1,10) || 1,
+      ...((data.courts || []).map(c=>(parseInt(c.id,10) || 0)+1)),
+      1
+    ),
+    nextMeasureId:Math.max(
+      parseInt(data.nextMeasureId || 1,10) || 1,
+      ...((data.measurements || []).map(m=>(parseInt(m.id,10) || 0)+1)),
+      1
+    ),
+    nextTextId:Math.max(
+      parseInt(data.nextTextId || 1,10) || 1,
+      ...((data.textAnnotations || []).map(item=>(parseInt(item.id,10) || 0)+1)),
+      1
+    ),
+    nextImageId:Math.max(
+      parseInt(data.nextImageId || 1,10) || 1,
+      ...((data.imageAnnotations || []).map(item=>(parseInt(item.id,10) || 0)+1)),
+      1
+    )
+  };
+}
+
+function ensureOptionPages(){
+  if(!Array.isArray(state.optionPages)){
+    state.optionPages=[];
+  }
+
+  state.optionPages=state.optionPages.map(normalizeOptionData);
+
+  if(!state.optionPages.length){
+    state.optionPages.push(captureCurrentOptionData());
+  }
+
+  state.projectOption=Math.min(
+    state.optionPages.length,
+    Math.max(1,parseInt(state.projectOption || 1,10) || 1)
+  );
+}
+
+function saveCurrentOptionToStore(){
+  if(!Array.isArray(state.optionPages)){
+    state.optionPages=[];
+  }
+
+  const optionNo=Math.max(1,parseInt(state.projectOption || 1,10) || 1);
+
+  while(state.optionPages.length<optionNo){
+    state.optionPages.push(captureCurrentOptionData());
+  }
+
+  state.optionPages[optionNo-1]=captureCurrentOptionData();
+}
+
+function applyOptionData(optionData){
+  const data=normalizeOptionData(optionData);
+
+  state.siteW=data.siteW;
+  state.siteH=data.siteH;
+  state.siteSizeMode=normalizeSiteSizeMode(data.siteSizeMode);
+  state.siteTargetArea=Math.max(25,Number(data.siteTargetArea)||data.siteW*data.siteH);
+  state.siteLockedRatio=Math.max(.01,Number(data.siteLockedRatio)||data.siteW/data.siteH);
+  state.siteColor=data.siteColor;
+  state.siteBrand=normalizeBrand(data.siteBrand,state.brand);
+  state.siteShapeMode=data.siteShapeMode;
+  state.siteAreas=cloneData(data.siteAreas || []);
+  state.activeSiteAreaId=data.activeSiteAreaId;
+  state.nextSiteAreaId=data.nextSiteAreaId;
+  state.sitePolygon=cloneData(data.sitePolygon || []);
+  state.customSiteEdgeConstraints=normalizeCustomSiteEdgeConstraints(
+    data.customSiteEdgeConstraints,
+    state.sitePolygon.length
+  );
+  state.courts=data.courts;
+  state.measurements=data.measurements;
+  state.textAnnotations=data.textAnnotations;
+  state.imageAnnotations=data.imageAnnotations || [];
+  state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
+  state.nextId=data.nextId;
+  state.nextMeasureId=data.nextMeasureId;
+  state.nextTextId=data.nextTextId;
+  state.nextImageId=data.nextImageId || 1;
+  state.selectedId=state.courts.at(-1)?.id || null;
+  selectedMeasurementId=null;
+  selectedTextId=null;
+  selectedImageId=null;
+}
+
+function updateOptionControls(){
+  const select=$("projectOption");
+  if(!select) return;
+
+  ensureOptionGroups();
+  ensureOptionPages();
+
+  const currentValue=String(state.projectOption);
+  select.innerHTML="";
+
+  state.optionPages.forEach((_,index)=>{
+    const option=document.createElement("option");
+    option.value=String(index+1);
+    option.textContent=`Option ${index+1}`;
+    select.appendChild(option);
+  });
+
+  select.value=currentValue;
+
+  const deleteButton=$("deleteProjectOption");
+  if(deleteButton){
+    deleteButton.disabled=state.optionPages.length<=1;
+  }
+}
+
+function switchProjectOption(optionNo){
+  ensureOptionGroups();
+  ensureOptionPages();
+  saveCurrentGroupToStore();
+
+  const target=Math.min(
+    state.optionPages.length,
+    Math.max(1,parseInt(optionNo || 1,10) || 1)
+  );
+
+  state.projectOption=target;
+  currentOptionGroup().currentOption=target;
+  applyOptionData(state.optionPages[target-1]);
+
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
+}
+
+function addProjectOption(){
+  ensureOptionGroups();
+  ensureOptionPages();
+  saveCurrentGroupToStore();
+
+  const source=cloneData(state.optionPages[state.projectOption-1]);
+  state.optionPages.push(normalizeOptionData(source));
+  state.projectOption=state.optionPages.length;
+  currentOptionGroup().currentOption=state.projectOption;
+
+  applyOptionData(state.optionPages[state.projectOption-1]);
+  saveCurrentGroupToStore();
+
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
+}
+
+function deleteProjectOption(){
+  ensureOptionGroups();
+  ensureOptionPages();
+
+  if(state.optionPages.length<=1){
+    alert("Sekurang-kurangnya satu Option perlu dikekalkan.");
+    return;
+  }
+
+  const optionNo=state.projectOption;
+
+  if(!confirm(`Padam Option ${optionNo}?`)){
+    return;
+  }
+
+  saveCurrentGroupToStore();
+  state.optionPages.splice(optionNo-1,1);
+
+  state.projectOption=Math.min(optionNo,state.optionPages.length);
+  currentOptionGroup().currentOption=state.projectOption;
+  applyOptionData(state.optionPages[state.projectOption-1]);
+  saveCurrentGroupToStore();
+
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
+}
+
+const projectHistory = {
+  undoStack:[],
+  redoStack:[],
+  lastSnapshot:"",
+  limit:100,
+  restoring:false
+};
+
+function projectSnapshot(){
+  const data=JSON.parse(JSON.stringify(state));
+
+  // Selection is only a UI state and is not treated as a drawing change.
+  delete data.selectedId;
+
+  return JSON.stringify(data);
+}
+
+function updateHistoryButtons(){
+  const undoButton=$("undoAction");
+  const redoButton=$("redoAction");
+
+  if(undoButton) undoButton.disabled=projectHistory.undoStack.length===0;
+  if(redoButton) redoButton.disabled=projectHistory.redoStack.length===0;
+}
+
+function initializeHistory(){
+  projectHistory.undoStack=[];
+  projectHistory.redoStack=[];
+  projectHistory.lastSnapshot=projectSnapshot();
+  projectHistory.restoring=false;
+  updateHistoryButtons();
+}
+
+function commitHistory(){
+  if(projectHistory.restoring) return;
+
+  saveCurrentGroupToStore();
+  const current=projectSnapshot();
+  if(current===projectHistory.lastSnapshot) return;
+
+  if(projectHistory.lastSnapshot){
+    projectHistory.undoStack.push(projectHistory.lastSnapshot);
+
+    if(projectHistory.undoStack.length>projectHistory.limit){
+      projectHistory.undoStack.shift();
+    }
+  }
+
+  projectHistory.redoStack=[];
+  projectHistory.lastSnapshot=current;
+  updateHistoryButtons();
+}
+
+function normalizePdfPageOrder(value){
+  return value==="group_first" ? "group_first" : "option_first";
+}
+
+function updatePdfPageOrderHint(){
+  const hint=$("pdfPageOrderHint");
+  if(!hint) return;
+  const mode=normalizePdfPageOrder(state.pdfPageOrder);
+  hint.textContent=mode==="group_first"
+    ? "Contoh: Bola Baling Opt 1 → Bola Baling Opt 2 → Bola Tampar Opt 1 → Bola Tampar Opt 2"
+    : "Contoh: Bola Baling Opt 1 → Bola Tampar Opt 1 → Bola Baling Opt 2 → Bola Tampar Opt 2";
+}
+
+function buildPdfPageSequence(optionGroups,order=state.pdfPageOrder){
+  const groups=Array.isArray(optionGroups) ? optionGroups : [];
+  const pages=[];
+  const mode=normalizePdfPageOrder(order);
+
+  if(mode==="group_first"){
+    groups.forEach((group,groupIndex)=>{
+      (group.optionPages || []).forEach((optionData,optionIndex)=>{
+        if(!optionData) return;
+        pages.push({
+          groupIndex:groupIndex+1,
+          groupName:group.name || defaultGroupName(groupIndex),
+          optionNumber:optionIndex+1,
+          optionData
+        });
+      });
+    });
+    return pages;
+  }
+
+  const maxOptions=groups.reduce((max,group)=>Math.max(max,(group.optionPages || []).length),0);
+  for(let optionIndex=0;optionIndex<maxOptions;optionIndex++){
+    groups.forEach((group,groupIndex)=>{
+      const optionData=(group.optionPages || [])[optionIndex];
+      if(!optionData) return;
+      pages.push({
+        groupIndex:groupIndex+1,
+        groupName:group.name || defaultGroupName(groupIndex),
+        optionNumber:optionIndex+1,
+        optionData
+      });
+    });
+  }
+  return pages;
+}
+
+function syncProjectInputs(){
+  $("projectTitle").value=state.projectTitle || "";
+
+  const salesSelect=$("projectSalesName");
+  const salesValue=state.projectSalesName || "";
+
+  if(
+    salesValue &&
+    !Array.from(salesSelect.options).some(option=>option.value===salesValue)
+  ){
+    const option=document.createElement("option");
+    option.value=salesValue;
+    option.textContent=salesValue;
+    salesSelect.appendChild(option);
+  }
+
+  salesSelect.value=salesValue;
+
+  if($("brandSystem")) $("brandSystem").value=normalizeBrand(state.brand);
+  if($("siteBrandSystem")) $("siteBrandSystem").value=siteBrand();
+  if(state.measurementUnit==="ft_round") state.measurementUnit="ft";
+  if(!["m","ft"].includes(state.measurementUnit)) state.measurementUnit="m";
+  syncMeasurementUnitLabels();
+  $("projectReferenceNo").value=normalizeReferenceNumber(state.projectReferenceNo);
+  updateProjectReferencePreview();
+  updateGroupControls();
+  updateOptionControls();
+  state.pdfPageOrder=normalizePdfPageOrder(state.pdfPageOrder);
+  if($("pdfPageOrder")) $("pdfPageOrder").value=state.pdfPageOrder;
+  updatePdfPageOrderHint();
+  $("siteW").value=formatLengthInput(state.siteW);
+  $("siteH").value=formatLengthInput(state.siteH);
+  syncSiteSizeModeUI();
+  if($("siteColor")) $("siteColor").value=state.siteColor;
+  if(state.siteShapeMode!=="custom") state.siteShapeMode="rect";
+  if(!Array.isArray(state.sitePolygon)) state.sitePolygon=[];
+  if(typeof state.showCustomSiteEdgeSizes!=="boolean") state.showCustomSiteEdgeSizes=true;
+  if(state.siteShapeMode==="custom"){
+    ensureSiteAreas();
+    loadActiveSiteAreaToLegacy();
+  }
+  state.customSiteEdgeConstraints=normalizeCustomSiteEdgeConstraints(
+    state.customSiteEdgeConstraints,
+    state.sitePolygon.length
+  );
+  if($("siteShapeMode")) $("siteShapeMode").value=state.siteShapeMode;
+  updateCustomSiteControls();
+  $("showGrid").checked=!!state.showGrid;
+  if(typeof state.showRulers!=="boolean") state.showRulers=true;
+  if($("showRulers")) $("showRulers").checked=state.showRulers!==false;
+  if($("stageWrap")) $("stageWrap").classList.toggle("rulers-hidden",state.showRulers===false);
+  $("smartGuides").checked=state.smartGuides!==false;
+  $("overlayMode").checked=!!state.overlayMode;
+  $("showSiteSizes").checked=!!state.showSiteSizes;
+  $("showCourtSizes").checked=!!state.showCourtSizes;
+  if($("showFutsalStandardDetailSizes")) $("showFutsalStandardDetailSizes").checked=!!state.showFutsalStandardDetailSizes;
+  if($("showFutsalSubstitutionZone")) $("showFutsalSubstitutionZone").checked=!!state.showFutsalSubstitutionZone;
+  if($("futsalToggleCenterCircle")) $("futsalToggleCenterCircle").checked=!!state.showFutsalCenterCircleSize;
+  if($("futsalToggleDArc")) $("futsalToggleDArc").checked=!!state.showFutsalDArcSize;
+  if($("futsalToggleGoalWidth")) $("futsalToggleGoalWidth").checked=!!state.showFutsalGoalWidthSize;
+  if($("futsalToggleSecondPenalty")) $("futsalToggleSecondPenalty").checked=!!state.showFutsalSecondPenaltySize;
+  if($("futsalToggleSubstitutionZone")) $("futsalToggleSubstitutionZone").checked=!!state.showFutsalSubstitutionZone;
+  if($("futsalToggleCornerArc")) $("futsalToggleCornerArc").checked=!!state.showFutsalCornerArcSize;
+  $("showColorUsageAreas").checked=!!state.showColorUsageAreas;
+  $("showWalkwaySizes").checked=!!state.showWalkwaySizes;
+  if($("includeMeasurementsInExport")) $("includeMeasurementsInExport").checked=!!state.includeMeasurementsInExport;
+  if($("showCustomSiteEdgeSizes")) $("showCustomSiteEdgeSizes").checked=state.showCustomSiteEdgeSizes!==false;
+}
+
+function restoreProjectSnapshot(snapshot){
+  const data=JSON.parse(snapshot);
+  const previousSelection=state.selectedId;
+
+  projectHistory.restoring=true;
+
+  Object.keys(state).forEach(key=>delete state[key]);
+  Object.assign(state,data);
+
+  if(!Array.isArray(state.optionGroups) || !state.optionGroups.length){
+    const legacyPages=Array.isArray(state.optionPages) && state.optionPages.length
+      ? state.optionPages.map(normalizeOptionData)
+      : [captureCurrentOptionData()];
+    state.optionGroups=[{name:defaultGroupName(0),currentOption:1,optionPages:legacyPages}];
+    state.projectGroup=1;
+  }
+  ensureOptionGroups();
+
+  state.courts=(state.courts || []).map(normalizeCourt);
+  state.measurements=Array.isArray(state.measurements) ? state.measurements.map((m,index)=>normalizeMeasurement(m,index)) : [];
+  state.nextMeasureId=Math.max(parseInt(state.nextMeasureId || 1,10)||1,...state.measurements.map(m=>m.id+1),1);
+  if(typeof state.includeMeasurementsInExport!=="boolean") state.includeMeasurementsInExport=false;
+  state.textAnnotations=Array.isArray(state.textAnnotations) ? state.textAnnotations.map((item,index)=>normalizeTextAnnotation(item,index)) : [];
+  state.nextTextId=Math.max(parseInt(state.nextTextId || 1,10)||1,...state.textAnnotations.map(item=>item.id+1),1);
+  state.imageAnnotations=Array.isArray(state.imageAnnotations) ? state.imageAnnotations.map((item,index)=>normalizeImageAnnotation(item,index)) : [];
+  state.nextImageId=Math.max(parseInt(state.nextImageId || 1,10)||1,...state.imageAnnotations.map(item=>item.id+1),1);
+  selectedMeasurementId=null;
+  selectedTextId=null;
+  selectedImageId=null;
+  closeMeasureInlineEditor(false);
+  closeTextInlineEditor(false);
+  state.customColors=normalizedCustomColours(state.customColors);
+  const legacyFutsalDetailToggle=state.showFutsalStandardDetailSizes===true;
+  if(typeof state.showFutsalStandardDetailSizes!=="boolean") state.showFutsalStandardDetailSizes=false;
+  if(typeof state.showFutsalSubstitutionZone!=="boolean") state.showFutsalSubstitutionZone=false;
+  if(typeof state.showFutsalCenterCircleSize!=="boolean") state.showFutsalCenterCircleSize=!!state.showFutsalStandardDetailSizes;
+  if(typeof state.showFutsalDArcSize!=="boolean") state.showFutsalDArcSize=!!state.showFutsalStandardDetailSizes;
+  if(typeof state.showFutsalGoalWidthSize!=="boolean") state.showFutsalGoalWidthSize=!!state.showFutsalStandardDetailSizes;
+  if(typeof state.showFutsalSecondPenaltySize!=="boolean") state.showFutsalSecondPenaltySize=!!state.showFutsalStandardDetailSizes;
+  if(typeof state.showFutsalCornerArcSize!=="boolean") state.showFutsalCornerArcSize=false;
+  if(typeof state.showFutsalCenterCircleSize!=="boolean") state.showFutsalCenterCircleSize=legacyFutsalDetailToggle;
+  if(typeof state.showFutsalDArcSize!=="boolean") state.showFutsalDArcSize=legacyFutsalDetailToggle;
+  if(typeof state.showFutsalGoalWidthSize!=="boolean") state.showFutsalGoalWidthSize=legacyFutsalDetailToggle;
+  if(typeof state.showFutsalSecondPenaltySize!=="boolean") state.showFutsalSecondPenaltySize=legacyFutsalDetailToggle;
+  if(typeof state.showFutsalCornerArcSize!=="boolean") state.showFutsalCornerArcSize=false;
+  if(typeof state.showCustomSiteEdgeSizes!=="boolean") state.showCustomSiteEdgeSizes=true;
+  ensureSiteAreas();
+  if(state.siteShapeMode==="custom") loadActiveSiteAreaToLegacy();
+  state.customSiteEdgeConstraints=normalizeCustomSiteEdgeConstraints(
+    state.customSiteEdgeConstraints,
+    state.sitePolygon?.length || 0
+  );
+
+  if(state.courts.some(c=>c.id===previousSelection)){
+    state.selectedId=previousSelection;
+  }else{
+    state.selectedId=state.courts.at(-1)?.id || null;
+  }
+
+  syncProjectInputs();
+  initPalettes();
+  renderCustomColourManager();
+  render({preserveStagePosition:false});
+
+  projectHistory.lastSnapshot=projectSnapshot();
+  projectHistory.restoring=false;
+  updateHistoryButtons();
+}
+
+function undoProject(){
+  if(!projectHistory.undoStack.length) return;
+
+  const current=projectSnapshot();
+  const previous=projectHistory.undoStack.pop();
+
+  projectHistory.redoStack.push(current);
+  restoreProjectSnapshot(previous);
+}
+
+function redoProject(){
+  if(!projectHistory.redoStack.length) return;
+
+  const current=projectSnapshot();
+  const next=projectHistory.redoStack.pop();
+
+  projectHistory.undoStack.push(current);
+
+  if(projectHistory.undoStack.length>projectHistory.limit){
+    projectHistory.undoStack.shift();
+  }
+
+  restoreProjectSnapshot(next);
+}
+
+const $ = id => document.getElementById(id);
+const svg = $("stage");
+
+const courtViewport = {
+  initialized:false,
+  baseX:-1.6,
+  baseY:-1.6,
+  baseW:0,
+  baseH:0,
+  x:-1.6,
+  y:-1.6,
+  w:0,
+  h:0,
+  minRatio:.12,
+  maxRatio:1.45
+};
+
+function courtViewMargin(){
+  // Extra room when walkway dimensions are visible:
+  // court size -> walkway -> overall site dimension.
+  return state.showWalkwaySizes ? 4.8 : 1.6;
+}
+
+function fullCourtViewBox(){
+  const margin=courtViewMargin();
+
+  return {
+    x:-margin,
+    y:-margin,
+    w:state.siteW+margin*2,
+    h:state.siteH+margin*2
+  };
+}
+
+function setCourtViewBox(){
+  svg.setAttribute(
+    "viewBox",
+    `${courtViewport.x} ${courtViewport.y} ${courtViewport.w} ${courtViewport.h}`
+  );
+  if(typeof updateStageRulers==="function") updateStageRulers();
+}
+
+function resetCourtZoom(){
+  const base=fullCourtViewBox();
+
+  courtViewport.initialized=true;
+  courtViewport.baseX=base.x;
+  courtViewport.baseY=base.y;
+  courtViewport.baseW=base.w;
+  courtViewport.baseH=base.h;
+  courtViewport.x=base.x;
+  courtViewport.y=base.y;
+  courtViewport.w=base.w;
+  courtViewport.h=base.h;
+
+  setCourtViewBox();
+}
+
+function syncCourtViewport(){
+  const base=fullCourtViewBox();
+  const siteChanged=
+    !courtViewport.initialized ||
+    Math.abs(courtViewport.baseW-base.w)>.0001 ||
+    Math.abs(courtViewport.baseH-base.h)>.0001;
+
+  if(siteChanged){
+    resetCourtZoom();
+    return;
+  }
+
+  const minW=base.w*courtViewport.minRatio;
+  const maxW=base.w*(courtViewport.maxRatio||1.45);
+  const ratio=Math.min(courtViewport.maxRatio||1.45,Math.max(courtViewport.w/base.w,courtViewport.minRatio));
+
+  courtViewport.w=Math.min(maxW,Math.max(minW,base.w*ratio));
+  courtViewport.h=base.h*(courtViewport.w/base.w);
+
+  // Keep the current camera position exactly where the user left it.
+  // The workspace now behaves like an Illustrator pasteboard: the viewport
+  // may sit anywhere outside the site instead of being clamped to its bounds.
+  if(!Number.isFinite(courtViewport.x)) courtViewport.x=base.x;
+  if(!Number.isFinite(courtViewport.y)) courtViewport.y=base.y;
+
+  setCourtViewBox();
+}
+
+function stagePointFromClient(clientX,clientY){
+  const matrix=svg.getScreenCTM();
+
+  if(matrix && typeof DOMPoint!=="undefined"){
+    return new DOMPoint(clientX,clientY).matrixTransform(matrix.inverse());
+  }
+
+  const rect=svg.getBoundingClientRect();
+  return {
+    x:courtViewport.x+((clientX-rect.left)/rect.width)*courtViewport.w,
+    y:courtViewport.y+((clientY-rect.top)/rect.height)*courtViewport.h
+  };
+}
+
+function normalizeRulerGuides(value){
+  if(!Array.isArray(value)) return [];
+  return value
+    .map((guide,index)=>({
+      id:Number.isFinite(Number(guide?.id)) ? Number(guide.id) : (Date.now()+index),
+      orientation:guide?.orientation==="horizontal" ? "horizontal" : "vertical",
+      value:Number(guide?.value)
+    }))
+    .filter(guide=>Number.isFinite(guide.value))
+    .slice(0,200);
+}
+
+function nextRulerGuideId(){
+  const ids=normalizeRulerGuides(state.rulerGuides).map(guide=>Number(guide.id)||0);
+  return Math.max(Date.now(),...(ids.length ? ids.map(id=>id+1) : [1]));
+}
+
+function rulerGuideWorldValue(orientation,clientX,clientY){
+  const point=stagePointFromClient(clientX,clientY);
+  return orientation==="horizontal" ? point.y : point.x;
+}
+
+function pointerInsideStageContent(clientX,clientY){
+  const rect=svg.getBoundingClientRect();
+  return clientX>=rect.left && clientX<=rect.right && clientY>=rect.top && clientY<=rect.bottom;
+}
+
+function pointerInsideRulerZone(clientX,clientY){
+  const wrap=$("stageWrap");
+  if(!wrap || state.showRulers===false) return false;
+  const rect=wrap.getBoundingClientRect();
+  return clientY>=rect.top && clientY<=rect.top+28 && clientX>=rect.left && clientX<=rect.right ||
+         clientX>=rect.left && clientX<=rect.left+34 && clientY>=rect.top && clientY<=rect.bottom;
+}
+
+function guideLineAttributes(orientation,value){
+  const far=10000;
+  return orientation==="horizontal"
+    ? {x1:-far,y1:value,x2:far,y2:value}
+    : {x1:value,y1:-far,x2:value,y2:far};
+}
+
+function createRulerGuideDom(guide,{preview=false}={}){
+  const group=ns("g",{
+    class:`ruler-guide-group editing-only${preview ? " ruler-guide-preview" : ""}`,
+    "data-guide-id":guide.id ?? "preview",
+    "data-orientation":guide.orientation,
+    "pointer-events":"all"
+  });
+  const attrs=guideLineAttributes(guide.orientation,guide.value);
+  group.appendChild(ns("line",{
+    ...attrs,
+    class:"ruler-guide-visible",
+    stroke:"#00a8ff",
+    "stroke-width":"1",
+    "vector-effect":"non-scaling-stroke",
+    "pointer-events":"none"
+  }));
+  if(!preview){
+    const hit=ns("line",{
+      ...attrs,
+      class:"ruler-guide-hit",
+      "data-guide-id":guide.id,
+      "data-orientation":guide.orientation
+    });
+    group.appendChild(hit);
+    bindExistingRulerGuide(hit,guide.id,guide.orientation);
+  }
+  return group;
+}
+
+function updateGuideDomValue(group,orientation,value){
+  if(!group) return;
+  const attrs=guideLineAttributes(orientation,value);
+  group.querySelectorAll("line").forEach(line=>{
+    Object.entries(attrs).forEach(([key,val])=>line.setAttribute(key,val));
+  });
+}
+
+function drawRulerGuides(){
+  svg.querySelectorAll(".ruler-guide-group").forEach(el=>el.remove());
+  state.rulerGuides=normalizeRulerGuides(state.rulerGuides);
+  state.rulerGuides.forEach(guide=>svg.appendChild(createRulerGuideDom(guide)));
+}
+
+function removeRulerGuideById(id,{commit=true}={}){
+  const numericId=Number(id);
+  const before=normalizeRulerGuides(state.rulerGuides);
+  const after=before.filter(guide=>Number(guide.id)!==numericId);
+  if(after.length===before.length) return false;
+  state.rulerGuides=after;
+  render();
+  if(commit) commitHistory();
+  return true;
+}
+
+function bindExistingRulerGuide(hit,id,orientation){
+  if(!hit) return;
+  hit.addEventListener("dblclick",event=>{
+    event.preventDefault();
+    event.stopPropagation();
+    removeRulerGuideById(id);
+  });
+
+  hit.addEventListener("pointerdown",event=>{
+    if(event.button!==0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const guides=normalizeRulerGuides(state.rulerGuides);
+    const guide=guides.find(item=>Number(item.id)===Number(id));
+    if(!guide) return;
+
+    let currentValue=guide.value;
+    const group=hit.closest(".ruler-guide-group");
+    try{hit.setPointerCapture(event.pointerId);}catch(_){}
+
+    const move=moveEvent=>{
+      currentValue=rulerGuideWorldValue(orientation,moveEvent.clientX,moveEvent.clientY);
+      updateGuideDomValue(group,orientation,currentValue);
+    };
+
+    const finish=upEvent=>{
+      hit.removeEventListener("pointermove",move);
+      hit.removeEventListener("pointerup",finish);
+      hit.removeEventListener("pointercancel",cancel);
+      try{hit.releasePointerCapture(event.pointerId);}catch(_){}
+
+      if(pointerInsideRulerZone(upEvent.clientX,upEvent.clientY) || !pointerInsideStageContent(upEvent.clientX,upEvent.clientY)){
+        state.rulerGuides=guides.filter(item=>Number(item.id)!==Number(id));
+      }else{
+        guide.value=Math.round(currentValue*1000)/1000;
+        state.rulerGuides=guides;
+      }
+      render();
+      commitHistory();
+    };
+
+    const cancel=()=>{
+      hit.removeEventListener("pointermove",move);
+      hit.removeEventListener("pointerup",finish);
+      hit.removeEventListener("pointercancel",cancel);
+      render();
+    };
+
+    hit.addEventListener("pointermove",move);
+    hit.addEventListener("pointerup",finish);
+    hit.addEventListener("pointercancel",cancel);
+  });
+}
+
+function beginRulerGuideDrag(event,orientation,sourceCanvas){
+  if(event.button!==0 || state.showRulers===false) return;
+  event.preventDefault();
+  event.stopPropagation();
+
+  const previewGuide={id:"preview",orientation,value:rulerGuideWorldValue(orientation,event.clientX,event.clientY)};
+  const preview=createRulerGuideDom(previewGuide,{preview:true});
+  svg.appendChild(preview);
+  let currentValue=previewGuide.value;
+  let cancelled=false;
+
+  try{sourceCanvas.setPointerCapture(event.pointerId);}catch(_){}
+
+  const onKey=keyEvent=>{
+    if(keyEvent.key!=="Escape") return;
+    keyEvent.preventDefault();
+    cancelled=true;
+    cleanup();
+  };
+
+  const move=moveEvent=>{
+    currentValue=rulerGuideWorldValue(orientation,moveEvent.clientX,moveEvent.clientY);
+    updateGuideDomValue(preview,orientation,currentValue);
+  };
+
+  const cleanup=()=>{
+    sourceCanvas.removeEventListener("pointermove",move);
+    sourceCanvas.removeEventListener("pointerup",finish);
+    sourceCanvas.removeEventListener("pointercancel",cancel);
+    document.removeEventListener("keydown",onKey,true);
+    try{sourceCanvas.releasePointerCapture(event.pointerId);}catch(_){}
+    preview.remove();
+  };
+
+  const finish=upEvent=>{
+    const shouldCreate=!cancelled && pointerInsideStageContent(upEvent.clientX,upEvent.clientY) && !pointerInsideRulerZone(upEvent.clientX,upEvent.clientY);
+    cleanup();
+    if(!shouldCreate) return;
+    state.rulerGuides=normalizeRulerGuides(state.rulerGuides);
+    state.rulerGuides.push({
+      id:nextRulerGuideId(),
+      orientation,

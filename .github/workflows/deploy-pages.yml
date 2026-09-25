@@ -1,0 +1,59 @@
+name: Deploy Bina Court Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'chunks/**'
+      - '.github/workflows/deploy-pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct live web app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          OUT="_site/index.html"
+          : > "$OUT"
+          for f in chunks/part*.html; do
+            cat "$f" >> "$OUT"
+          done
+          for f in chunks/part*.b64; do
+            base64 -d "$f" >> "$OUT"
+          done
+          test -s "$OUT"
+          grep -q "Bina Court Designer" "$OUT"
+          touch _site/.nojekyll
+          echo "index.html bytes: $(wc -c < "$OUT")"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

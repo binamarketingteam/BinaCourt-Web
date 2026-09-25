@@ -1,0 +1,799 @@
+      <button id="projectBarToggle" class="project-bar-toggle" type="button" title="Minimize bahagian Project" aria-label="Minimize bahagian Project" aria-expanded="true"><span class="collapse-icon">⌃</span></button>
+      <button id="saveProject" class="primary" type="button" title="Simpan projek">💾 Save</button>
+      <button id="loadProject" class="secondary" type="button" title="Buka projek">📂 Open</button>
+
+      <details id="topExportMenu" class="top-export-details">
+        <summary title="Export design">
+          <span>↗ Export</span>
+          <span class="top-export-caret">▼</span>
+        </summary>
+        <div class="top-export-menu">
+          <div class="top-export-menu-title">Export design</div>
+          <div class="export-grid">
+            <button id="previewPdf" class="secondary" type="button">👁 Preview PDF</button>
+            <button id="exportPdf" class="primary" type="button">Export PDF</button>
+            <button id="exportPng" class="secondary" type="button">Export PNG</button>
+            <button id="exportPdfVector" class="secondary" type="button">PDF Vector</button>
+          </div>
+
+          <details class="compact-details">
+            <summary>⚙ PDF Settings</summary>
+            <div class="compact-details-body">
+              <label for="pdfPageOrder" style="margin-top:0">Susunan Halaman PDF</label>
+              <select id="pdfPageOrder">
+                <option value="option_first">Option dahulu — semua Option 1, kemudian Option 2</option>
+                <option value="group_first">Kumpulan dahulu — habiskan semua option setiap kumpulan</option>
+              </select>
+              <div id="pdfPageOrderHint" class="hint" style="margin-top:6px"></div>
+            </div>
+          </details>
+          <div class="top-export-menu-note">Export diletakkan di kanan atas supaya lebih cepat dicapai, sama konsep seperti toolbar Canva.</div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+</div>
+
+<div class="app" id="appShell">
+  <aside class="sidebar" id="mainSidebar">
+    <div class="sidebar-topbar">
+      <span class="sidebar-title">Panels</span>
+      <button id="sidebarCollapseToggle" class="sidebar-collapse-toggle" type="button" aria-expanded="true" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+    </div>
+
+    <div class="section sidebar-panel" id="panelSite">
+      <h2><span class="panel-number">1</span> Site</h2>
+      <label for="siteShapeMode">Bentuk kawasan tapak</label>
+      <select id="siteShapeMode">
+        <option value="rect">Rectangle</option>
+        <option value="custom">Custom Shape (Polygon)</option>
+      </select>
+      <div id="customSiteTools" style="display:none;margin-top:8px">
+        <div id="customSiteAreaManager" style="border:1px solid #d6dbe2;border-radius:10px;padding:9px;margin-bottom:9px;background:#f8fafc">
+          <label for="customSiteAreaSelect" style="margin-top:0">Kawasan aktif</label>
+          <select id="customSiteAreaSelect"></select>
+          <label for="customSiteAreaName" style="margin-top:7px">Nama kawasan</label>
+          <input id="customSiteAreaName" type="text" placeholder="Contoh: Pickleball A" autocomplete="off">
+          <label for="customSiteAreaBrand" style="margin-top:7px">Jenama kawasan / walkway aktif</label>
+          <select id="customSiteAreaBrand">
+            <option value="duracourt">Duracourt</option>
+            <option value="primacourt">Primacourt</option>
+            <option value="terracourt">Terracourt</option>
+          </select>
+          <div class="row" style="margin-top:7px">
+            <button id="addCustomSiteArea" type="button" class="secondary">+ Tambah Kawasan</button>
+            <button id="duplicateCustomSiteArea" type="button" class="secondary">⧉ Duplicate Kawasan</button>
+            <button id="deleteCustomSiteArea" type="button" class="danger">Padam Kawasan</button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button id="toggleCustomSiteAreaVisibility" type="button" class="secondary">👁 Visible</button>
+            <button id="toggleCustomSiteAreaLock" type="button" class="secondary">🔓 Edit</button>
+          </div>
+        </div>
+        <div class="row">
+          <button id="startCustomSiteDraw" type="button" class="secondary">✏️ Draw Site</button>
+          <button id="closeCustomSiteShape" type="button" class="secondary">Tutup Bentuk</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button id="cancelCustomSiteDraw" type="button" class="secondary">Batal Drawing</button>
+          <button id="clearCustomSiteShape" type="button" class="danger">Padam Shape</button>
+        </div>
+        <div id="customSiteStatus" class="hint" style="margin-top:7px">Klik Draw Site, kemudian klik titik satu demi satu pada canvas. Klik semula titik pertama untuk tutup polygon.</div>
+        <div id="customSiteArea" class="hint" style="margin-top:5px;font-weight:700"></div>
+        <div class="inline" style="margin-top:8px">
+          <input id="showCustomSiteEdgeSizes" type="checkbox" checked>
+          <span>View ukuran setiap sisi custom site (termasuk dalam PDF bila diaktifkan)</span>
+        </div>
+        <div class="hint" style="margin-top:5px">Selepas shape siap: drag titik biru untuk ubah bentuk, atau klik ukuran pada setiap sisi untuk masukkan panjang tepat. Klik 🔒 dalam editor ukuran untuk kekalkan sisi itu. Shift ketika melukis = snap 45°.</div>
+      </div>
+      <label for="measurementUnit" style="margin-top:10px">Unit ukuran</label>
+      <select id="measurementUnit">
+        <option value="m">Meter (m)</option>
+        <option value="ft">Kaki (ft)</option>
+      </select>
+      <div class="row" style="margin-top:8px">
+        <div><label id="siteWLabel">Panjang (m)</label><input id="siteW" type="number" step="0.1" value="40"></div>
+        <div><label id="siteHLabel">Lebar (m)</label><input id="siteH" type="number" step="0.1" value="40"></div>
+      </div>
+
+      <label for="siteSizeMode" style="margin-top:10px">Size Mode</label>
+      <select id="siteSizeMode">
+        <option value="manual">Manual L × W</option>
+        <option value="lock_area">🔒 Lock Area</option>
+        <option value="lock_ratio">🔗 Lock Ratio</option>
+      </select>
+
+      <div id="siteLockAreaBox" style="display:none;margin-top:8px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
+        <label id="siteTargetAreaLabel" for="siteTargetArea" style="margin-top:0">Keluasan sasaran (m²)</label>
+        <input id="siteTargetArea" type="number" min="25" step="0.01" value="1600">
+        <div id="siteAreaLiveStatus" class="hint" style="margin-top:7px;font-weight:700"></div>
+        <div class="hint" style="margin-top:5px">Tarik handle biru pada kanan, bawah atau bucu tapak. Panjang × lebar akan berubah tetapi keluasan sasaran kekal.</div>
+      </div>
+
+      <div id="siteLockRatioBox" style="display:none;margin-top:8px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
+        <div id="siteRatioStatus" class="hint" style="font-weight:700"></div>
+        <div class="hint" style="margin-top:5px">Nisbah semasa dikunci. Tarik handle biru untuk besarkan atau kecilkan tapak tanpa mengubah proportion.</div>
+      </div>
+
+      <div id="siteResizeHint" class="hint" style="margin-top:7px">Untuk Rectangle, tarik handle biru pada tepi kanan / bawah / bucu untuk ubah saiz tapak terus pada canvas.</div>
+      <label for="siteBrandSystem">Jenama kawasan / walkway</label>
+      <select id="siteBrandSystem">
+        <option value="duracourt">Duracourt</option>
+        <option value="primacourt">Primacourt</option>
+        <option value="terracourt">Terracourt</option>
+      </select>
+      <div class="hint" style="margin-top:5px">Untuk Rectangle, pilihan ini digunakan terus. Untuk Custom Shape, setiap Area boleh pilih jenama sendiri.</div>
+      <label>Warna kawasan / walkway</label>
+      <div id="sitePalette" class="palette"></div>
+      <div class="custom-colour-box">
+        <strong>Tambah warna custom</strong>
+        <div class="custom-colour-grid">
+          <div>
+            <label for="customColourHex" style="margin-top:0">HEX</label>
+            <input id="customColourHex" type="text" placeholder="#123456" maxlength="7" autocomplete="off">
+          </div>
+          <div>
+            <label for="customColourName" style="margin-top:0">Nama warna</label>
+            <input id="customColourName" type="text" placeholder="Contoh: Corporate Blue" autocomplete="off">
+          </div>
+        </div>
+        <div class="custom-colour-actions">
+          <button id="addCustomColour" type="button" class="secondary">+ Tambah ke palette</button>
+        </div>
+        <div class="hint" style="margin-top:6px">Warna custom akan muncul dalam semua colour palette dan nama ini akan digunakan dalam export.</div>
+        <div id="customColourList" class="custom-colour-list"></div>
+      </div>
+
+    </div>
+
+    <div class="section sidebar-panel" id="panelAddCourt">
+      <h2><span class="panel-number">2</span> Add Court</h2>
+      <label>Jenis court</label>
+      <select id="courtType"></select>
+
+      <div id="customSizeBox" class="row" style="display:none">
+        <div>
+          <label id="courtWLabel">Panjang court (m)</label>
+          <input id="courtW" type="number" step="0.1">
+        </div>
+        <div>
+          <label id="courtHLabel">Lebar court (m)</label>
+          <input id="courtH" type="number" step="0.1">
+        </div>
+      </div>
+
+      <div id="sizeInfo" class="hint" style="margin-top:8px"></div>
+      <div id="sizeWarning" class="warning"></div>
+
+      <button id="addCourt" class="primary" style="margin-top:12px">
+        + Add Court
+      </button>
+
+      <div id="futsalDetailToggleBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Tick / Untick Ukuran Futsal Standard</div>
+        <div class="hint" style="margin:0 0 8px 0">Kotak ini hanya muncul bila court <strong>Futsal Standard</strong> dipilih.</div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleCenterCircle" type="checkbox">
+          <span>Bulatan tengah — Ø 6 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleDArc" type="checkbox">
+          <span>Bulatan D — R 6 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleGoalWidth" type="checkbox">
+          <span>Tiang goal — 3 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleSecondPenalty" type="checkbox">
+          <span>Second penalty mark — 10 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleSubstitutionZone" type="checkbox">
+          <span>Substitution zone — 5 m setiap zone</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="futsalToggleCornerArc" type="checkbox">
+          <span>Corner arc radius — R 0.25 m</span>
+        </div>
+      </div>
+
+      <div id="halfBasketballOptionBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Half Basketball (Custom)</div>
+        <div class="hint" style="margin:0 0 8px 0">Bulatan D, key / paint dan 3-point kekal. Saiz luar court boleh diubah ikut panjang × lebar.</div>
+        <div class="inline" style="margin-top:6px">
+          <input id="newHalfBballCenterCircle" type="checkbox">
+          <span>Tambah half centre circle</span>
+        </div>
+      </div>
+
+      <!--
+        Compatibility controls are intentionally hidden.
+        New courts use the sport's default colours.
+        Colour editing is performed after adding through Quick Edit.
+      -->
+      <div aria-hidden="true" style="display:none!important">
+        <input id="newFill" type="color" value="#1b427a">
+        <input id="newLine" type="color" value="#ffffff">
+
+        <div id="newKitchenWrap">
+          <input id="newKitchen" type="color" value="#a53531">
+        </div>
+
+        <div id="newBasketballWrap">
+          <input id="newBballZone" type="color" value="#a53531">
+          <input id="newBballKey" type="color" value="#416c3f">
+          <input id="newBballCenter" type="color" value="#2e65af">
+        </div>
+
+        <input id="newLineOnly" type="checkbox">
+
+        <div id="newFillPaletteGroup">
+          <div id="newFillPalette"></div>
+        </div>
+        <div id="newLinePaletteGroup">
+          <div id="newLinePalette"></div>
+        </div>
+        <div id="newKitchenPaletteGroup">
+          <div id="newKitchenPalette"></div>
+        </div>
+        <div id="newBballZonePaletteGroup">
+          <div id="newBballZonePalette"></div>
+        </div>
+        <div id="newBballKeyPaletteGroup">
+          <div id="newBballKeyPalette"></div>
+        </div>
+        <div id="newBballCenterPaletteGroup">
+          <div id="newBballCenterPalette"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section sidebar-panel" id="panelLayers">
+      <h2><span class="panel-number">3</span> Layers</h2>
+      <div class="hint" style="margin-bottom:8px">
+        Drag ikon ☰ untuk susun layer. Item paling atas berada paling depan dalam view. Shift + klik untuk pilih lebih daripada satu court.
+      </div>
+
+      <div id="courtList" class="court-list"></div>
+
+      <div class="measure-layer-group">
+        <button id="measurementLayerToggle" type="button" class="measure-layer-header">
+          <span>▾ Measurements</span>
+          <span id="measurementLayerCount">0 item</span>
+        </button>
+        <div id="measurementLayerBody" class="measure-layer-body">
+          <div id="measurementList" class="court-list"></div>
+          <div class="inline" style="margin-top:8px">
+            <input id="includeMeasurementsInExport" type="checkbox">
+            <span>Masukkan Measurements dalam PNG / PDF</span>
+          </div>
+          <div class="hint" style="margin-top:5px">Double-click nombor untuk ubah panjang. Drag arrow untuk pindah; drag titik hujung untuk resize / rotate.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section sidebar-panel" id="panelView">
+      <h2><span class="panel-number">4</span> View / Display</h2>
+      <div class="sidebar-view-grid">
+      <div class="inline" >
+        <input id="showGrid" type="checkbox" checked>
+        <span id="gridUnitLabel">Paparkan grid 1 meter</span>
+      </div>
+      <div class="inline" >
+        <input id="showRulers" type="checkbox" checked>
+        <span>Ruler atas & kiri (gaya Photoshop / Illustrator)</span>
+      </div>
+      <div class="inline" >
+        <input id="smartGuides" type="checkbox" checked>
+        <span>Smart Guides — snap sebaris dengan court lain</span>
+      </div>
+      <div class="inline" >
+        <input id="overlayMode" type="checkbox" checked>
+        <span>Mode overlay — kekalkan line semua court</span>
+      </div>
+      <div class="inline" >
+        <input id="showSiteSizes" type="checkbox" checked>
+        <span>View saiz tapak (panjang × lebar)</span>
+      </div>
+      <div class="inline" >
+        <input id="showCourtSizes" type="checkbox">
+        <span>View saiz court (panjang × lebar)</span>
+      </div>
+      <div class="inline" style="margin-top:8px;display:none">
+        <input id="showFutsalStandardDetailSizes" type="checkbox">
+        <span>View ukuran detail Futsal Standard (Ø6 m, R6 m, Goal 3 m, Second Penalty 10 m)</span>
+      </div>
+      <div class="inline" style="margin-top:8px;display:none">
+        <input id="showFutsalSubstitutionZone" type="checkbox">
+        <span>View Substitution Zone Futsal Standard (5 m setiap zone)</span>
+      </div>
+      <div class="inline" >
+        <input id="showColorUsageAreas" type="checkbox">
+        <span id="colorUsageToggleLabel">View keluasan penggunaan setiap warna (m², tanpa line)</span>
+      </div>
+      <div class="inline" >
+        <input id="showWalkwaySizes" type="checkbox">
+        <span>View ukuran walkway (antara court & tepi kawasan)</span>
+      </div>
+      <div class="hint" style="margin-top:5px">
+        Klik nombor walkway untuk set ukuran tepat. Gunakan 🔒 untuk kekalkan ukuran sebagai constraint. Saiz tapak kekal; gap yang belum dikunci akan melaras bila perlu.
+      </div>
+      <div class="hint" style="margin-top:6px">
+        Bila court bertindih, warna court di atas akan menutup warna di belakang,
+        tetapi line kedua-dua court masih kelihatan. Double klik atau double tap
+        pada kawasan bertindih untuk memilih court di belakang.
+      </div>
+      </div>
+    </div>
+
+    <div class="section sidebar-panel" id="panelProjectActions">
+      <h2>Project Actions</h2>
+      <input id="fileInput" type="file" accept=".json" hidden>
+      <input id="imageToolInput" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
+      <button id="resetProject" class="danger" style="margin-top:0">Reset Projek</button>
+      <div class="footer-note">Export kini berada di bahagian kanan atas.</div>
+    </div>  </aside>
+
+  <main class="workspace">
+    <div class="toolbar">
+      <button id="undoAction" class="secondary" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+      <button id="redoAction" class="secondary" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled>↷ Redo</button>
+      <div id="toolsMenuWrap" class="tools-menu-wrap">
+        <button id="toolsMenuButton" class="secondary" type="button" aria-expanded="false" title="Tools">🛠 Tools ▾</button>
+        <div id="toolsDropdown" class="tools-dropdown" hidden>
+          <button id="measureTool" type="button" aria-pressed="false" title="Ukur jarak bebas — drag dari titik A ke titik B"><span class="tool-icon">📏</span><span>Ukur</span></button>
+          <button id="textTool" type="button" aria-pressed="false" title="Tambah text pada canvas"><span class="tool-icon">T</span><span>Text</span></button>
+          <button id="imageTool" type="button" aria-pressed="false" title="Tambah gambar PNG / JPEG pada canvas"><span class="tool-icon">🖼️</span><span>Add Image</span></button>
+          <button id="touchPanTool" type="button" aria-pressed="false" title="Pan canvas dengan sentuhan / mouse tanpa Space"><span class="tool-icon">✋</span><span>Hand / Pan</span></button>
+        </div>
+      </div>
+      <div id="textFormatToolbar" class="text-format-toolbar" hidden aria-label="Text formatting">
+        <span class="text-format-label">TEXT SIZE</span>
+        <button id="textSizeDown" class="secondary text-size-step" type="button" title="Kecilkan text">−</button>
+        <select id="textFontSize" title="Saiz text">
+          <option value="8">8</option>
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="14">14</option>
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+          <option value="28">28</option>
+          <option value="32">32</option>
+          <option value="36">36</option>
+          <option value="42">42</option>
+          <option value="48">48</option>
+          <option value="60">60</option>
+          <option value="72">72</option>
+          <option value="96">96</option>
+          <option value="120">120</option>
+        </select>
+        <button id="textSizeUp" class="secondary text-size-step" type="button" title="Besarkan text">+</button>
+      </div>
+      <div id="imageFormatToolbar" class="image-format-toolbar" hidden aria-label="Image formatting">
+        <span class="image-format-label">IMAGE</span>
+        <button id="imageDuplicate" class="secondary" type="button" title="Duplicate gambar">⧉ Duplicate</button>
+        <span class="image-format-label">ANGLE</span>
+        <input id="imageAngle" class="image-angle-input" type="number" min="-360" max="360" step="1" value="0" title="Sudut gambar dalam darjah">
+        <button id="imageRotateLeft" class="secondary" type="button" title="Pusing 90° ke kiri">↺ 90°</button>
+        <button id="imageRotateRight" class="secondary" type="button" title="Pusing 90° ke kanan">↻ 90°</button>
+        <button id="imageFlipH" class="secondary" type="button" title="Flip horizontal">↔ Flip</button>
+        <button id="imageFlipV" class="secondary" type="button" title="Flip vertical">↕ Flip</button>
+        <span class="image-format-label">SIZE</span>
+        <button id="imageSizeDown" class="secondary image-size-step" type="button" title="Kecilkan gambar">−</button>
+        <button id="imageSizeUp" class="secondary image-size-step" type="button" title="Besarkan gambar">+</button>
+        <span class="image-format-hint">resize di bucu · rotate pada handle bulat · Shift = snap 45°</span>
+      </div>
+      <button id="fitAll" class="secondary">⤢ Auto Arrange</button>
+      <button id="fitSiteView" class="secondary" type="button" title="Fit Tapak 100% — kembali nampak keseluruhan tapak" aria-label="Fit Tapak 100%">▣ 100%</button>
+      <div class="app-zoom-group" aria-label="Zoom canvas">
+        <button id="zoomOutButton" class="secondary" type="button" title="Zoom out">−</button>
+        <button id="zoomInButton" class="secondary" type="button" title="Zoom in">＋</button>
+      </div>
+
+      <div id="multiSelectPanel" class="multi-select-panel toolbar-multi-select" hidden>
+        <strong id="multiSelectCount">2 court dipilih</strong>
+        <button id="multiClearSelection" type="button" class="secondary multi-select-clear" title="Clear selection">×</button>
+      </div>
+
+      <div id="courtAlignToolbar" class="court-align-toolbar" hidden aria-label="Align dan distribute court">
+        <div class="align-to-wrap">
+          <span class="align-caption">ALIGN TO</span>
+          <select id="courtAlignTo" title="Pilih rujukan alignment">
+            <option value="selection">Selection</option>
+            <option value="site">Site</option>
+            <option value="key">Key Court</option>
+          </select>
+        </div>
+
+        <span class="court-align-sep" aria-hidden="true"></span>
+
+        <button id="courtAlignLeft" class="secondary court-align-icon" type="button" title="Align Left">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v18" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="5" width="9" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="6" y="14" width="13" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="courtAlignHCenter" class="secondary court-align-icon" type="button" title="Align Horizontal Centre">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><rect x="6" y="5" width="12" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="14" width="16" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="courtAlignRight" class="secondary court-align-icon" type="button" title="Align Right">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3v18" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="5" width="9" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="5" y="14" width="13" height="5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="courtAlignTop" class="secondary court-align-icon" type="button" title="Align Top">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="6" width="5" height="9" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="6" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="courtAlignVCenter" class="secondary court-align-icon" type="button" title="Align Vertical Centre">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><rect x="5" y="5" width="5" height="14" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="7" width="5" height="10" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="courtAlignBottom" class="secondary court-align-icon" type="button" title="Align Bottom">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="9" width="5" height="9" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="5" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+
+        <span class="court-align-sep" aria-hidden="true"></span>
+
+        <button id="courtDistributeHCenter" class="secondary court-align-icon" type="button" title="Distribute Horizontal Centres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v18M12 3v18M20 3v18" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2 2"/><rect x="2" y="8" width="4" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="6" width="6" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="18" y="9" width="4" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button id="courtDistributeVCenter" class="secondary court-align-icon" type="button" title="Distribute Vertical Centres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18M3 12h18M3 20h18" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2 2"/><rect x="8" y="2" width="8" height="4" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="9" width="12" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="18" width="6" height="4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+
+        <span class="court-align-sep" aria-hidden="true"></span>
+
+        <div class="court-gap-wrap" title="Jarak tepat antara tepi court">
+          <span class="align-caption">GAP</span>
+          <input id="courtAlignGap" type="number" min="0" step="0.1" value="1.0">
+          <span id="courtAlignGapUnit" class="court-gap-unit">m</span>
+        </div>
+        <button id="courtDistributeHGap" class="secondary court-align-icon" type="button" title="Horizontal Spacing — guna nilai GAP">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="5" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="6" width="5" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 12h6M10.5 10.5 9 12l1.5 1.5M13.5 10.5 15 12l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+        <button id="courtDistributeVGap" class="secondary court-align-icon" type="button" title="Vertical Spacing — guna nilai GAP">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="17" width="12" height="5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 9v6M10.5 10.5 12 9l1.5 1.5M10.5 13.5 12 15l1.5-1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+
+        <span class="court-align-sep" aria-hidden="true"></span>
+
+        <button id="multiCenterSite" class="secondary court-align-icon" type="button" title="Center Selection dalam Tapak" aria-label="Center Selection dalam Tapak">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <rect x="8" y="8" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 1.8v3.4M12 18.8v3.4M1.8 12h3.4M18.8 12h3.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+        </button>
+
+        <span id="alignKeyCourtLabel" class="key-court-label" title="Court aktif digunakan sebagai Key Court"></span>
+      </div>
+    </div>
+
+    <div class="canvas-card">
+      <div id="stageWrap">
+        <svg id="stage" xmlns="http://www.w3.org/2000/svg" aria-label="Pelan gelanggang"></svg>
+        <canvas id="stageRulerTop" class="stage-ruler" aria-hidden="true"></canvas>
+        <canvas id="stageRulerLeft" class="stage-ruler" aria-hidden="true"></canvas>
+        <div id="stageRulerCorner" aria-hidden="true">m</div>
+        <div id="colorAreaUsagePanel" class="colour-area-usage-panel" hidden></div>
+      </div>
+      <div class="status">
+        <span id="siteAreaBadge" class="badge"></span>
+        <span id="courtAreaBadge" class="badge"></span>
+        <span id="fitBadge" class="badge ok"></span>
+        <span class="badge">Scroll mouse dalam view untuk zoom in/out</span>
+        <span class="badge">Space + drag untuk gerakkan view bebas tanpa had (Hand Tool)</span>
+        <span class="badge">Tarik dari ruler untuk buat guide • drag guide balik ke ruler / double-click untuk padam</span>
+        <span class="badge">Susun layer melalui senarai: paling atas = paling depan</span>
+      </div>
+    </div>
+
+    <div class="selected-court-panel">
+      <h2>Court Dipilih</h2>
+      <div id="selectedEmpty" class="hint">Klik pada court dalam pelan untuk mengubahnya.</div>
+      <div id="selectedControls" style="display:none">
+        <div class="selected-config-grid">
+          <div class="selected-fields">
+            <label>Nama</label>
+            <input id="selName" type="text" placeholder="Isi nama jika perlu">
+
+            <label for="selBrandSystem">Jenama court ini</label>
+            <select id="selBrandSystem">
+              <option value="duracourt">Duracourt</option>
+              <option value="primacourt">Primacourt</option>
+              <option value="terracourt">Terracourt</option>
+            </select>
+
+            <div class="row">
+              <div><label>Warna court</label><input id="selFill" type="color"></div>
+              <div><label>Warna garisan</label><input id="selLine" type="color"></div>
+            </div>
+
+            <div id="selKitchenWrap" style="display:none">
+              <label>Warna kitchen tengah</label>
+              <input id="selKitchen" type="color">
+            </div>
+
+            <div id="selTakrawWrap" style="display:none">
+              <label>Warna bulatan & serve</label>
+              <input id="selTakraw" type="color">
+            </div>
+
+            <div id="selNetballWrap" style="display:none">
+              <label>Warna bulatan tengah & separa goal</label>
+              <input id="selNetball" type="color">
+            </div>
+
+            <div id="selVolleyballWrap" style="display:none">
+              <label>Warna tengah dua bahagian</label>
+              <input id="selVolleyball" type="color">
+            </div>
+
+            <div id="selFutsalWrap" style="display:none">
+              <div class="row">
+                <div><label>Warna bulatan tengah</label><input id="selFutsalCenter" type="color"></div>
+                <div><label>Warna bulatan D</label><input id="selFutsalD" type="color"></div>
+              </div>
+            </div>
+
+
+            <div id="selHandballWrap" style="display:none">
+              <label>Warna bulatan D</label>
+              <input id="selHandballD" type="color">
+            </div>
+
+            <div id="selBasketballWrap" style="display:none">
+              <div class="row">
+                <div><label>Warna kawasan 3-point</label><input id="selBballZone" type="color"></div>
+                <div><label>Warna key / paint</label><input id="selBballKey" type="color"></div>
+              </div>
+              <label>Warna bulatan tengah</label>
+              <input id="selBballCenter" type="color">
+            </div>
+
+            <div id="selHalfBasketballWrap" style="display:none;margin-top:10px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
+              <div class="inline" style="margin-top:0">
+                <input id="selHalfBballCenterCircle" type="checkbox">
+                <span>Paparkan half centre circle</span>
+              </div>
+              <div class="hint" style="margin-top:6px">Bulatan D, key / paint dan 3-point kekal. Tick ini hanya untuk separuh bulatan tengah di hujung court.</div>
+            </div>
+
+            <div class="inline" style="margin-top:12px">
+              <input id="selLineOnly" type="checkbox">
+              <span><strong>Line sahaja</strong> — permukaan transparent</span>
+            </div>
+
+            <div class="row3">
+              <div><label id="selXLabel">X (m)</label><input id="selX" type="number" step="0.1"></div>
+              <div><label id="selYLabel">Y (m)</label><input id="selY" type="number" step="0.1"></div>
+              <div><label>Sudut</label><input id="selAngle" type="number" step="1"></div>
+            </div>
+
+            <div id="selCourtSizeEditor" style="display:none;margin-top:12px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px">Saiz Court</div>
+              <div class="row">
+                <div><label id="selCourtWLabel" style="margin-top:0">Panjang court (m)</label><input id="selCourtW" type="number" step="0.1"></div>
+                <div><label id="selCourtHLabel" style="margin-top:0">Lebar court (m)</label><input id="selCourtH" type="number" step="0.1"></div>
+              </div>
+              <div id="selCourtSizeRange" class="hint" style="margin-top:6px"></div>
+              <div id="selCourtSizeWarning" class="warning"></div>
+            </div>
+
+            <div id="selSize" class="hint" style="margin-top:8px"></div>
+
+            <div class="row" style="margin-top:10px">
+              <button id="rotateCourt" class="secondary">↻ Rotate 90°</button>
+              <button id="duplicateCourt" class="secondary">⧉ Duplicate</button>
+            </div>
+
+            <button id="deleteCourt" class="danger" style="margin-top:8px">Buang Court</button>
+          </div>
+
+          <div class="selected-palettes-wrap">
+            <div class="palette-note">Pilih warna mengikut bahagian. Hover pada warna untuk lihat nama:</div>
+
+            <div class="selected-palettes-grid">
+              <div id="selFillPaletteGroup" class="palette-group">
+                <div class="palette-heading">1. Warna permukaan utama</div>
+                <small>Warna asas keseluruhan court</small>
+                <div id="selFillPalette" class="palette"></div>
+              </div>
+
+              <div id="selLinePaletteGroup" class="palette-group">
+                <div class="palette-heading">2. Warna garisan</div>
+                <small>Semua marking line court</small>
+                <div id="selLinePalette" class="palette"></div>
+              </div>
+
+              <div id="selKitchenPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna kitchen tengah</div>
+                <small>Khas untuk court Pickleball</small>
+                <div id="selKitchenPalette" class="palette"></div>
+              </div>
+
+              <div id="selTakrawPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna bulatan & serve</div>
+                <small>Khas untuk court Sepak Takraw</small>
+                <div id="selTakrawPalette" class="palette"></div>
+              </div>
+
+              <div id="selNetballPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna bulatan tengah & separa goal</div>
+                <small>Khas untuk court Netball</small>
+                <div id="selNetballPalette" class="palette"></div>
+              </div>
+
+              <div id="selVolleyballPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna tengah dua bahagian</div>
+                <small>Khas untuk court Volleyball</small>
+                <div id="selVolleyballPalette" class="palette"></div>
+              </div>
+
+              <div id="selFutsalCenterPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna bulatan tengah</div>
+                <small>Khas untuk court Futsal</small>
+                <div id="selFutsalCenterPalette" class="palette"></div>
+              </div>
+
+              <div id="selFutsalDPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">4. Warna bulatan D</div>
+                <small>Khas untuk court Futsal</small>
+                <div id="selFutsalDPalette" class="palette"></div>
+              </div>
+
+              <div id="selHandballDPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna bulatan D</div>
+                <small>Khas untuk court Handball</small>
+                <div id="selHandballDPalette" class="palette"></div>
+              </div>
+
+              <div id="selBballZonePaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna kawasan 3-point</div>
+                <small>Kawasan lengkung kiri dan kanan Basketball</small>
+                <div id="selBballZonePalette" class="palette"></div>
+              </div>
+
+              <div id="selBballKeyPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">4. Warna key / paint</div>
+                <small>Kawasan kotak berhampiran basket</small>
+                <div id="selBballKeyPalette" class="palette"></div>
+              </div>
+
+              <div id="selBballCenterPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">5. Warna bulatan tengah</div>
+                <small>Bulatan di tengah court Basketball</small>
+                <div id="selBballCenterPalette" class="palette"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Phone-only quick editor. Hidden on desktop/tablet. -->
+<div id="mobileEditToolbar" class="mobile-edit-toolbar" aria-label="Quick court editor">
+  <button id="mobileEditToolbarDragHandle" class="mobile-edit-toolbar-drag-handle" type="button"
+    aria-label="Gerakkan quick editor" title="Drag untuk gerakkan toolbar. Double-click untuk reset posisi."></button>
+  <button id="mobileColourButton" type="button">
+    <span class="mobile-tool-icon">🎨</span>
+    <span>Colour</span>
+  </button>
+  <button id="mobileRotateButton" type="button">
+    <span class="mobile-tool-icon">↻</span>
+    <span>Rotate</span>
+  </button>
+  <button id="mobileDuplicateButton" type="button">
+    <span class="mobile-tool-icon">⧉</span>
+    <span>Duplicate</span>
+  </button>
+  <button id="mobileDeleteButton" type="button">
+    <span class="mobile-tool-icon">×</span>
+    <span>Delete</span>
+  </button>
+</div>
+
+<div id="mobileColourSheet" class="mobile-colour-sheet" aria-hidden="true">
+  <div class="mobile-sheet-handle"></div>
+
+  <div class="mobile-sheet-head">
+    <div class="mobile-sheet-title">
+      <strong id="mobileSheetCourtName">Court</strong>
+      <span>Tab Court ada pilihan None untuk Line sahaja</span>
+    </div>
+    <button id="mobileSheetClose" class="mobile-sheet-close secondary" type="button" aria-label="Tutup">×</button>
+  </div>
+
+  <div id="mobileColourTabs" class="mobile-colour-tabs"></div>
+  <div id="mobileColourPalette" class="mobile-colour-palette"></div>
+  <div id="mobileColourLocked" class="mobile-colour-locked">
+    🔒 Layer ini sedang dikunci. Unlock pada senarai Layer court untuk ubah warna.
+  </div>
+</div>
+
+<div id="pdfPreviewModal" class="pdf-preview-modal" aria-hidden="true">
+  <div class="pdf-preview-header">
+    <div class="pdf-preview-title">
+      <strong>Preview PDF Keseluruhan</strong>
+      <span id="pdfPreviewPageCount">Menyediakan preview...</span>
+    </div>
+
+    <div class="pdf-preview-actions">
+      <button id="pdfPreviewExport" type="button" class="primary">Export PDF</button>
+      <button id="pdfPreviewClose" type="button" class="secondary">Tutup</button>
+    </div>
+  </div>
+
+  <div class="pdf-preview-scroll">
+    <div id="pdfPreviewPages" class="pdf-preview-pages">
+      <div class="pdf-preview-loading">Sedang menyediakan semua halaman PDF...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_PALETTE = [
+  {name:"Duracourt White", color:"#ffffff"},
+  {name:"Duracourt Red", color:"#a53531"},
+  {name:"Duracourt BD Blue", color:"#1b427a"},
+  {name:"Duracourt Green", color:"#416c3f"},
+  {name:"Duracourt Arboretum", color:"#149e54"},
+  {name:"Duracourt Yellow", color:"#f6e640"},
+  {name:"Duracourt Light Blue", color:"#2e65af"},
+  {name:"Duracourt Shooting Star", color:"#7b7e82"},
+  {name:"Duracourt Orange", color:"#cd742c"},
+  {name:"Duracourt Paradise Bird", color:"#7d4b84"},
+  {name:"Duracourt Lady Di", color:"#959cc9"},
+  {name:"Duracourt Cyan", color:"#1f96b9"},
+  {name:"Duracourt Full Peacock", color:"#108079"},
+  {name:"Duracourt Rose Time", color:"#dd8bba"},
+  {name:"Duracourt Alphine Pink", color:"#d04988"},
+  {name:"Duracourt Picked Plum", color:"#764271"},
+  {name:"Duracourt Ophelia Violet", color:"#b295c2"},
+  {name:"Duracourt Bamboo Leaf", color:"#4a7f39"},
+  {name:"Duracourt Cooleen Green", color:"#5eab47"},
+  {name:"Duracourt Black", color:"#000000"}
+];
+
+function normalizeBrand(value,fallback="duracourt"){
+  if(value==="primacourt") return "primacourt";
+  if(value==="terracourt") return "terracourt";
+  if(value==="duracourt") return "duracourt";
+  if(fallback==="primacourt") return "primacourt";
+  if(fallback==="terracourt") return "terracourt";
+  return "duracourt";
+}
+
+function productBrandName(brand){
+  const normalized=normalizeBrand(brand);
+  if(normalized==="primacourt") return "Primacourt";
+  if(normalized==="terracourt") return "Terracourt";
+  return "Duracourt";
+}
+
+function lineBrandName(brand){
+  const normalized=normalizeBrand(brand);
+  if(normalized==="primacourt") return "Primaline";
+  if(normalized==="terracourt") return "Terracourt";
+  return "Decoline";
+}
+
+function currentProductBrandName(){
+  return productBrandName(state.brand);
+}
+
+function currentLineBrandName(){
+  return lineBrandName(state.brand);
+}
+
+function brandForCourt(court){
+  return normalizeBrand(court?.brand,state.brand);
+}
+
+function siteBrand(){
+  return normalizeBrand(state.siteBrand,state.brand);
+}
+
+function currentSitePaletteBrand(){
+  if(state.siteShapeMode==="custom"){

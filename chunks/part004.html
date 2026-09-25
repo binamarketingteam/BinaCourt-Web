@@ -1,0 +1,800 @@
+    const area=typeof activeSiteArea==="function" ? activeSiteArea() : null;
+    if(area) return brandForSiteArea(area);
+  }
+  return siteBrand();
+}
+
+function brandForSiteArea(area){
+  return normalizeBrand(area?.brand,siteBrand());
+}
+
+function normalizedCustomColours(value=state.customColors){
+  if(!Array.isArray(value)) return [];
+  const result=[];
+  value.forEach(item=>{
+    const color=normalizeHexColor(item?.color);
+    const name=String(item?.name || "").trim();
+    if(!color || !name) return;
+    const existing=result.find(entry=>entry.color===color);
+    if(existing){
+      existing.name=name;
+    }else{
+      result.push({name,color});
+    }
+  });
+  return result;
+}
+
+function getCustomPalette(){
+  return normalizedCustomColours().map(item=>({...item,custom:true}));
+}
+
+function getDefaultPaletteForBrand(brand){
+  const brandName=productBrandName(brand);
+  const standard=DEFAULT_PALETTE.map(item=>({
+    ...item,
+    name:item.name.replace(/^Duracourt\b/i, brandName)
+  }));
+  return [...standard,...getCustomPalette()];
+}
+
+function getLinePaletteForBrand(brand){
+  const brandName=lineBrandName(brand);
+  const standard=DEFAULT_PALETTE.map(item=>({
+    ...item,
+    name:item.name.replace(/^Duracourt\b/i, brandName)
+  }));
+  return [...standard,...getCustomPalette()];
+}
+
+function getDefaultPalette(){
+  return getDefaultPaletteForBrand(state.brand);
+}
+
+function getLinePalette(){
+  return getLinePaletteForBrand(state.brand);
+}
+
+function normalizeHexColor(color){
+  if(typeof color!=="string") return "";
+
+  let value=color.trim().toLowerCase();
+
+  if(/^#[0-9a-f]{3}$/.test(value)){
+    value="#" + value.slice(1).split("").map(char=>char+char).join("");
+  }
+
+  return /^#[0-9a-f]{6}$/.test(value) ? value : "";
+}
+
+function colorInfo(color, palette=getDefaultPalette()){
+  const normalized=normalizeHexColor(color);
+  if(!normalized) return null;
+
+  const matched=palette.find(
+    item=>normalizeHexColor(item.color)===normalized
+  );
+
+  return {
+    color:normalized,
+    name:matched?.name || "Custom Colour"
+  };
+}
+
+function describeCourtLineWidth(court){
+  const type=String(court?.type||"");
+  switch(type){
+    case "pickleball": return "Pickleball: 5.08 cm";
+    case "basketball": return "Basketball: 5 cm";
+    case "half_basketball": return "Half Basketball: 5 cm";
+    case "sepak_takraw":
+    case "takraw": return "Sepak Takraw: 4 cm, centre line 2 cm";
+    case "netball":
+    case "netball_custom": return "Netball: 5 cm";
+    case "badminton": return "Badminton: 4 cm";
+    case "tennis": return "Tennis: 2.5-5 cm, baseline up to 10 cm";
+    case "volleyball": return "Volleyball: 5 cm";
+    case "badmintonmix": return "Badminton Mix Takraw: 4 cm, takraw centre line 2 cm";
+    case "futsal":
+    case "futsal_custom": return "Futsal: 8 cm";
+    case "handball":
+    case "handball_custom": return "Handball: 5 cm, goal line 8 cm";
+    default: return COURT_TYPES[type]?.name ? `${COURT_TYPES[type].name}: standard line width` : "";
+  }
+}
+
+function collectUsedColors(){
+  const used=[];
+
+  function add(color,usage,{kind="surface",brand=state.brand,sourceCourt=null}={}){
+    const normalizedBrand=normalizeBrand(brand,state.brand);
+    const palette=kind==="line"
+      ? getLinePaletteForBrand(normalizedBrand)
+      : getDefaultPaletteForBrand(normalizedBrand);
+    const info=colorInfo(color,palette);
+    if(!info) return;
+
+    // Same HEX may legitimately belong to different systems in one project.
+    // Keep Duracourt/Primacourt/Terracourt and their line entries separate.
+    const existing=used.find(item=>
+      item.color===info.color &&
+      item.kind===kind &&
+      item.brand===normalizedBrand
+    );
+
+    if(existing){
+      if(!existing.usage.split(" / ").includes(usage)){
+        existing.usage=`${existing.usage} / ${usage}`;
+      }
+      if(kind==="line" && sourceCourt){
+        const detail=describeCourtLineWidth(sourceCourt);
+        if(detail){
+          if(!Array.isArray(existing.lineDetails)) existing.lineDetails=[];
+          if(!existing.lineDetails.includes(detail)) existing.lineDetails.push(detail);
+        }
+      }
+      return;
+    }
+
+    const entry={
+      ...info,
+      usage,
+      kind,
+      brand:normalizedBrand,
+      lineDetails:kind==="line" ? [] : undefined
+    };
+    if(kind==="line" && sourceCourt){
+      const detail=describeCourtLineWidth(sourceCourt);
+      if(detail) entry.lineDetails.push(detail);
+    }
+    used.push(entry);
+  }
+
+  if(state.siteShapeMode==="custom"){
+    const visibleAreas=visibleCustomSiteAreas();
+    if(visibleAreas.length){
+      visibleAreas.forEach(area=>{
+        add(state.siteColor,`Site / Background · ${area.name}`,{
+          brand:brandForSiteArea(area)
+        });
+      });
+    }
+  }else{
+    add(state.siteColor,"Site / Background",{brand:siteBrand()});
+  }
+
+  activeCourts().forEach(court=>{
+    const brand=brandForCourt(court);
+    if(!court.lineOnly){
+      add(court.fill,"Main Surface",{brand});
+
+      if(court.type==="pickleball"){
+        add(court.kitchenFill,"Kitchen",{brand});
+      }
+
+      if(isBasketballCourtType(court.type)){
+        add(court.zoneFill,"3-Point Area",{brand});
+        add(court.keyFill,"Key / Paint",{brand});
+        if(!isHalfBasketballCourtType(court.type) || court.showHalfCenterCircle){
+          add(court.centerFill,isHalfBasketballCourtType(court.type)?"Half Centre Circle":"Centre Circle",{brand});
+        }
+      }
+
+      if(isTakrawCourtType(court.type)){
+        add(defaultTakrawAccentColor(court),"Circle / Serve Area",{brand});
+      }
+
+      if(isNetballCourtType(court.type)){
+        add(defaultNetballAccentColor(court),"Centre Circle / Goal Semi-circle",{brand});
+      }
+
+      if(court.type==="volleyball"){
+        add(defaultVolleyballAccentColor(court),"Middle Two Zones",{brand});
+      }
+
+      if(isFutsalCourtType(court.type)){
+        add(defaultFutsalCenterColor(court),"Centre Circle",{brand});
+        add(defaultFutsalDColor(court),"Penalty D Area",{brand});
+      }
+
+      if(isHandballCourtType(court.type)){
+        add(defaultHandballDColor(court),"Goal / D Area",{brand});
+      }
+    }
+
+    add(court.line,"Court Line",{kind:"line",brand,sourceCourt:court});
+  });
+
+  return used;
+}
+
+function surfaceLegendKey(brand,color){
+  return `${normalizeBrand(brand,state.brand)}|${normalizeHexColor(color)}`;
+}
+
+async function collectExportLegendColors(){
+  const used=collectUsedColors().map(item=>({...item}));
+
+  if(!state.showColorUsageAreas){
+    return used;
+  }
+
+  try{
+    const areas=await calculateVisibleColorAreas();
+    const areaByKey=new Map(
+      areas.map(item=>[surfaceLegendKey(item.brand,item.hex),item.area])
+    );
+
+    return used
+      .filter(item=>item.kind==="line" || areaByKey.has(surfaceLegendKey(item.brand,item.color)))
+      .map(item=>({
+        ...item,
+        area:item.kind==="line" ? null : areaByKey.get(surfaceLegendKey(item.brand,item.color))
+      }));
+  }catch(_){
+    return used.map(item=>({...item,area:null}));
+  }
+}
+
+function legendBrandsFromItems(items){
+  const brands=[];
+  (items||[]).forEach(item=>{
+    const brand=normalizeBrand(item?.brand,state.brand);
+    if(!brands.includes(brand)) brands.push(brand);
+  });
+  return brands.length ? brands : [normalizeBrand(state.brand)];
+}
+
+function preferredLegendBrandOrder(items){
+  const detected=legendBrandsFromItems(items);
+  const ordered=[];
+  ["primacourt","duracourt","terracourt"].forEach(brand=>{
+    if(detected.includes(brand) && !ordered.includes(brand)) ordered.push(brand);
+  });
+  detected.forEach(brand=>{
+    if(!ordered.includes(brand)) ordered.push(brand);
+  });
+  return ordered;
+}
+
+function buildLegendBrandSections(items){
+  const grouped=new Map();
+  preferredLegendBrandOrder(items).forEach(brand=>grouped.set(brand,[]));
+  (items||[]).forEach(item=>{
+    const brand=normalizeBrand(item?.brand,state.brand);
+    if(!grouped.has(brand)) grouped.set(brand,[]);
+    grouped.get(brand).push(item);
+  });
+  return Array.from(grouped.entries())
+    .map(([brand,sectionItems])=>({brand,items:sectionItems}))
+    .filter(section=>section.items.length);
+}
+
+function legendSectionEntryColumns(section,mixed){
+  const count=Math.max(0,section?.items?.length||0);
+  if(!mixed) return count<=5 ? 2 : 3;
+  return count>=3 ? 2 : 1;
+}
+
+function legendRowsForItems(items){
+  const sections=buildLegendBrandSections(items);
+  if(!sections.length) return 1;
+  const mixed=sections.length>1;
+  return Math.max(1,...sections.map(section=>{
+    const cols=legendSectionEntryColumns(section,mixed);
+    return Math.ceil(section.items.length/Math.max(1,cols));
+  }));
+}
+
+function computeLegendSectionLayout(items,contentX,contentWidth,gap=28){
+  const sections=buildLegendBrandSections(items);
+  if(!sections.length) return [];
+  if(sections.length===1){
+    return [{...sections[0],x:contentX,width:contentWidth}];
+  }
+
+  const usable=Math.max(1,contentWidth-gap*(sections.length-1));
+  if(sections.length===2){
+    const a=Math.max(1,sections[0].items.length);
+    const b=Math.max(1,sections[1].items.length);
+    let ratio=Math.sqrt(a)/(Math.sqrt(a)+Math.sqrt(b));
+    ratio=Math.max(.30,Math.min(.70,ratio));
+    const w1=usable*ratio;
+    const w2=usable-w1;
+    return [
+      {...sections[0],x:contentX,width:w1},
+      {...sections[1],x:contentX+w1+gap,width:w2}
+    ];
+  }
+
+  const each=usable/sections.length;
+  return sections.map((section,index)=>({...section,x:contentX+index*(each+gap),width:each}));
+}
+
+const COURT_TYPES = {
+  pickleball:{name:"Pickleball", mode:"fixed", w:13.41, h:6.096, fill:"#1b427a", kitchen:"#a53531", line:"#ffffff"},
+  basketball:{name:"Basketball", mode:"range", minW:23, maxW:28, minH:13, maxH:15, w:28.00, h:15.00, fill:"#1b427a", zone:"#a53531", key:"#416c3f", center:"#2e65af", line:"#ffffff"},
+  half_basketball:{name:"Half Basketball (Custom)", mode:"range", minW:10, maxW:18, minH:8, maxH:15, w:15.00, h:11.00, fill:"#1b427a", zone:"#a53531", key:"#416c3f", center:"#2e65af", line:"#ffffff", note:"Bulatan D, key / paint dan 3-point kekal. Saiz luar sahaja berubah."},
+  sepak_takraw:{name:"Sepak Takraw", mode:"fixed", w:13.40, h:6.10, fill:"#4a7f39", accent:"#4a7f39", line:"#ffffff"},
+  netball:{name:"Netball", mode:"fixed", w:30.50, h:15.25, fill:"#1b427a", accent:"#a53531", line:"#ffffff"},
+  netball_custom:{name:"Netball (Custom)", mode:"range", minW:26, maxW:30.50, minH:12, maxH:15.25, w:26.00, h:12.00, fill:"#1b427a", accent:"#a53531", line:"#ffffff", note:"Versi custom untuk ruang terhad. Marking Netball diskalakan mengikut saiz court."},
+  badminton:{name:"Badminton", mode:"fixed", w:13.40, h:6.10, fill:"#1f96b9", line:"#ffffff"},
+  tennis:{name:"Tennis", mode:"fixed", w:23.77, h:10.97, fill:"#5eab47", line:"#ffffff"},
+  volleyball:{name:"Volleyball", mode:"fixed", w:18.00, h:9.00, fill:"#d04988", accent:"#1b427a", line:"#ffffff"},
+  badmintonmix:{name:"Badminton Mix Takraw", mode:"fixed", w:13.40, h:6.10, fill:"#7d4b84", line:"#ffffff"},
+  futsal:{name:"Futsal", mode:"range", minW:25, maxW:42, minH:16, maxH:25, w:40, h:20, fill:"#1b427a", center:"#2e65af", accent:"#a53531"},
+  futsal_custom:{name:"Futsal (Custom)", mode:"range", minW:21.0312, maxW:26, minH:12, maxH:16, w:25, h:12, fill:"#1b427a", center:"#2e65af", accent:"#a53531", note:"Untuk ruang terhad / recreational. Bukan saiz pertandingan rasmi."},
+  handball:{name:"Handball", mode:"fixed", w:40, h:20, fill:"#1b427a", accent:"#a53531", line:"#ffffff"},
+  handball_custom:{name:"Handball (Custom)", mode:"range", minW:22, maxW:40, minH:12, maxH:20, w:30, h:15, fill:"#1b427a", accent:"#a53531", line:"#ffffff", note:"Untuk ruang terhad / recreational. Line hujung diskalakan ikut lebar court."},
+  custom:{name:"Custom / Multi-purpose", mode:"custom", minW:2, maxW:100, minH:2, maxH:100, w:20, h:10, fill:"#7d4b84"}
+};
+
+const state = {
+  projectTitle:"",
+  projectSalesName:"",
+  projectReferenceNo:"01",
+  brand:"duracourt",
+  siteBrand:"duracourt",
+  measurementUnit:"m",
+  customColors:[],
+  projectGroup:1,
+  projectOption:1,
+  pdfPageOrder:"option_first",
+  optionGroups:[],
+  optionPages:[],
+  siteW:40, siteH:40, siteColor:"#7b7e82",
+  siteSizeMode:"manual", siteTargetArea:1600, siteLockedRatio:1,
+  siteShapeMode:"rect", sitePolygon:[],
+  siteAreas:[], activeSiteAreaId:null, nextSiteAreaId:1,
+  courts:[], selectedId:null, nextId:1,
+  measurements:[], nextMeasureId:1, includeMeasurementsInExport:false,
+  textAnnotations:[], nextTextId:1,
+  imageAnnotations:[], nextImageId:1,
+  walkwayConstraints:{},
+  rulerGuides:[],
+  showGrid:true, showRulers:true, smartGuides:true, overlayMode:true, showSiteSizes:true, showCourtSizes:false, showColorUsageAreas:false, showWalkwaySizes:false,
+  showFutsalStandardDetailSizes:false,
+  showFutsalSubstitutionZone:false,
+  showFutsalCenterCircleSize:false,
+  showFutsalDArcSize:false,
+  showFutsalGoalWidthSize:false,
+  showFutsalSecondPenaltySize:false,
+  showFutsalCornerArcSize:false,
+  showCustomSiteEdgeSizes:true,
+  customSiteEdgeConstraints:{}
+};
+
+// Multi-selection is an editing/UI state only; it is intentionally not written into project JSON.
+const multiSelectedCourtIds=new Set();
+
+function syncCourtSelectionSet(){
+  const validIds=new Set(state.courts.filter(c=>!c.hidden).map(c=>c.id));
+  [...multiSelectedCourtIds].forEach(id=>{ if(!validIds.has(id)) multiSelectedCourtIds.delete(id); });
+
+  if(state.selectedId==null || !validIds.has(state.selectedId)){
+    state.selectedId=null;
+    multiSelectedCourtIds.clear();
+    return;
+  }
+
+  // Any legacy/direct selectedId assignment elsewhere in the app becomes a normal single selection.
+  if(!multiSelectedCourtIds.has(state.selectedId)){
+    multiSelectedCourtIds.clear();
+    multiSelectedCourtIds.add(state.selectedId);
+  }
+}
+
+function selectedCourts(){
+  syncCourtSelectionSet();
+  return state.courts.filter(c=>multiSelectedCourtIds.has(c.id) && !c.hidden);
+}
+
+function isCourtSelected(id){
+  syncCourtSelectionSet();
+  return multiSelectedCourtIds.has(id);
+}
+
+function setSingleCourtSelection(id){
+  multiSelectedCourtIds.clear();
+  const court=state.courts.find(c=>c.id===id && !c.hidden);
+  state.selectedId=court ? id : null;
+  if(court) multiSelectedCourtIds.add(id);
+}
+
+function toggleCourtSelection(id){
+  const court=state.courts.find(c=>c.id===id && !c.hidden);
+  if(!court) return;
+
+  if(multiSelectedCourtIds.has(id)){
+    multiSelectedCourtIds.delete(id);
+  }else{
+    multiSelectedCourtIds.add(id);
+  }
+
+  if(!multiSelectedCourtIds.size){
+    state.selectedId=null;
+  }else if(multiSelectedCourtIds.has(id)){
+    state.selectedId=id;
+  }else{
+    state.selectedId=[...multiSelectedCourtIds].at(-1) ?? null;
+  }
+}
+
+function clearCourtSelection(){
+  multiSelectedCourtIds.clear();
+  state.selectedId=null;
+}
+
+const FEET_PER_METER=3.280839895013123;
+const SQFT_PER_SQM=FEET_PER_METER*FEET_PER_METER;
+
+function isFeetUnit(unit=state.measurementUnit){
+  return unit==="ft" || unit==="ft_round"; // ft_round kept only for old saved-project compatibility
+}
+function displayLengthDecimals(){
+  return 2;
+}
+function smartFeetDisplayPlaces(feet,defaultPlaces=2){
+  if(!isFeetUnit()) return defaultPlaces;
+  const oneDecimal=Math.round(feet*10)/10;
+  return Math.abs(feet-oneDecimal)<0.0005 ? 1 : defaultPlaces;
+}
+function displayLengthValue(meters){
+  const value=Number(meters)||0;
+  return isFeetUnit() ? value*FEET_PER_METER : value;
+}
+function metersFromDisplayValue(value,unit=state.measurementUnit){
+  const number=parseFloat(value);
+  if(!Number.isFinite(number)) return NaN;
+  return isFeetUnit(unit) ? number/FEET_PER_METER : number;
+}
+function displayAreaValue(squareMeters){
+  const value=Number(squareMeters)||0;
+  return isFeetUnit() ? value*SQFT_PER_SQM : value;
+}
+function squareMetersFromDisplayArea(value,unit=state.measurementUnit){
+  const number=parseFloat(value);
+  if(!Number.isFinite(number)) return NaN;
+  return isFeetUnit(unit) ? number/SQFT_PER_SQM : number;
+}
+function currentLengthUnit(){
+  return isFeetUnit() ? "ft" : "m";
+}
+function currentAreaUnit(){
+  return isFeetUnit() ? "ft²" : "m²";
+}
+function formatLength(meters,decimals=2,space=true){
+  const gap=space ? " " : "";
+  const displayValue=displayLengthValue(meters);
+  const places=isFeetUnit() ? smartFeetDisplayPlaces(displayValue,decimals) : decimals;
+  return `${displayValue.toFixed(places)}${gap}${currentLengthUnit()}`;
+}
+function formatArea(squareMeters,decimals=2){
+  return `${displayAreaValue(squareMeters).toFixed(decimals)} ${currentAreaUnit()}`;
+}
+function formatLengthInput(meters){
+  return displayLengthValue(meters).toFixed(displayLengthDecimals());
+}
+function syncMeasurementUnitLabels(){
+  const unit=currentLengthUnit();
+  if($("measurementUnit")) $("measurementUnit").value=state.measurementUnit || "m";
+  if($("siteWLabel")) $("siteWLabel").textContent=`Panjang (${unit})`;
+  if($("siteHLabel")) $("siteHLabel").textContent=`Lebar (${unit})`;
+  if($("courtWLabel")) $("courtWLabel").textContent=`Panjang court (${unit})`;
+  if($("courtHLabel")) $("courtHLabel").textContent=`Lebar court (${unit})`;
+  if($("selXLabel")) $("selXLabel").textContent=`X (${unit})`;
+  if($("selYLabel")) $("selYLabel").textContent=`Y (${unit})`;
+  if($("selCourtWLabel")) $("selCourtWLabel").textContent=`Panjang court (${unit})`;
+  if($("selCourtHLabel")) $("selCourtHLabel").textContent=`Lebar court (${unit})`;
+  if($("gridUnitLabel")) $("gridUnitLabel").textContent=isFeetUnit()?"Paparkan grid 1 kaki":"Paparkan grid 1 meter";
+  if($("colorUsageToggleLabel")) $("colorUsageToggleLabel").textContent=`View keluasan penggunaan setiap warna (${currentAreaUnit()}, tanpa line)`;
+  if($("siteTargetAreaLabel")) $("siteTargetAreaLabel").textContent=`Keluasan sasaran (${currentAreaUnit()})`;
+  if($("stageRulerCorner")) $("stageRulerCorner").textContent=currentLengthUnit();
+  if(typeof syncSiteSizeModeUI==="function") syncSiteSizeModeUI();
+  if(typeof updateStageRulers==="function") updateStageRulers();
+  if(activeMeasureInlineEditor){
+    const m=state.measurements?.find?.(item=>item.id===activeMeasureInlineEditor.measureId);
+    if(m) positionMeasureInlineEditor(m,activeMeasureInlineEditor.wrap);
+  }
+}
+
+function cloneData(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function currentReferenceDate(){
+  const now=new Date();
+  const day=now.getDate();
+  const month=now.getMonth()+1;
+  const year=String(now.getFullYear()).slice(-2);
+
+  return `${day}/${month}/${year}`;
+}
+
+function normalizeReferenceNumber(value){
+  const cleaned=String(value ?? "")
+    .replace(/[^0-9A-Za-z_-]/g,"")
+    .trim();
+
+  return cleaned || "01";
+}
+
+function buildProjectReference(){
+  const sale=(state.projectSalesName || "").trim();
+  const salePart=sale || "[NAMA SALE]";
+  const numberPart=normalizeReferenceNumber(state.projectReferenceNo);
+
+  return `CSBP${currentReferenceDate()}/${salePart}/faezi/${numberPart}`;
+}
+
+function updateProjectReferencePreview(){
+  const preview=$("projectReferencePreview");
+  if(!preview) return;
+
+  const span=preview.querySelector("span");
+  if(span){
+    span.textContent=buildProjectReference();
+  }
+}
+
+function defaultGroupName(index){
+  return `Court ${index+1}`;
+}
+
+function normalizeGroupName(value,index=0){
+  const cleaned=String(value ?? "").replace(/\s+/g," ").trim();
+  return cleaned || defaultGroupName(index);
+}
+
+function makeBlankOptionData(base=null){
+  const source=base || {};
+  return normalizeOptionData({
+    siteW:source.siteW ?? state.siteW,
+    siteH:source.siteH ?? state.siteH,
+    siteSizeMode:source.siteSizeMode ?? state.siteSizeMode,
+    siteTargetArea:source.siteTargetArea ?? state.siteTargetArea,
+    siteLockedRatio:source.siteLockedRatio ?? state.siteLockedRatio,
+    siteColor:source.siteColor ?? state.siteColor,
+    siteBrand:source.siteBrand ?? state.siteBrand ?? state.brand,
+    courts:[],
+    nextId:1,
+    measurements:[],
+    nextMeasureId:1,
+    textAnnotations:[],
+    nextTextId:1,
+    imageAnnotations:[],
+    nextImageId:1
+  });
+}
+
+function normalizeOptionGroup(group,index=0){
+  const data=group || {};
+  let optionPages=Array.isArray(data.optionPages) && data.optionPages.length
+    ? data.optionPages.map(normalizeOptionData)
+    : [];
+
+  if(!optionPages.length){
+    optionPages=[makeBlankOptionData()];
+  }
+
+  const currentOption=Math.min(
+    optionPages.length,
+    Math.max(1,parseInt(data.currentOption || 1,10) || 1)
+  );
+
+  return {
+    name:normalizeGroupName(data.name,index),
+    currentOption,
+    optionPages
+  };
+}
+
+function ensureOptionGroups(){
+  if(!Array.isArray(state.optionGroups) || !state.optionGroups.length){
+    const legacyPages=Array.isArray(state.optionPages) && state.optionPages.length
+      ? state.optionPages.map(normalizeOptionData)
+      : [captureCurrentOptionData()];
+
+    state.optionGroups=[{
+      name:defaultGroupName(0),
+      currentOption:Math.max(1,parseInt(state.projectOption || 1,10) || 1),
+      optionPages:legacyPages
+    }];
+  }
+
+  // IMPORTANT: this function only validates/normalizes group storage.
+  // It must never copy the currently-open optionPages into a group.
+  // Saving is handled explicitly by saveCurrentGroupToStore().
+  // This prevents Group 4 from accidentally overwriting Groups 1–3.
+  state.optionGroups=state.optionGroups.map((group,index)=>normalizeOptionGroup(group,index));
+  state.projectGroup=Math.min(
+    state.optionGroups.length,
+    Math.max(1,parseInt(state.projectGroup || 1,10) || 1)
+  );
+
+  const activeGroup=state.optionGroups[state.projectGroup-1];
+
+  // Only initialise the working pages if they are genuinely missing.
+  if(!Array.isArray(state.optionPages) || !state.optionPages.length){
+    state.optionPages=cloneData(activeGroup.optionPages);
+    state.projectOption=Math.min(
+      state.optionPages.length,
+      Math.max(1,parseInt(activeGroup.currentOption || 1,10) || 1)
+    );
+  }else{
+    state.optionPages=state.optionPages.map(normalizeOptionData);
+    state.projectOption=Math.min(
+      state.optionPages.length,
+      Math.max(1,parseInt(state.projectOption || 1,10) || 1)
+    );
+  }
+}
+
+function currentOptionGroup(){
+  ensureOptionGroups();
+  return state.optionGroups[state.projectGroup-1];
+}
+
+function saveCurrentGroupToStore(){
+  ensureOptionGroups();
+  saveCurrentOptionToStore();
+
+  const index=state.projectGroup-1;
+  const existing=state.optionGroups[index] || normalizeOptionGroup({},index);
+  const nameInput=$("projectGroupName");
+  const typedName=nameInput ? nameInput.value : existing.name;
+
+  // Replace only the active group's stored data with a deep clone.
+  // Other groups are never touched here.
+  state.optionGroups[index]=normalizeOptionGroup({
+    name:normalizeGroupName(typedName,index),
+    currentOption:Math.max(1,parseInt(state.projectOption || 1,10) || 1),
+    optionPages:cloneData(state.optionPages)
+  },index);
+}
+
+function loadProjectGroup(groupIndex,{preferredOption=null}={}){
+  ensureOptionGroups();
+  const target=Math.min(
+    state.optionGroups.length,
+    Math.max(1,parseInt(groupIndex || 1,10) || 1)
+  );
+
+  state.projectGroup=target;
+  const group=normalizeOptionGroup(cloneData(state.optionGroups[target-1]),target-1);
+  state.optionGroups[target-1]=cloneData(group);
+
+  // Working pages are always a deep copy of this group's stored pages.
+  // Editing the working copy cannot mutate another group by reference.
+  state.optionPages=cloneData(group.optionPages);
+  state.projectOption=Math.min(
+    state.optionPages.length,
+    Math.max(1,parseInt(preferredOption ?? group.currentOption ?? 1,10) || 1)
+  );
+
+  applyOptionData(cloneData(state.optionPages[state.projectOption-1]));
+}
+
+function updateGroupControls(){
+  const select=$("projectGroup");
+  const wrap=$("groupInlineControl");
+  const editButton=$("editProjectGroupName");
+  if(wrap && document.activeElement!==$("projectGroupName")){
+    wrap.classList.remove("is-editing");
+    if(editButton){
+      editButton.classList.remove("is-saving");
+      editButton.textContent="✎";
+      editButton.title="Edit nama kumpulan";
+      editButton.setAttribute("aria-label","Edit nama kumpulan");
+    }
+  }
+  if(!select) return;
+
+  ensureOptionGroups();
+  select.innerHTML="";
+
+  state.optionGroups.forEach((group,index)=>{
+    const option=document.createElement("option");
+    option.value=String(index+1);
+    option.textContent=group.name;
+    select.appendChild(option);
+  });
+
+  select.value=String(state.projectGroup);
+
+  const nameInput=$("projectGroupName");
+  if(nameInput){
+    const activeGroup=state.optionGroups[state.projectGroup-1];
+    nameInput.value=activeGroup?.name || defaultGroupName(state.projectGroup-1);
+  }
+
+  const deleteButton=$("deleteProjectGroup");
+  if(deleteButton){
+    deleteButton.disabled=state.optionGroups.length<=1;
+  }
+}
+
+function setGroupNameEditMode(editing,{cancel=false}={}){
+  const wrap=$("groupInlineControl");
+  const input=$("projectGroupName");
+  const button=$("editProjectGroupName");
+  if(!wrap || !input || !button) return;
+
+  if(editing){
+    const group=currentOptionGroup();
+    input.value=group?.name || defaultGroupName(state.projectGroup-1);
+    wrap.classList.add("is-editing");
+    button.classList.add("is-saving");
+    button.textContent="✓";
+    button.title="Simpan nama kumpulan";
+    button.setAttribute("aria-label","Simpan nama kumpulan");
+    requestAnimationFrame(()=>{ input.focus(); input.select(); });
+    return;
+  }
+
+  if(cancel){
+    const group=currentOptionGroup();
+    input.value=group?.name || defaultGroupName(state.projectGroup-1);
+  }else{
+    const group=currentOptionGroup();
+    group.name=normalizeGroupName(input.value,state.projectGroup-1);
+    input.value=group.name;
+    const select=$("projectGroup");
+    const currentOption=select?.querySelector(`option[value="${state.projectGroup}"]`);
+    if(currentOption) currentOption.textContent=group.name;
+    commitHistory();
+  }
+
+  wrap.classList.remove("is-editing");
+  button.classList.remove("is-saving");
+  button.textContent="✎";
+  button.title="Edit nama kumpulan";
+  button.setAttribute("aria-label","Edit nama kumpulan");
+}
+
+function switchProjectGroup(groupNo){
+  ensureOptionGroups();
+  saveCurrentGroupToStore();
+  loadProjectGroup(groupNo);
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
+}
+
+function addProjectGroup(){
+  ensureOptionGroups();
+  saveCurrentGroupToStore();
+
+  const blankOption=makeBlankOptionData(captureCurrentOptionData());
+  state.optionGroups.push(normalizeOptionGroup({
+    name:defaultGroupName(state.optionGroups.length),
+    currentOption:1,
+    optionPages:[blankOption]
+  },state.optionGroups.length));
+
+  loadProjectGroup(state.optionGroups.length,{preferredOption:1});
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
+}
+
+function deleteProjectGroup(){
+  ensureOptionGroups();
+
+  if(state.optionGroups.length<=1){
+    alert("Sekurang-kurangnya satu Kumpulan Court perlu dikekalkan.");
+    return;
+  }
+
+  const group=currentOptionGroup();
+  if(!confirm(`Padam kumpulan "${group.name}"?`)){
+    return;
+  }
+
+  saveCurrentGroupToStore();
+  state.optionGroups.splice(state.projectGroup-1,1);
+  const nextGroup=Math.min(state.projectGroup,state.optionGroups.length);
+  loadProjectGroup(nextGroup);
+  syncProjectInputs();
+  render({preserveStagePosition:false});
+  commitHistory();
