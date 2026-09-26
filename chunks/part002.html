@@ -922,6 +922,17 @@
   .admin-login-error{
     min-height:18px;margin-top:10px;font-size:12px;font-weight:700;color:#b42318;text-align:center
   }
+  .login-divider{
+    display:flex;align-items:center;gap:10px;margin:14px 0 0;color:#98a2b3;
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em
+  }
+  .login-divider::before,.login-divider::after{content:"";height:1px;flex:1;background:#e4e7ec}
+  .guest-login-btn{
+    width:100%;margin-top:12px!important;background:#f8fafc!important;color:#344054!important;
+    border:1px solid #cfd5df!important;font-weight:800!important
+  }
+  .guest-login-btn:hover{background:#eef2f6!important;border-color:#98a2b3!important}
+  .guest-login-note{margin:8px 0 0;text-align:center;color:#667085;font-size:11px;line-height:1.4}
   .admin-user-badge{
     display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:999px;
     background:rgba(255,255,255,.10);color:#e5e7eb;font-size:11px;font-weight:800
@@ -957,6 +968,9 @@
     <input id="adminLoginPassword" type="password" placeholder="Masukkan password" autocomplete="current-password">
     <button type="submit" class="primary">Login as Admin</button>
     <div id="adminLoginError" class="admin-login-error" aria-live="polite"></div>
+    <div class="login-divider"><span>atau</span></div>
+    <button id="guestLoginButton" type="button" class="guest-login-btn">Masuk sebagai Guest</button>
+    <p class="guest-login-note">Guest boleh terus masuk tanpa password.</p>
   </form>
 </div>
 
@@ -966,8 +980,8 @@
     <small>Prototaip susun atur, saiz & warna gelanggang</small>
   </div>
   <div class="header-admin-wrap">
-    <small>v229 · Pinch Zoom + Admin Login</small>
-    <span class="admin-user-badge" id="adminUserBadge">👤 admin</span>
+    <small>v230 · Admin + Guest Access</small>
+    <span class="admin-user-badge" id="adminUserBadge">👤 Guest</span>
     <button type="button" class="admin-logout-btn" id="adminLogoutBtn">Logout</button>
   </div>
 </header>
