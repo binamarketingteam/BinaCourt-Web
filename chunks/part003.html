@@ -737,7 +737,8 @@
 (function setupAdminLogin(){
   const ADMIN_USER="admin";
   const ADMIN_PASSWORD_SHA256="5b4cf17d4a8c94299cb6392ddbac76ae9c37755a5590d76773d6f023c3a0b1d2";
-  const SESSION_KEY="binaCourtAdminAuthenticated";
+  const ROLE_KEY="binaCourtUserRole";
+  const LEGACY_ADMIN_KEY="binaCourtAdminAuthenticated";
 
   function toHex(buffer){
     return Array.from(new Uint8Array(buffer)).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -749,15 +750,39 @@
     return toHex(await window.crypto.subtle.digest("SHA-256",data));
   }
 
-  function unlockAdmin(){
-    try{sessionStorage.setItem(SESSION_KEY,"1");}catch(_){}
+  function normalizeRole(value){
+    return value==="admin" ? "admin" : (value==="guest" ? "guest" : "");
+  }
+
+  function setRoleUi(role){
+    const safeRole=normalizeRole(role);
+    document.body.dataset.userRole=safeRole;
+    const badge=document.getElementById("adminUserBadge");
+    if(badge){
+      badge.textContent=safeRole==="admin" ? "👤 Admin" : "👤 Guest";
+      badge.title=safeRole==="admin" ? "Admin account" : "Guest access";
+    }
+  }
+
+  function unlockRole(role){
+    const safeRole=normalizeRole(role);
+    if(!safeRole) return;
+    try{
+      sessionStorage.setItem(ROLE_KEY,safeRole);
+      sessionStorage.removeItem(LEGACY_ADMIN_KEY);
+    }catch(_){}
+    setRoleUi(safeRole);
     document.body.classList.remove("admin-locked");
     const gate=document.getElementById("adminLoginGate");
     if(gate) gate.hidden=true;
   }
 
-  function lockAdmin(){
-    try{sessionStorage.removeItem(SESSION_KEY);}catch(_){}
+  function lockLogin(){
+    try{
+      sessionStorage.removeItem(ROLE_KEY);
+      sessionStorage.removeItem(LEGACY_ADMIN_KEY);
+    }catch(_){}
+    delete document.body.dataset.userRole;
     document.body.classList.add("admin-locked");
     const gate=document.getElementById("adminLoginGate");
     if(gate) gate.hidden=false;
@@ -765,14 +790,35 @@
     if(pass){pass.value="";setTimeout(()=>pass.focus(),50);}
   }
 
-  try{
-    if(sessionStorage.getItem(SESSION_KEY)==="1") unlockAdmin();
-  }catch(_){}
+  function currentRole(){
+    try{
+      const stored=normalizeRole(sessionStorage.getItem(ROLE_KEY));
+      if(stored) return stored;
+      if(sessionStorage.getItem(LEGACY_ADMIN_KEY)==="1"){
+        sessionStorage.setItem(ROLE_KEY,"admin");
+        sessionStorage.removeItem(LEGACY_ADMIN_KEY);
+        return "admin";
+      }
+    }catch(_){}
+    return "";
+  }
+
+  // Prepared now so future features can check Admin vs Guest without
+  // changing the login flow again.
+  window.BinaCourtAuth={
+    get role(){ return normalizeRole(document.body.dataset.userRole||""); },
+    get isAdmin(){ return this.role==="admin"; },
+    get isGuest(){ return this.role==="guest"; }
+  };
+
+  const savedRole=currentRole();
+  if(savedRole) unlockRole(savedRole);
 
   const form=document.getElementById("adminLoginForm");
   const user=document.getElementById("adminLoginUser");
   const pass=document.getElementById("adminLoginPassword");
   const error=document.getElementById("adminLoginError");
+  const guest=document.getElementById("guestLoginButton");
   const logout=document.getElementById("adminLogoutBtn");
 
   if(form){
@@ -783,7 +829,7 @@
       try{
         const digest=await sha256(pass?.value||"");
         if(username===ADMIN_USER && digest===ADMIN_PASSWORD_SHA256){
-          unlockAdmin();
+          unlockRole("admin");
         }else{
           if(error) error.textContent="Username atau password tidak betul.";
           if(pass){pass.value="";pass.focus();}
@@ -794,16 +840,25 @@
     });
   }
 
+  if(guest){
+    guest.addEventListener("click",()=>{
+      if(error) error.textContent="";
+      unlockRole("guest");
+    });
+  }
+
   if(logout){
     logout.addEventListener("click",()=>{
-      if(confirm("Logout daripada Admin?")) lockAdmin();
+      const role=normalizeRole(document.body.dataset.userRole||"");
+      const label=role==="admin" ? "Admin" : "Guest";
+      if(confirm("Logout daripada "+label+"?")) lockLogin();
     });
   }
 
   if(document.body.classList.contains("admin-locked") && pass){
     setTimeout(()=>pass.focus(),80);
   }
-})();
+})();;
 
 
 const DEFAULT_PALETTE = [
