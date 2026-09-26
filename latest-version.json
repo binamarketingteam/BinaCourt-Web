@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.0.6",
+  "versionCode": 8,
+  "versionName": "1.0.7",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Admin Login ditambah dan login turut tersedia dalam fallback offline."
+  "notes": "Guest access ditambah. Admin dan Guest direkod sebagai role berasingan untuk kawalan akses masa depan. Pinch zoom turut tersedia dalam fallback offline."
 }
