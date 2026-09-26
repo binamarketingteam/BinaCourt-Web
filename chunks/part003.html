@@ -733,6 +733,79 @@
 </div>
 
 <script>
+
+(function setupAdminLogin(){
+  const ADMIN_USER="admin";
+  const ADMIN_PASSWORD_SHA256="5b4cf17d4a8c94299cb6392ddbac76ae9c37755a5590d76773d6f023c3a0b1d2";
+  const SESSION_KEY="binaCourtAdminAuthenticated";
+
+  function toHex(buffer){
+    return Array.from(new Uint8Array(buffer)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+
+  async function sha256(value){
+    if(!window.crypto || !window.crypto.subtle) throw new Error("secure-hash-unavailable");
+    const data=new TextEncoder().encode(String(value));
+    return toHex(await window.crypto.subtle.digest("SHA-256",data));
+  }
+
+  function unlockAdmin(){
+    try{sessionStorage.setItem(SESSION_KEY,"1");}catch(_){}
+    document.body.classList.remove("admin-locked");
+    const gate=document.getElementById("adminLoginGate");
+    if(gate) gate.hidden=true;
+  }
+
+  function lockAdmin(){
+    try{sessionStorage.removeItem(SESSION_KEY);}catch(_){}
+    document.body.classList.add("admin-locked");
+    const gate=document.getElementById("adminLoginGate");
+    if(gate) gate.hidden=false;
+    const pass=document.getElementById("adminLoginPassword");
+    if(pass){pass.value="";setTimeout(()=>pass.focus(),50);}
+  }
+
+  try{
+    if(sessionStorage.getItem(SESSION_KEY)==="1") unlockAdmin();
+  }catch(_){}
+
+  const form=document.getElementById("adminLoginForm");
+  const user=document.getElementById("adminLoginUser");
+  const pass=document.getElementById("adminLoginPassword");
+  const error=document.getElementById("adminLoginError");
+  const logout=document.getElementById("adminLogoutBtn");
+
+  if(form){
+    form.addEventListener("submit",async event=>{
+      event.preventDefault();
+      if(error) error.textContent="";
+      const username=String(user?.value||"").trim().toLowerCase();
+      try{
+        const digest=await sha256(pass?.value||"");
+        if(username===ADMIN_USER && digest===ADMIN_PASSWORD_SHA256){
+          unlockAdmin();
+        }else{
+          if(error) error.textContent="Username atau password tidak betul.";
+          if(pass){pass.value="";pass.focus();}
+        }
+      }catch(_){
+        if(error) error.textContent="Login secure tidak tersedia pada peranti ini.";
+      }
+    });
+  }
+
+  if(logout){
+    logout.addEventListener("click",()=>{
+      if(confirm("Logout daripada Admin?")) lockAdmin();
+    });
+  }
+
+  if(document.body.classList.contains("admin-locked") && pass){
+    setTimeout(()=>pass.focus(),80);
+  }
+})();
+
+
 const DEFAULT_PALETTE = [
   {name:"Duracourt White", color:"#ffffff"},
   {name:"Duracourt Red", color:"#a53531"},
