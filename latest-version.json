@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.5",
+  "versionCode": 7,
+  "versionName": "1.0.6",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Native splash screen 3 saat dan sistem update APK automatik."
+  "notes": "Admin Login ditambah dan login turut tersedia dalam fallback offline."
 }
