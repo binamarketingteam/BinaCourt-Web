@@ -6,6 +6,8 @@ on:
     branches: [ main ]
     paths:
       - 'chunks/**'
+      - 'latest-version.json'
+      - 'latest-apk-source.txt'
       - '.github/workflows/deploy-pages.yml'
 
 permissions:
@@ -30,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site
+          mkdir -p _site/downloads
           OUT="_site/index.html"
           : > "$OUT"
           for f in chunks/part*.html; do
@@ -41,8 +43,28 @@ jobs:
           done
           test -s "$OUT"
           grep -q "Bina Court Designer" "$OUT"
+
+          cp latest-version.json _site/latest-version.json
+
+          # Bootstrap a newly built native APK from a short-lived artifact URL.
+          # On later web-only deploys, preserve the already-live APK from Pages.
+          if [ -s latest-apk-source.txt ]; then
+            APK_SOURCE="$(tr -d '\r\n' < latest-apk-source.txt)"
+            if [ -n "$APK_SOURCE" ]; then
+              if curl -fL --retry 2 --connect-timeout 10 "$APK_SOURCE" -o /tmp/binacourt-apk.zip; then
+                unzip -p /tmp/binacourt-apk.zip '*.apk' > _site/downloads/BinaCourt-latest.apk || true
+              fi
+            fi
+          fi
+
+          if [ ! -s _site/downloads/BinaCourt-latest.apk ]; then
+            curl -fL --retry 2 --connect-timeout 10               "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk"               -o _site/downloads/BinaCourt-latest.apk || true
+          fi
+
+          test -s _site/downloads/BinaCourt-latest.apk
           touch _site/.nojekyll
           echo "index.html bytes: $(wc -c < "$OUT")"
+          echo "APK bytes: $(wc -c < _site/downloads/BinaCourt-latest.apk)"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
