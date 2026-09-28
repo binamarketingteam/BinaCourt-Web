@@ -858,7 +858,247 @@
   if(document.body.classList.contains("admin-locked") && pass){
     setTimeout(()=>pass.focus(),80);
   }
-})();;
+})();
+
+
+(function setupAdminSalesManager(){
+  const STORAGE_KEY="binaCourtSalesNamesV1";
+  const DEFAULT_NAMES=[
+    "Abid","Aida","Aizat","Asbullah","Baim","Dani","Farhan","Firdaus",
+    "Haji","Hendra","Saiful","Shafit","Sharifah","Wahab","Zul"
+  ];
+
+  function isAdmin(){
+    return window.BinaCourtAuth?.isAdmin===true || document.body.dataset.userRole==="admin";
+  }
+
+  function cleanName(value){
+    return String(value||"")
+      .replace(/[\u0000-\u001f\u007f]/g,"")
+      .replace(/\s+/g," ")
+      .trim()
+      .slice(0,40);
+  }
+
+  function normalizeList(list){
+    const out=[];
+    const seen=new Set();
+    (Array.isArray(list)?list:[]).forEach(value=>{
+      const name=cleanName(value);
+      const key=name.toLocaleLowerCase("ms");
+      if(!name || seen.has(key)) return;
+      seen.add(key);
+      out.push(name);
+    });
+    return out.sort((a,b)=>a.localeCompare(b,"ms",{sensitivity:"base"}));
+  }
+
+  function loadNames(){
+    try{
+      const parsed=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
+      const normalized=normalizeList(parsed);
+      if(normalized.length) return normalized;
+    }catch(_){}
+    return normalizeList(DEFAULT_NAMES);
+  }
+
+  function saveNames(names){
+    const normalized=normalizeList(names);
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(normalized));
+    return normalized;
+  }
+
+  function currentProjectSale(){
+    try{
+      if(typeof state!=="undefined" && state?.projectSalesName) return cleanName(state.projectSalesName);
+    }catch(_){}
+    return cleanName(document.getElementById("projectSalesName")?.value||"");
+  }
+
+  function renderProjectDropdown(names,preferredValue=currentProjectSale()){
+    const select=document.getElementById("projectSalesName");
+    if(!select) return;
+    const current=cleanName(preferredValue);
+    select.replaceChildren();
+
+    const placeholder=document.createElement("option");
+    placeholder.value="";
+    placeholder.textContent="Pilih Nama Sale";
+    select.appendChild(placeholder);
+
+    names.forEach(name=>{
+      const option=document.createElement("option");
+      option.value=name;
+      option.textContent=name;
+      select.appendChild(option);
+    });
+
+    // Keep a historical/current project sale visible even if Admin has removed
+    // it from the master list. It disappears once another sale is chosen.
+    if(current && !names.some(name=>name.toLocaleLowerCase("ms")===current.toLocaleLowerCase("ms"))){
+      const legacy=document.createElement("option");
+      legacy.value=current;
+      legacy.textContent=current+" (project ini)";
+      legacy.dataset.legacySale="1";
+      select.appendChild(legacy);
+    }
+    select.value=current;
+  }
+
+  function renderManagerList(names,selectedValue=""){
+    const list=document.getElementById("salesManagerList");
+    if(!list) return;
+    const selected=cleanName(selectedValue);
+    list.replaceChildren();
+    names.forEach(name=>{
+      const option=document.createElement("option");
+      option.value=name;
+      option.textContent=name;
+      list.appendChild(option);
+    });
+    if(selected && names.includes(selected)) list.value=selected;
+    if(!list.value && list.options.length) list.selectedIndex=0;
+    syncManagerInput();
+  }
+
+  function syncManagerInput(){
+    const list=document.getElementById("salesManagerList");
+    const input=document.getElementById("salesManagerName");
+    if(input) input.value=cleanName(list?.value||"");
+    updateButtons();
+  }
+
+  function updateButtons(){
+    const hasSelection=!!document.getElementById("salesManagerList")?.value;
+    const rename=document.getElementById("salesManagerRename");
+    const del=document.getElementById("salesManagerDelete");
+    if(rename) rename.disabled=!hasSelection;
+    if(del) del.disabled=!hasSelection;
+  }
+
+  function status(message,isError=false){
+    const el=document.getElementById("salesManagerStatus");
+    if(!el) return;
+    el.textContent=message||"";
+    el.style.color=isError?"#b42318":"#475467";
+  }
+
+  function refresh(selected=""){
+    const names=loadNames();
+    renderProjectDropdown(names);
+    renderManagerList(names,selected);
+    return names;
+  }
+
+  function closeModal(){
+    const modal=document.getElementById("salesManagerModal");
+    if(modal) modal.hidden=true;
+    status("");
+  }
+
+  function openModal(){
+    if(!isAdmin()) return;
+    refresh();
+    const modal=document.getElementById("salesManagerModal");
+    if(modal) modal.hidden=false;
+    setTimeout(()=>document.getElementById("salesManagerName")?.focus(),40);
+  }
+
+  function addSale(){
+    if(!isAdmin()) return;
+    const input=document.getElementById("salesManagerName");
+    const name=cleanName(input?.value);
+    if(!name){ status("Masukkan nama sale dahulu.",true); return; }
+    const names=loadNames();
+    if(names.some(item=>item.toLocaleLowerCase("ms")===name.toLocaleLowerCase("ms"))){
+      status("Nama sale itu sudah ada.",true);
+      return;
+    }
+    const saved=saveNames([...names,name]);
+    renderProjectDropdown(saved);
+    renderManagerList(saved,name);
+    status(name+" berjaya ditambah.");
+  }
+
+  function renameSale(){
+    if(!isAdmin()) return;
+    const list=document.getElementById("salesManagerList");
+    const oldName=cleanName(list?.value);
+    const newName=cleanName(document.getElementById("salesManagerName")?.value);
+    if(!oldName){ status("Pilih nama sale yang nak di-rename.",true); return; }
+    if(!newName){ status("Masukkan nama baru.",true); return; }
+
+    const names=loadNames();
+    if(names.some(item=>item.toLocaleLowerCase("ms")===newName.toLocaleLowerCase("ms") && item!==oldName)){
+      status("Nama baru itu sudah digunakan.",true);
+      return;
+    }
+
+    const saved=saveNames(names.map(item=>item===oldName?newName:item));
+
+    try{
+      if(typeof state!=="undefined" && state.projectSalesName===oldName){
+        state.projectSalesName=newName;
+        if(typeof updateProjectReferencePreview==="function") updateProjectReferencePreview();
+        if(typeof commitHistory==="function") commitHistory();
+      }
+    }catch(_){}
+
+    renderProjectDropdown(saved,newName);
+    renderManagerList(saved,newName);
+    status(oldName+" ditukar kepada "+newName+".");
+  }
+
+  function deleteSale(){
+    if(!isAdmin()) return;
+    const list=document.getElementById("salesManagerList");
+    const name=cleanName(list?.value);
+    if(!name){ status("Pilih nama sale yang nak dipadam.",true); return; }
+    if(!confirm('Delete nama sale "'+name+'"?')) return;
+
+    const saved=saveNames(loadNames().filter(item=>item!==name));
+    renderProjectDropdown(saved,currentProjectSale());
+    renderManagerList(saved);
+    status(name+" telah dipadam daripada senarai.");
+  }
+
+  function init(){
+    // Apply Admin-managed names for both Admin and Guest on this device/browser.
+    renderProjectDropdown(loadNames());
+
+    document.getElementById("manageSalesBtn")?.addEventListener("click",openModal);
+    document.getElementById("salesManagerClose")?.addEventListener("click",closeModal);
+    document.getElementById("salesManagerList")?.addEventListener("change",syncManagerInput);
+    document.getElementById("salesManagerAdd")?.addEventListener("click",addSale);
+    document.getElementById("salesManagerRename")?.addEventListener("click",renameSale);
+    document.getElementById("salesManagerDelete")?.addEventListener("click",deleteSale);
+    document.getElementById("salesManagerName")?.addEventListener("keydown",event=>{
+      if(event.key==="Enter"){
+        event.preventDefault();
+        const selected=document.getElementById("salesManagerList")?.value;
+        if(selected) renameSale(); else addSale();
+      }
+    });
+    document.getElementById("salesManagerModal")?.addEventListener("pointerdown",event=>{
+      if(event.target===event.currentTarget) closeModal();
+    });
+    document.addEventListener("keydown",event=>{
+      if(event.key==="Escape" && !document.getElementById("salesManagerModal")?.hidden){
+        closeModal();
+      }
+    });
+  }
+
+  window.BinaCourtSales={
+    get names(){ return loadNames().slice(); },
+    refresh(){ refresh(); }
+  };
+
+  if(document.readyState==="complete") init();
+  else window.addEventListener("load",init,{once:true});
+})();
+
+;
 
 
 const DEFAULT_PALETTE = [
