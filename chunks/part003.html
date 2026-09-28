@@ -817,25 +817,46 @@
     async manageSales(action,args={}){
       if(this.role!=="admin") throw new Error("admin_only");
       if(!adminWritePassword) throw new Error("admin_relogin_required");
-      const response=await fetch(SUPABASE_URL+"/rest/v1/rpc/admin_manage_sales",{
-        method:"POST",
-        headers:{
-          "apikey":SUPABASE_PUBLISHABLE_KEY,
-          "Content-Type":"application/json"
-        },
-        body:JSON.stringify({
-          p_action:String(action||""),
-          p_password:adminWritePassword,
-          p_name:args.name ?? null,
-          p_new_name:args.newName ?? null
-        })
-      });
-      const body=await response.json().catch(()=>({}));
+
+      const headers={
+        "apikey":SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type":"application/json",
+        "x-admin-password":adminWritePassword,
+        "Prefer":"return=representation"
+      };
+
+      let url=SUPABASE_URL+"/rest/v1/sales_names";
+      let method="POST";
+      let payload=null;
+
+      if(action==="add"){
+        payload={name:String(args.name||"")};
+      }else if(action==="rename"){
+        method="PATCH";
+        url+="?name=eq."+encodeURIComponent(String(args.name||""));
+        payload={name:String(args.newName||""),updated_at:new Date().toISOString()};
+      }else if(action==="delete"){
+        method="DELETE";
+        url+="?name=eq."+encodeURIComponent(String(args.name||""));
+      }else{
+        throw new Error("invalid_action");
+      }
+
+      const options={method,headers};
+      if(payload!==null) options.body=JSON.stringify(payload);
+      const response=await fetch(url,options);
+      const body=await response.json().catch(()=>null);
       if(!response.ok){
-        const message=String(body?.message || body?.error || "cloud_write_failed");
+        const message=String(body?.message || body?.details || body?.error || "cloud_write_failed");
         throw new Error(message);
       }
-      return body;
+
+      const listResponse=await fetch(
+        SUPABASE_URL+"/rest/v1/sales_names?select=id,name&order=name.asc",
+        {headers:{"apikey":SUPABASE_PUBLISHABLE_KEY}}
+      );
+      if(!listResponse.ok) throw new Error("cloud_read_failed");
+      return {ok:true,sales:await listResponse.json()};
     }
   };
 
@@ -1071,7 +1092,7 @@
   function cloudErrorMessage(error){
     const msg=String(error?.message||"");
     if(msg.includes("admin_relogin_required")) return "Untuk ubah senarai cloud, logout dan login Admin semula.";
-    if(msg.includes("admin_authorization_failed") || msg.includes("42501")) return "Password Admin tidak sah.";
+    if(msg.includes("row-level security") || msg.includes("42501")) return "Password Admin tidak sah atau akses Admin telah tamat.";
     if(msg.includes("sale_name_exists") || msg.includes("duplicate")) return "Nama sale itu sudah ada.";
     if(msg.includes("sale_not_found")) return "Nama sale tidak dijumpai.";
     return "Gagal sync perubahan ke cloud. Cuba lagi.";
