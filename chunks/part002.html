@@ -950,6 +950,46 @@
     .admin-logout-btn{padding:6px 8px!important}
   }
 
+
+  .sales-label-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .sales-label-row label{margin:0!important}
+  .admin-only-sales{display:none!important}
+  body[data-user-role="admin"] .admin-only-sales{display:inline-flex!important}
+  .sales-manage-btn{
+    width:auto!important;height:24px!important;padding:3px 7px!important;margin:0!important;
+    border-radius:6px!important;border:1px solid #b7cdf7!important;background:#eef4ff!important;
+    color:#175cd3!important;font-size:8.5px!important;font-weight:850!important
+  }
+  .sales-manager-modal{
+    position:fixed;inset:0;z-index:100500;display:flex;align-items:center;justify-content:center;
+    padding:20px;background:rgba(15,23,42,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)
+  }
+  .sales-manager-modal[hidden]{display:none!important}
+  body:not([data-user-role="admin"]) #salesManagerModal{display:none!important}
+  .sales-manager-card{
+    width:min(430px,100%);max-height:min(640px,88dvh);overflow:auto;background:#fff;
+    border-radius:18px;border:1px solid #e4e7ec;box-shadow:0 24px 70px rgba(15,23,42,.32);padding:18px
+  }
+  .sales-manager-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .sales-manager-head h3{margin:0 0 4px;font-size:17px;color:#101828}
+  .sales-manager-head p{margin:0;color:#667085;font-size:11px;line-height:1.4}
+  .sales-manager-close{width:34px!important;height:34px!important;padding:0!important;border-radius:9px!important}
+  .sales-manager-list{
+    width:100%;min-height:210px;padding:6px;border:1px solid #d0d5dd;border-radius:10px;
+    background:#f8fafc;font-size:13px
+  }
+  .sales-manager-list option{padding:8px 9px;border-radius:6px}
+  .sales-manager-input{margin-top:10px}
+  .sales-manager-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+  .sales-manager-actions button{height:38px;padding:7px 9px;font-size:11px}
+  .sales-manager-delete{background:#fff5f5!important;border-color:#f3b4af!important;color:#b42318!important}
+  .sales-manager-status{min-height:18px;margin-top:9px;font-size:10.5px;color:#475467;font-weight:700}
+  @media(max-width:700px){
+    .sales-manager-modal{padding:12px}
+    .sales-manager-card{border-radius:16px;padding:15px}
+    .sales-manager-actions{grid-template-columns:1fr}
+  }
+
 </style>
 </head>
 <body class="admin-locked">
@@ -974,13 +1014,33 @@
   </form>
 </div>
 
+<div id="salesManagerModal" class="sales-manager-modal" hidden>
+  <div class="sales-manager-card" role="dialog" aria-modal="true" aria-labelledby="salesManagerTitle">
+    <div class="sales-manager-head">
+      <div>
+        <h3 id="salesManagerTitle">Urus Nama Sale</h3>
+        <p>Admin sahaja boleh tambah, rename atau delete nama sale.</p>
+      </div>
+      <button id="salesManagerClose" class="secondary sales-manager-close" type="button" aria-label="Tutup">×</button>
+    </div>
+    <select id="salesManagerList" class="sales-manager-list" size="9" aria-label="Senarai nama sale"></select>
+    <input id="salesManagerName" class="sales-manager-input" type="text" maxlength="40" placeholder="Nama sale" autocomplete="off">
+    <div class="sales-manager-actions">
+      <button id="salesManagerAdd" class="primary" type="button">＋ Add</button>
+      <button id="salesManagerRename" class="secondary" type="button">✎ Rename</button>
+      <button id="salesManagerDelete" class="sales-manager-delete" type="button">🗑 Delete</button>
+    </div>
+    <div id="salesManagerStatus" class="sales-manager-status" aria-live="polite"></div>
+  </div>
+</div>
+
 <header>
   <div>
     <h1>Bina Court Designer</h1>
     <small>Prototaip susun atur, saiz & warna gelanggang</small>
   </div>
   <div class="header-admin-wrap">
-    <small>v232 · Single Court Align + Guest</small>
+    <small>v233 · Admin Sales Manager + Guest</small>
     <span class="admin-user-badge" id="adminUserBadge">👤 Guest</span>
     <button type="button" class="admin-logout-btn" id="adminLogoutBtn">Logout</button>
   </div>
@@ -1004,7 +1064,10 @@
             </select>
           </div>
           <div>
-            <label for="projectSalesName">Nama Sale</label>
+            <div class="sales-label-row">
+              <label for="projectSalesName">Nama Sale</label>
+              <button id="manageSalesBtn" class="sales-manage-btn admin-only-sales" type="button" title="Admin: urus nama sale">⚙ Urus</button>
+            </div>
             <select id="projectSalesName">
               <option value="">Pilih Nama Sale</option>
               <option value="Abid">Abid</option><option value="Aida">Aida</option><option value="Aizat">Aizat</option>
