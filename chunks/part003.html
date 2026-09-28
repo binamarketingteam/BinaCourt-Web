@@ -739,6 +739,9 @@
   const ADMIN_PASSWORD_SHA256="5b4cf17d4a8c94299cb6392ddbac76ae9c37755a5590d76773d6f023c3a0b1d2";
   const ROLE_KEY="binaCourtUserRole";
   const LEGACY_ADMIN_KEY="binaCourtAdminAuthenticated";
+  const SUPABASE_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
+  let adminWritePassword="";
 
   function toHex(buffer){
     return Array.from(new Uint8Array(buffer)).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -767,6 +770,7 @@
   function unlockRole(role){
     const safeRole=normalizeRole(role);
     if(!safeRole) return;
+    if(safeRole!=="admin") adminWritePassword="";
     try{
       sessionStorage.setItem(ROLE_KEY,safeRole);
       sessionStorage.removeItem(LEGACY_ADMIN_KEY);
@@ -778,6 +782,7 @@
   }
 
   function lockLogin(){
+    adminWritePassword="";
     try{
       sessionStorage.removeItem(ROLE_KEY);
       sessionStorage.removeItem(LEGACY_ADMIN_KEY);
@@ -808,7 +813,30 @@
   window.BinaCourtAuth={
     get role(){ return normalizeRole(document.body.dataset.userRole||""); },
     get isAdmin(){ return this.role==="admin"; },
-    get isGuest(){ return this.role==="guest"; }
+    get isGuest(){ return this.role==="guest"; },
+    async manageSales(action,args={}){
+      if(this.role!=="admin") throw new Error("admin_only");
+      if(!adminWritePassword) throw new Error("admin_relogin_required");
+      const response=await fetch(SUPABASE_URL+"/rest/v1/rpc/admin_manage_sales",{
+        method:"POST",
+        headers:{
+          "apikey":SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          p_action:String(action||""),
+          p_password:adminWritePassword,
+          p_name:args.name ?? null,
+          p_new_name:args.newName ?? null
+        })
+      });
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok){
+        const message=String(body?.message || body?.error || "cloud_write_failed");
+        throw new Error(message);
+      }
+      return body;
+    }
   };
 
   const savedRole=currentRole();
@@ -829,6 +857,7 @@
       try{
         const digest=await sha256(pass?.value||"");
         if(username===ADMIN_USER && digest===ADMIN_PASSWORD_SHA256){
+          adminWritePassword=String(pass?.value||"");
           unlockRole("admin");
         }else{
           if(error) error.textContent="Username atau password tidak betul.";
@@ -862,11 +891,16 @@
 
 
 (function setupAdminSalesManager(){
-  const STORAGE_KEY="binaCourtSalesNamesV1";
+  const CACHE_KEY="binaCourtSalesNamesCloudCacheV2";
+  const SUPABASE_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
   const DEFAULT_NAMES=[
     "Abid","Aida","Aizat","Asbullah","Baim","Dani","Farhan","Firdaus",
     "Haji","Hendra","Saiful","Shafit","Sharifah","Wahab","Zul"
   ];
+  let cloudNames=[];
+  let syncBusy=false;
+  let syncTimer=null;
 
   function isAdmin(){
     return window.BinaCourtAuth?.isAdmin===true || document.body.dataset.userRole==="admin";
@@ -884,7 +918,7 @@
     const out=[];
     const seen=new Set();
     (Array.isArray(list)?list:[]).forEach(value=>{
-      const name=cleanName(value);
+      const name=cleanName(typeof value==="string" ? value : value?.name);
       const key=name.toLocaleLowerCase("ms");
       if(!name || seen.has(key)) return;
       seen.add(key);
@@ -893,18 +927,19 @@
     return out.sort((a,b)=>a.localeCompare(b,"ms",{sensitivity:"base"}));
   }
 
-  function loadNames(){
+  function loadCache(){
     try{
-      const parsed=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
-      const normalized=normalizeList(parsed);
-      if(normalized.length) return normalized;
+      const parsed=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+      const names=normalizeList(parsed);
+      if(names.length) return names;
     }catch(_){}
     return normalizeList(DEFAULT_NAMES);
   }
 
-  function saveNames(names){
+  function saveCache(names){
     const normalized=normalizeList(names);
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(normalized));
+    cloudNames=normalized;
+    try{ localStorage.setItem(CACHE_KEY,JSON.stringify(normalized)); }catch(_){}
     return normalized;
   }
 
@@ -933,8 +968,6 @@
       select.appendChild(option);
     });
 
-    // Keep a historical/current project sale visible even if Admin has removed
-    // it from the master list. It disappears once another sale is chosen.
     if(current && !names.some(name=>name.toLocaleLowerCase("ms")===current.toLocaleLowerCase("ms"))){
       const legacy=document.createElement("option");
       legacy.value=current;
@@ -961,6 +994,13 @@
     syncManagerInput();
   }
 
+  function applyNames(names,{selected="",manager=true}={}){
+    const normalized=saveCache(names);
+    renderProjectDropdown(normalized);
+    if(manager && isAdmin()) renderManagerList(normalized,selected);
+    return normalized;
+  }
+
   function syncManagerInput(){
     const list=document.getElementById("salesManagerList");
     const input=document.getElementById("salesManagerName");
@@ -983,11 +1023,33 @@
     el.style.color=isError?"#b42318":"#475467";
   }
 
-  function refresh(selected=""){
-    const names=loadNames();
-    renderProjectDropdown(names);
-    renderManagerList(names,selected);
-    return names;
+  async function fetchCloudNames({silent=false}={}){
+    if(syncBusy) return cloudNames;
+    syncBusy=true;
+    try{
+      const response=await fetch(
+        SUPABASE_URL+"/rest/v1/sales_names?select=id,name&order=name.asc",
+        {headers:{"apikey":SUPABASE_PUBLISHABLE_KEY}}
+      );
+      if(!response.ok) throw new Error("cloud_read_failed");
+      const rows=await response.json();
+      const names=normalizeList(rows);
+      if(names.length){
+        const selected=document.getElementById("salesManagerList")?.value||"";
+        applyNames(names,{selected});
+        if(!silent && isAdmin() && !document.getElementById("salesManagerModal")?.hidden){
+          status("✓ Senarai cloud sudah sync.");
+        }
+      }
+      return names;
+    }catch(error){
+      if(!silent && isAdmin() && !document.getElementById("salesManagerModal")?.hidden){
+        status("Cloud tak dapat dicapai. Senarai cache masih digunakan.",true);
+      }
+      return cloudNames;
+    }finally{
+      syncBusy=false;
+    }
   }
 
   function closeModal(){
@@ -996,75 +1058,91 @@
     status("");
   }
 
-  function openModal(){
+  async function openModal(){
     if(!isAdmin()) return;
-    refresh();
+    renderManagerList(cloudNames);
     const modal=document.getElementById("salesManagerModal");
     if(modal) modal.hidden=false;
+    status("Sync cloud...");
+    await fetchCloudNames();
     setTimeout(()=>document.getElementById("salesManagerName")?.focus(),40);
   }
 
-  function addSale(){
-    if(!isAdmin()) return;
-    const input=document.getElementById("salesManagerName");
-    const name=cleanName(input?.value);
-    if(!name){ status("Masukkan nama sale dahulu.",true); return; }
-    const names=loadNames();
-    if(names.some(item=>item.toLocaleLowerCase("ms")===name.toLocaleLowerCase("ms"))){
-      status("Nama sale itu sudah ada.",true);
-      return;
-    }
-    const saved=saveNames([...names,name]);
-    renderProjectDropdown(saved);
-    renderManagerList(saved,name);
-    status(name+" berjaya ditambah.");
+  function cloudErrorMessage(error){
+    const msg=String(error?.message||"");
+    if(msg.includes("admin_relogin_required")) return "Untuk ubah senarai cloud, logout dan login Admin semula.";
+    if(msg.includes("admin_authorization_failed") || msg.includes("42501")) return "Password Admin tidak sah.";
+    if(msg.includes("sale_name_exists") || msg.includes("duplicate")) return "Nama sale itu sudah ada.";
+    if(msg.includes("sale_not_found")) return "Nama sale tidak dijumpai.";
+    return "Gagal sync perubahan ke cloud. Cuba lagi.";
   }
 
-  function renameSale(){
+  async function addSale(){
+    if(!isAdmin()) return;
+    const name=cleanName(document.getElementById("salesManagerName")?.value);
+    if(!name){ status("Masukkan nama sale dahulu.",true); return; }
+    status("Menyimpan ke cloud...");
+    try{
+      const result=await window.BinaCourtAuth.manageSales("add",{name});
+      const names=normalizeList(result?.sales);
+      applyNames(names,{selected:name});
+      status("✓ "+name+" ditambah dan sync ke semua device.");
+    }catch(error){
+      status(cloudErrorMessage(error),true);
+    }
+  }
+
+  async function renameSale(){
     if(!isAdmin()) return;
     const list=document.getElementById("salesManagerList");
     const oldName=cleanName(list?.value);
     const newName=cleanName(document.getElementById("salesManagerName")?.value);
     if(!oldName){ status("Pilih nama sale yang nak di-rename.",true); return; }
     if(!newName){ status("Masukkan nama baru.",true); return; }
-
-    const names=loadNames();
-    if(names.some(item=>item.toLocaleLowerCase("ms")===newName.toLocaleLowerCase("ms") && item!==oldName)){
-      status("Nama baru itu sudah digunakan.",true);
-      return;
-    }
-
-    const saved=saveNames(names.map(item=>item===oldName?newName:item));
-
+    status("Menyimpan ke cloud...");
     try{
-      if(typeof state!=="undefined" && state.projectSalesName===oldName){
-        state.projectSalesName=newName;
-        if(typeof updateProjectReferencePreview==="function") updateProjectReferencePreview();
-        if(typeof commitHistory==="function") commitHistory();
-      }
-    }catch(_){}
+      const result=await window.BinaCourtAuth.manageSales("rename",{name:oldName,newName});
+      const names=normalizeList(result?.sales);
 
-    renderProjectDropdown(saved,newName);
-    renderManagerList(saved,newName);
-    status(oldName+" ditukar kepada "+newName+".");
+      try{
+        if(typeof state!=="undefined" && state.projectSalesName===oldName){
+          state.projectSalesName=newName;
+          if(typeof updateProjectReferencePreview==="function") updateProjectReferencePreview();
+          if(typeof commitHistory==="function") commitHistory();
+        }
+      }catch(_){}
+
+      applyNames(names,{selected:newName});
+      status("✓ "+oldName+" ditukar kepada "+newName+" untuk semua device.");
+    }catch(error){
+      status(cloudErrorMessage(error),true);
+    }
   }
 
-  function deleteSale(){
+  async function deleteSale(){
     if(!isAdmin()) return;
-    const list=document.getElementById("salesManagerList");
-    const name=cleanName(list?.value);
+    const name=cleanName(document.getElementById("salesManagerList")?.value);
     if(!name){ status("Pilih nama sale yang nak dipadam.",true); return; }
-    if(!confirm('Delete nama sale "'+name+'"?')) return;
+    if(!confirm('Delete nama sale "'+name+'" daripada semua device?')) return;
+    status("Memadam dari cloud...");
+    try{
+      const result=await window.BinaCourtAuth.manageSales("delete",{name});
+      const names=normalizeList(result?.sales);
+      applyNames(names,{selected:""});
+      status("✓ "+name+" dipadam daripada senarai semua device.");
+    }catch(error){
+      status(cloudErrorMessage(error),true);
+    }
+  }
 
-    const saved=saveNames(loadNames().filter(item=>item!==name));
-    renderProjectDropdown(saved,currentProjectSale());
-    renderManagerList(saved);
-    status(name+" telah dipadam daripada senarai.");
+  function scheduleSync(){
+    clearInterval(syncTimer);
+    syncTimer=setInterval(()=>fetchCloudNames({silent:true}),15000);
   }
 
   function init(){
-    // Apply Admin-managed names for both Admin and Guest on this device/browser.
-    renderProjectDropdown(loadNames());
+    cloudNames=loadCache();
+    renderProjectDropdown(cloudNames);
 
     document.getElementById("manageSalesBtn")?.addEventListener("click",openModal);
     document.getElementById("salesManagerClose")?.addEventListener("click",closeModal);
@@ -1083,15 +1161,20 @@
       if(event.target===event.currentTarget) closeModal();
     });
     document.addEventListener("keydown",event=>{
-      if(event.key==="Escape" && !document.getElementById("salesManagerModal")?.hidden){
-        closeModal();
-      }
+      if(event.key==="Escape" && !document.getElementById("salesManagerModal")?.hidden) closeModal();
     });
+    window.addEventListener("focus",()=>fetchCloudNames({silent:true}));
+    document.addEventListener("visibilitychange",()=>{
+      if(!document.hidden) fetchCloudNames({silent:true});
+    });
+
+    fetchCloudNames({silent:true});
+    scheduleSync();
   }
 
   window.BinaCourtSales={
-    get names(){ return loadNames().slice(); },
-    refresh(){ refresh(); }
+    get names(){ return cloudNames.slice(); },
+    async refresh(){ return await fetchCloudNames(); }
   };
 
   if(document.readyState==="complete") init();
