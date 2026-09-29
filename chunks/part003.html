@@ -697,6 +697,14 @@
     <span class="mobile-tool-icon">↻</span>
     <span>Rotate</span>
   </button>
+  <button id="mobileBoundaryButton" type="button" aria-pressed="true" title="Show / hide outer boundary">
+    <span class="mobile-tool-icon">▣</span>
+    <span id="mobileBoundaryLabel">Boundary</span>
+  </button>
+  <button id="mobileMatchButton" type="button" title="Match position & size dengan court lain">
+    <span class="mobile-tool-icon">⇄</span>
+    <span>Match</span>
+  </button>
   <button id="mobileDuplicateButton" type="button">
     <span class="mobile-tool-icon">⧉</span>
     <span>Duplicate</span>
@@ -705,6 +713,19 @@
     <span class="mobile-tool-icon">×</span>
     <span>Delete</span>
   </button>
+</div>
+
+<div id="quickMatchSheet" class="quick-match-sheet" aria-hidden="true">
+  <div class="quick-match-head">
+    <strong>Match Court</strong>
+    <button id="quickMatchClose" class="secondary" type="button" aria-label="Tutup">×</button>
+  </div>
+  <label for="quickMatchReference">Pilih court reference</label>
+  <select id="quickMatchReference"></select>
+  <div class="quick-match-actions">
+    <button id="quickMatchApply" class="primary" type="button">Match Position &amp; Size</button>
+  </div>
+  <div class="hint" style="margin-top:7px">Court dipilih akan ikut posisi, saiz dan sudut reference. Warna tidak berubah.</div>
 </div>
 
 <div id="mobileColourSheet" class="mobile-colour-sheet" aria-hidden="true">
