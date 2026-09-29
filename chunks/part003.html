@@ -562,7 +562,7 @@
               <span><strong>Line sahaja</strong> — permukaan transparent</span>
             </div>
 
-            <div class="inline" style="margin-top:8px">
+            <div class="inline" style="margin-top:8px;display:none">
               <input id="selOuterBoundary" type="checkbox" checked>
               <span><strong>Outer Boundary</strong> — tunjuk garisan petak luar</span>
             </div>
@@ -697,9 +697,9 @@
     <span class="mobile-tool-icon">↻</span>
     <span>Rotate</span>
   </button>
-  <button id="mobileBoundaryButton" type="button" aria-pressed="true" title="Show / hide outer boundary">
-    <span class="mobile-tool-icon">▣</span>
-    <span id="mobileBoundaryLabel">Boundary</span>
+  <button id="mobileBoundaryButton" type="button" title="Pilih line court yang mahu ditunjuk atau disembunyikan">
+    <span class="mobile-tool-icon">☷</span>
+    <span id="mobileBoundaryLabel">Lines</span>
   </button>
   <button id="mobileMatchButton" type="button" title="Match position & size dengan court lain">
     <span class="mobile-tool-icon">⇄</span>
@@ -713,6 +713,25 @@
     <span class="mobile-tool-icon">×</span>
     <span>Delete</span>
   </button>
+</div>
+
+<div id="lineControlSheet" class="line-control-sheet" aria-hidden="true">
+  <div class="line-control-head">
+    <div>
+      <strong>Custom Line</strong>
+      <span id="lineControlCourtName">Court</span>
+    </div>
+    <button id="lineControlClose" class="secondary" type="button" aria-label="Tutup">×</button>
+  </div>
+
+  <div class="line-control-actions">
+    <button id="lineControlShowAll" class="secondary" type="button">Show All</button>
+    <button id="lineControlHideAll" class="secondary" type="button">Hide All</button>
+    <button id="lineControlReset" class="secondary" type="button">Reset</button>
+  </div>
+
+  <div id="lineControlList" class="line-control-list"></div>
+  <div class="line-control-note">Atas / bawah / kiri / kanan ikut orientasi asal court sebelum Rotate.</div>
 </div>
 
 <div id="quickMatchSheet" class="quick-match-sheet" aria-hidden="true">
