@@ -807,6 +807,94 @@
     margin-top:9px;
   }
   .quick-match-actions button{flex:1}
+
+  .line-control-sheet{
+    position:fixed;
+    z-index:118;
+    display:none;
+    width:min(390px,calc(100vw - 24px));
+    max-height:min(620px,72vh);
+    overflow:auto;
+    padding:12px;
+    border:1px solid rgba(15,23,42,.14);
+    border-radius:14px;
+    background:#fff;
+    box-shadow:0 14px 40px rgba(15,23,42,.24);
+  }
+  .line-control-sheet.open{display:block}
+  .line-control-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .line-control-head strong{display:block;font-size:13px}
+  .line-control-head span{display:block;margin-top:2px;color:var(--muted);font-size:10px}
+  .line-control-head button{
+    width:30px;
+    height:30px;
+    padding:0;
+    flex:0 0 auto;
+    border-radius:50%;
+  }
+  .line-control-actions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    margin:8px 0 10px;
+  }
+  .line-control-actions button{
+    width:auto;
+    padding:7px 6px;
+    font-size:10px;
+  }
+  .line-control-group-title{
+    margin:10px 0 5px;
+    padding-bottom:4px;
+    border-bottom:1px solid #eaecf0;
+    color:#344054;
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .line-control-list{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .line-control-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-height:34px;
+    padding:7px 8px;
+    border:1px solid #eaecf0;
+    border-radius:9px;
+    background:#f8fafc;
+    cursor:pointer;
+  }
+  .line-control-item:hover{background:#f2f4f7}
+  .line-control-item input{
+    width:17px;
+    height:17px;
+    margin:0;
+    flex:0 0 auto;
+  }
+  .line-control-item span{
+    min-width:0;
+    font-size:11px;
+    font-weight:700;
+    color:#344054;
+  }
+  .line-control-note{
+    margin-top:8px;
+    color:var(--muted);
+    font-size:9px;
+    line-height:1.4;
+  }
+
   .mobile-edit-toolbar button:disabled{
     opacity:.42;
     cursor:not-allowed;
