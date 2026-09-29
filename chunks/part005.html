@@ -1,5 +1,71 @@
 }
 
+/* v238: Netball Boundary OFF hides only sidelines.
+   Goal lines at both short ends remain visible. */
+window.addEventListener("load",()=>{
+  const stage=document.getElementById("stage");
+  if(!stage) return;
+
+  const svgNS="http://www.w3.org/2000/svg";
+  let applyingNetballGoalPatch=false;
+
+  function applyNetballGoalPatch(){
+    if(applyingNetballGoalPatch) return;
+    applyingNetballGoalPatch=true;
+    try{
+      if(typeof state==="undefined" || typeof isNetballCourtType!=="function") return;
+
+      state.courts.forEach(court=>{
+        if(court.hidden || court.showOuterBoundary!==false || !isNetballCourtType(court.type)) return;
+
+        const courtGroup=stage.querySelector('g[data-id="'+court.id+'"]');
+        if(!courtGroup) return;
+
+        const marks=Array.from(courtGroup.children).find(el=>
+          el.tagName &&
+          el.tagName.toLowerCase()==="g" &&
+          el.hasAttribute("clip-path")
+        );
+        if(!marks || marks.querySelector('[data-netball-goal-line="1"]')) return;
+
+        const inset=.08;
+        [inset,court.w-inset].forEach(x=>{
+          const goal=document.createElementNS(svgNS,"line");
+          goal.setAttribute("x1",String(x));
+          goal.setAttribute("y1",String(inset));
+          goal.setAttribute("x2",String(x));
+          goal.setAttribute("y2",String(court.h-inset));
+          goal.setAttribute("stroke",court.line);
+          goal.setAttribute("stroke-width",".075");
+          goal.setAttribute("stroke-linecap","butt");
+          goal.setAttribute("shape-rendering","geometricPrecision");
+          goal.setAttribute("data-netball-goal-line","1");
+          marks.appendChild(goal);
+        });
+      });
+
+      const current=typeof selected==="function" ? selected() : null;
+      if(current && isNetballCourtType(current.type)){
+        const off=current.showOuterBoundary===false;
+        const label=document.getElementById("mobileBoundaryLabel");
+        const button=document.getElementById("mobileBoundaryButton");
+        if(label) label.textContent=off ? "Side Off" : "Side Line";
+        if(button){
+          button.title=off
+            ? "Netball side line OFF - goal line kekal"
+            : "Netball side line ON - klik untuk sembunyikan side line sahaja";
+        }
+      }
+    }finally{
+      applyingNetballGoalPatch=false;
+    }
+  }
+
+  const observer=new MutationObserver(applyNetballGoalPatch);
+  observer.observe(stage,{childList:true,subtree:true});
+  applyNetballGoalPatch();
+},{once:true});
+
 function captureCurrentOptionData(){
   syncActiveSiteAreaFromLegacy();
   return {
