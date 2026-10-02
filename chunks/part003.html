@@ -199,6 +199,61 @@
         </div>
       </div>
 
+      <div id="basketballDetailToggleBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Tick / Untick Ukuran Basketball</div>
+        <div class="hint" style="margin:0 0 8px 0">Kotak ini hanya muncul bila court <strong>Basketball</strong> dipilih.</div>
+        <div class="inline" style="margin-top:6px">
+          <input id="basketballToggleCenterCircle" type="checkbox">
+          <span>Bulatan tengah — Ø 3.6 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="basketballToggleKeyWidth" type="checkbox">
+          <span>Key / restricted width — 4.9 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="basketballToggleFreeThrow" type="checkbox">
+          <span>Free throw line — 5.8 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="basketballToggleThreePoint" type="checkbox">
+          <span>3-point radius — R 6.75 m</span>
+        </div>
+      </div>
+
+      <div id="netballDetailToggleBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Tick / Untick Ukuran Netball</div>
+        <div class="hint" style="margin:0 0 8px 0">Kotak ini hanya muncul bila court <strong>Netball</strong> dipilih.</div>
+        <div class="inline" style="margin-top:6px">
+          <input id="netballToggleCenterCircle" type="checkbox">
+          <span>Bulatan tengah — Ø 0.9 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="netballToggleGoalCircle" type="checkbox">
+          <span>Goal circle — R 4.9 m</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="netballToggleThirds" type="checkbox">
+          <span>1/3 court</span>
+        </div>
+      </div>
+
+      <div id="pickleballDetailToggleBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Tick / Untick Ukuran Pickleball</div>
+        <div class="hint" style="margin:0 0 8px 0">Kotak ini hanya muncul bila court <strong>Pickleball</strong> dipilih.</div>
+        <div class="inline" style="margin-top:6px">
+          <input id="pickleballToggleKitchen" type="checkbox">
+          <span>Kitchen / NVZ — 7 ft</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="pickleballToggleServiceDepth" type="checkbox">
+          <span>Service area depth — 15 ft</span>
+        </div>
+        <div class="inline" style="margin-top:6px">
+          <input id="pickleballToggleHalfWidth" type="checkbox">
+          <span>½ service court width — 10 ft</span>
+        </div>
+      </div>
+
       <div id="halfBasketballOptionBox" style="display:none;margin-top:12px;padding:12px;border:1px solid #d9e1ea;border-radius:12px;background:#f8fafc">
         <div style="font-weight:700;font-size:13px;margin-bottom:4px">Half Basketball (Custom)</div>
         <div class="hint" style="margin:0 0 8px 0">Bulatan D, key / paint dan 3-point kekal. Saiz luar court boleh diubah ikut panjang × lebar.</div>
@@ -300,6 +355,14 @@
       <div class="inline" >
         <input id="showCourtSizes" type="checkbox">
         <span>View saiz court (panjang × lebar)</span>
+      </div>
+      <div class="inline" style="margin-top:8px">
+        <input id="showCourtTechnicalDetails" type="checkbox">
+        <span>View ukuran detail Basketball / Netball / Pickleball</span>
+      </div>
+      <div class="inline" style="margin-top:6px">
+        <input id="showCourtTechnicalSelectedOnly" type="checkbox" checked>
+        <span>Ukuran detail: court yang dipilih sahaja</span>
       </div>
       <div class="inline" style="margin-top:8px;display:none">
         <input id="showFutsalStandardDetailSizes" type="checkbox">
