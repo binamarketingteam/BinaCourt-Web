@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.8",
+  "versionCode": 8,
+  "versionName": "1.0.7",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Technical dimensions ditambah untuk Basketball, Netball dan Pickleball dengan tick/untick seperti Futsal. Saiz font court sedia ada dikekalkan dan stroke putih pada label ukuran baharu dibuang."
+  "notes": "Guest access ditambah. Admin dan Guest direkod sebagai role berasingan untuk kawalan akses masa depan. Pinch zoom turut tersedia dalam fallback offline."
 }
