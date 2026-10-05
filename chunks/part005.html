@@ -520,7 +520,9 @@ const courtViewport = {
   w:0,
   h:0,
   minRatio:.12,
-  maxRatio:1.45
+  // Custom-site pasteboard can zoom far out so artwork is not limited to the
+  // original siteW/siteH working box. Panning remains unrestricted.
+  maxRatio:20
 };
 
 function courtViewMargin(){

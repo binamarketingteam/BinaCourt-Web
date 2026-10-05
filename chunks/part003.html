@@ -71,7 +71,12 @@
             <button id="toggleCustomSiteAreaLock" type="button" class="secondary">🔓 Edit</button>
           </div>
         </div>
-        <div class="row">
+        <label for="customSiteDrawMode" style="margin-top:4px">Jenis lakaran kawasan</label>
+        <select id="customSiteDrawMode">
+          <option value="polygon">Polygon Bebas</option>
+          <option value="rect">Segi Empat (Rectangle)</option>
+        </select>
+        <div class="row" style="margin-top:7px">
           <button id="startCustomSiteDraw" type="button" class="secondary">✏️ Draw Site</button>
           <button id="closeCustomSiteShape" type="button" class="secondary">Tutup Bentuk</button>
         </div>
