@@ -524,8 +524,12 @@
             </div>
 
             <div id="selNetballWrap" style="display:none">
-              <label>Warna petak tengah, bulatan tengah & separa goal</label>
-              <input id="selNetball" type="color">
+              <div class="row">
+                <div><label>Warna Goal D</label><input id="selNetball" type="color"></div>
+                <div><label>Warna bulatan tengah</label><input id="selNetballCenter" type="color"></div>
+              </div>
+              <label>Warna petak tengah</label>
+              <input id="selNetballMiddle" type="color">
             </div>
 
             <div id="selVolleyballWrap" style="display:none">
@@ -636,9 +640,21 @@
               </div>
 
               <div id="selNetballPaletteGroup" class="palette-group" style="display:none">
-                <div class="palette-heading">3. Warna bulatan tengah & separa goal</div>
+                <div class="palette-heading">3. Warna Goal D</div>
                 <small>Khas untuk court Netball</small>
                 <div id="selNetballPalette" class="palette"></div>
+              </div>
+
+              <div id="selNetballCenterPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">4. Warna bulatan tengah</div>
+                <small>Khas untuk court Netball</small>
+                <div id="selNetballCenterPalette" class="palette"></div>
+              </div>
+
+              <div id="selNetballMiddlePaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">5. Warna petak tengah</div>
+                <small>Kawasan di antara dua transverse line Netball</small>
+                <div id="selNetballMiddlePalette" class="palette"></div>
               </div>
 
               <div id="selVolleyballPaletteGroup" class="palette-group" style="display:none">
