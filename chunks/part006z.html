@@ -22,7 +22,7 @@ function normalizeMultiZone(zone,index=0){
   const z=zone && typeof zone==="object" ? zone : {};
   return {
     id:Math.max(1,parseInt(z.id ?? index+1,10)||index+1),
-    name:String(z.name || \`Zone \${index+1}\`).trim().slice(0,50) || \`Zone \${index+1}\`,
+    name:String(z.name || `Zone ${index+1}`).trim().slice(0,50) || `Zone ${index+1}`,
     x:Number.isFinite(Number(z.x)) ? Number(z.x) : 2,
     y:Number.isFinite(Number(z.y)) ? Number(z.y) : 2,
     w:Math.max(.5,Number(z.w)||20),
@@ -160,7 +160,7 @@ function addBlankMultiZone(){
   const w=Math.min(24,Math.max(8,state.siteW*.42));
   const h=Math.min(16,Math.max(6,state.siteH*.30));
   const z=normalizeMultiZone({
-    id,name:\`Zone \${state.zones.length+1}\`,
+    id,name:`Zone ${state.zones.length+1}`,
     x:Math.max(0,(state.siteW-w)/2),
     y:Math.max(0,(state.siteH-h)/2),
     w,h,walkway:.5,color:state.siteColor
@@ -180,7 +180,7 @@ function addZoneFromCurrentSelection(){
   }
   const id=state.nextZoneId++;
   const z=normalizeMultiZone({
-    id,name:\`Zone \${state.zones.length+1}\`,walkway:.5,color:state.siteColor
+    id,name:`Zone ${state.zones.length+1}`,walkway:.5,color:state.siteColor
   },state.zones.length);
   state.zones.push(z);
   state.selectedZoneId=id;
@@ -252,7 +252,7 @@ function duplicateActiveZone(){
 function deleteActiveZone(){
   const z=activeZone();
   if(!z) return;
-  if(!confirm(\`Padam "\${z.name}"? Court dalam Zone akan kekal dan hanya dikeluarkan daripada Zone.\`)) return;
+  if(!confirm(`Padam "${z.name}"? Court dalam Zone akan kekal dan hanya dikeluarkan daripada Zone.`)) return;
   state.courts.forEach(c=>{if(c.zoneId===z.id)c.zoneId=null;});
   state.zones=state.zones.filter(item=>item.id!==z.id);
   state.selectedZoneId=state.zones[0]?.id ?? null;
@@ -312,7 +312,7 @@ function syncMultiZoneUi(){
     state.zones.forEach(z=>{
       const op=document.createElement("option");
       op.value=String(z.id);
-      op.textContent=\`\${z.name} · \${zoneMembers(z).length} court\`;
+      op.textContent=`${z.name} · ${zoneMembers(z).length} court`;
       select.appendChild(op);
     });
     select.value=old && state.zones.some(z=>String(z.id)===old) ? old : String(state.zones[0].id);
@@ -334,12 +334,12 @@ function syncMultiZoneUi(){
   }else{
     ids.forEach(id=>{const el=$(id);if(el && el.type!=="color")el.value="";});
   }
-  if($("zoneCountBadge")) $("zoneCountBadge").textContent=\`\${state.zones.length} zone\`;
+  if($("zoneCountBadge")) $("zoneCountBadge").textContent=`${state.zones.length} zone`;
   if($("toggleZoneLock")) $("toggleZoneLock").textContent=z?.locked?"🔒 Zone Locked":"🔓 Zone Edit";
   if($("toggleZoneVisibility")) $("toggleZoneVisibility").textContent=z?.visible===false?"🙈 Zone Hidden":"👁 Zone Visible";
   if($("zoneStatus")){
     $("zoneStatus").innerHTML=z
-      ? \`<strong>\${z.name}</strong> · \${zoneMembers(z).length} court · \${formatLength(z.w)} × \${formatLength(z.h)} · \${formatLength(z.walkway)} walkway\`
+      ? `<strong>${z.name}</strong> · ${zoneMembers(z).length} court · ${formatLength(z.w)} × ${formatLength(z.h)} · ${formatLength(z.walkway)} walkway`
       : 'Pilih court dan tekan <strong>+ Dari Court Dipilih</strong> untuk bina zone dengan cepat.';
   }
 }
@@ -454,7 +454,7 @@ function renderSiteBackgroundAndZones(){
       x:bg.x,y:bg.y,width:bg.w,height:bg.h,
       opacity:bg.opacity,
       preserveAspectRatio:"none",
-      transform:\`rotate(\${bg.angle||0} \${bg.x+bg.w/2} \${bg.y+bg.h/2})\`,
+      transform:`rotate(${bg.angle||0} ${bg.x+bg.w/2} ${bg.y+bg.h/2})`,
       class:bg.includeInExport ? "site-background-artwork" : "site-background-artwork editing-only",
       "data-site-background":"1"
     });
@@ -470,7 +470,7 @@ function renderSiteBackgroundAndZones(){
     const ctr=zoneCenter(z);
     const art=ns("g",{
       "data-zone-id":z.id,
-      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`
+      transform:`rotate(${z.angle||0} ${ctr.x} ${ctr.y})`
     });
     const rect=ns("rect",{
       x:z.x,y:z.y,width:z.w,height:z.h,
@@ -491,7 +491,7 @@ function renderSiteBackgroundAndZones(){
       stroke:z.id===state.selectedZoneId?"#f59e0b":"#ffffff",
       "stroke-width":z.id===state.selectedZoneId?.06:.035,
       "stroke-dasharray":z.id===state.selectedZoneId?".24 .12":".16 .10",
-      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`,
+      transform:`rotate(${z.angle||0} ${ctr.x} ${ctr.y})`,
       "vector-effect":"non-scaling-stroke"
     });
     const label=ns("text",{
@@ -499,7 +499,7 @@ function renderSiteBackgroundAndZones(){
       "text-anchor":"middle",fill:"#111827",
       "font-size":Math.max(.28,Math.min(.46,Math.min(state.siteW,state.siteH)*.012)),
       "font-weight":"700",
-      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`,
+      transform:`rotate(${z.angle||0} ${ctr.x} ${ctr.y})`,
       "paint-order":"stroke","stroke":"#ffffff","stroke-width":".08"
     });
     label.textContent=z.name;
@@ -597,7 +597,7 @@ function calibrateSiteBackgroundFromMeasurement(){
   bg.w*=factor;bg.h*=factor;
   bg.x=newCenter.x-bg.w/2;bg.y=newCenter.y-bg.h/2;
   syncSiteBackgroundUi();render();commitHistory();
-  alert(\`Background calibrated. Scale × \${factor.toFixed(3)}.\`);
+  alert(`Background calibrated. Scale × ${factor.toFixed(3)}.`);
 }
 
 function safeProposalFileName(){
