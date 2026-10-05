@@ -14,7 +14,6 @@
             <button id="exportPdf" class="primary" type="button">Export PDF</button>
             <button id="exportPng" class="secondary" type="button">Export PNG</button>
             <button id="exportPdfVector" class="secondary" type="button">PDF Vector</button>
-            <button id="exportSiteProposal" class="secondary" type="button" style="grid-column:1/-1">🗺 Site Proposal · Aerial + Technical</button>
           </div>
 
           <details class="compact-details">
@@ -45,87 +44,6 @@
 
     <div class="section sidebar-panel" id="panelSite">
       <h2><span class="panel-number">1</span> Site</h2>
-
-      <label for="siteLayoutMode">Layout Mode</label>
-      <select id="siteLayoutMode">
-        <option value="single">Single Site</option>
-        <option value="multi">Multiple Zones / Free Layout</option>
-      </select>
-
-      <div id="multiZoneTools" class="multi-zone-card" hidden>
-        <div class="multi-zone-title">
-          <strong>Multi-Court Zones</strong>
-          <span id="zoneCountBadge" class="hint">0 zone</span>
-        </div>
-        <label for="zoneSelect" style="margin-top:0">Zone aktif</label>
-        <select id="zoneSelect"></select>
-
-        <div class="multi-zone-grid" style="margin-top:7px">
-          <div class="span-2">
-            <label for="zoneName" style="margin-top:0">Nama Zone</label>
-            <input id="zoneName" type="text" maxlength="50" placeholder="Contoh: Netball A">
-          </div>
-          <div><label for="zoneX">X</label><input id="zoneX" type="number" step="0.1"></div>
-          <div><label for="zoneY">Y</label><input id="zoneY" type="number" step="0.1"></div>
-          <div><label for="zoneW">Panjang</label><input id="zoneW" type="number" min="1" step="0.1"></div>
-          <div><label for="zoneH">Lebar</label><input id="zoneH" type="number" min="1" step="0.1"></div>
-          <div><label for="zoneAngle">Rotate °</label><input id="zoneAngle" type="number" step="1"></div>
-          <div><label for="zoneWalkway">Walkway</label><input id="zoneWalkway" type="number" min="0" step="0.1" value="0.5"></div>
-          <div class="span-2"><label for="zoneColor">Warna Zone / Walkway</label><input id="zoneColor" type="color" value="#4a7f39"></div>
-        </div>
-
-        <div class="multi-zone-actions">
-          <button id="addBlankZone" class="secondary" type="button">＋ Blank Zone</button>
-          <button id="addZoneFromSelection" class="secondary" type="button">＋ Dari Court Dipilih</button>
-          <button id="assignSelectionToZone" class="secondary" type="button">↳ Assign Court</button>
-          <button id="removeSelectionFromZone" class="secondary" type="button">↲ Unassign Court</button>
-          <button id="fitZoneToMembers" class="secondary" type="button">Fit Zone ke Court</button>
-          <button id="duplicateZone" class="secondary" type="button">⧉ Duplicate Zone</button>
-          <button id="toggleZoneLock" class="secondary" type="button">🔓 Zone Edit</button>
-          <button id="toggleZoneVisibility" class="secondary" type="button">👁 Zone Visible</button>
-        </div>
-        <button id="deleteZone" class="danger" type="button" style="margin-top:7px;width:100%">Padam Zone (court kekal)</button>
-        <div id="zoneStatus" class="zone-status">Pilih court dan tekan <strong>+ Dari Court Dipilih</strong> untuk bina zone dengan cepat.</div>
-      </div>
-
-      <div id="siteBackgroundTools" class="site-background-card">
-        <div class="multi-zone-title">
-          <strong>Background Site Plan / Aerial</strong>
-          <span id="siteBackgroundStatus" class="hint">Tiada gambar</span>
-        </div>
-        <input id="siteBackgroundInput" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
-        <div class="zone-mini-row">
-          <button id="chooseSiteBackground" class="secondary" type="button">🖼 Add / Change</button>
-          <button id="removeSiteBackground" class="danger" type="button">Remove</button>
-        </div>
-
-        <label for="siteBackgroundOpacity" style="margin-top:9px">Opacity</label>
-        <div class="site-bg-opacity-row">
-          <input id="siteBackgroundOpacity" type="range" min="0.1" max="1" step="0.05" value="0.6">
-          <output id="siteBackgroundOpacityValue">60%</output>
-        </div>
-
-        <div class="site-bg-controls" style="margin-top:7px">
-          <div><label for="siteBgX">X</label><input id="siteBgX" type="number" step="0.1"></div>
-          <div><label for="siteBgY">Y</label><input id="siteBgY" type="number" step="0.1"></div>
-          <div><label for="siteBgW">Panjang</label><input id="siteBgW" type="number" min="0.1" step="0.1"></div>
-          <div><label for="siteBgH">Lebar</label><input id="siteBgH" type="number" min="0.1" step="0.1"></div>
-          <div><label for="siteBgAngle">Rotate °</label><input id="siteBgAngle" type="number" step="1"></div>
-          <div><label for="siteBgActualDistance">Calibrate (m)</label><input id="siteBgActualDistance" type="number" min="0.01" step="0.01" placeholder="contoh 30"></div>
-        </div>
-
-        <div class="zone-mini-row">
-          <button id="fitBackgroundToSite" class="secondary" type="button">Fit ke Site</button>
-          <button id="calibrateBackground" class="secondary" type="button">Calibrate guna Measurement</button>
-        </div>
-
-        <div class="site-bg-checks">
-          <div class="inline"><input id="siteBackgroundVisible" type="checkbox" checked><span>Visible</span></div>
-          <div class="inline"><input id="siteBackgroundLocked" type="checkbox" checked><span>Lock</span></div>
-          <div class="inline span-2"><input id="siteBackgroundIncludeExport" type="checkbox" checked><span>Masukkan background dalam export biasa</span></div>
-        </div>
-        <div class="proposal-export-note">Untuk calibration: guna Tools → Ukur pada satu jarak yang diketahui di gambar, pilih Measurement itu, masukkan jarak sebenar dan tekan Calibrate.</div>
-      </div>
       <label for="siteShapeMode">Bentuk kawasan tapak</label>
       <select id="siteShapeMode">
         <option value="rect">Rectangle</option>
