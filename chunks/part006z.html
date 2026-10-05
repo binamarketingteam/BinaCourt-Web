@@ -1,0 +1,797 @@
+
+/* v241 Multi-Zone / Free Layout extension.
+   Built on top of the v240 stable web editor without replacing existing court logic. */
+
+Object.assign(state,{
+  siteLayoutMode:state.siteLayoutMode==="multi" ? "multi" : "single",
+  zones:Array.isArray(state.zones) ? state.zones : [],
+  nextZoneId:Math.max(1,parseInt(state.nextZoneId||1,10)||1),
+  selectedZoneId:state.selectedZoneId ?? null,
+  siteBackground:state.siteBackground && typeof state.siteBackground==="object"
+    ? state.siteBackground
+    : {
+        src:"",
+        name:"",
+        x:0,y:0,w:state.siteW,h:state.siteH,
+        angle:0,opacity:.60,
+        visible:true,locked:true,includeInExport:true
+      }
+});
+
+function normalizeMultiZone(zone,index=0){
+  const z=zone && typeof zone==="object" ? zone : {};
+  return {
+    id:Math.max(1,parseInt(z.id ?? index+1,10)||index+1),
+    name:String(z.name || \`Zone \${index+1}\`).trim().slice(0,50) || \`Zone \${index+1}\`,
+    x:Number.isFinite(Number(z.x)) ? Number(z.x) : 2,
+    y:Number.isFinite(Number(z.y)) ? Number(z.y) : 2,
+    w:Math.max(.5,Number(z.w)||20),
+    h:Math.max(.5,Number(z.h)||12),
+    angle:Number(z.angle)||0,
+    walkway:Math.max(0,Number(z.walkway)||0),
+    color:normalizeHexColor(z.color) || normalizeHexColor(state.siteColor) || "#4a7f39",
+    visible:z.visible!==false,
+    locked:!!z.locked
+  };
+}
+
+function normalizeSiteBackgroundData(value){
+  const bg=value && typeof value==="object" ? value : {};
+  return {
+    src:typeof bg.src==="string" ? bg.src : "",
+    name:String(bg.name||"").slice(0,120),
+    x:Number.isFinite(Number(bg.x)) ? Number(bg.x) : 0,
+    y:Number.isFinite(Number(bg.y)) ? Number(bg.y) : 0,
+    w:Math.max(.1,Number(bg.w)||state.siteW),
+    h:Math.max(.1,Number(bg.h)||state.siteH),
+    angle:Number(bg.angle)||0,
+    opacity:Math.max(.05,Math.min(1,Number(bg.opacity)||.6)),
+    visible:bg.visible!==false,
+    locked:bg.locked!==false,
+    includeInExport:bg.includeInExport!==false
+  };
+}
+
+function normalizeMultiZoneState(){
+  state.siteLayoutMode=state.siteLayoutMode==="multi" ? "multi" : "single";
+  state.zones=(Array.isArray(state.zones)?state.zones:[]).map(normalizeMultiZone);
+  const used=new Set();
+  state.zones=state.zones.filter(z=>{
+    while(used.has(z.id)) z.id++;
+    used.add(z.id);
+    return true;
+  });
+  state.nextZoneId=Math.max(
+    parseInt(state.nextZoneId||1,10)||1,
+    ...state.zones.map(z=>z.id+1),
+    1
+  );
+  if(!state.zones.some(z=>z.id===state.selectedZoneId)){
+    state.selectedZoneId=state.zones[0]?.id ?? null;
+  }
+  const validIds=new Set(state.zones.map(z=>z.id));
+  state.courts.forEach(c=>{
+    const zid=parseInt(c.zoneId,10);
+    c.zoneId=validIds.has(zid) ? zid : null;
+  });
+  state.siteBackground=normalizeSiteBackgroundData(state.siteBackground);
+}
+
+function activeZone(){
+  normalizeMultiZoneState();
+  return state.zones.find(z=>z.id===state.selectedZoneId) || null;
+}
+
+function zoneMembers(zone){
+  if(!zone) return [];
+  return state.courts.filter(c=>parseInt(c.zoneId,10)===zone.id);
+}
+
+function zoneCenter(zone){
+  return {x:zone.x+zone.w/2,y:zone.y+zone.h/2};
+}
+
+function rotatedPointAround(point,center,deltaDeg){
+  const a=deltaDeg*Math.PI/180;
+  const dx=point.x-center.x,dy=point.y-center.y;
+  return {
+    x:center.x+dx*Math.cos(a)-dy*Math.sin(a),
+    y:center.y+dx*Math.sin(a)+dy*Math.cos(a)
+  };
+}
+
+function moveZoneAndMembers(zone,dx,dy){
+  if(!zone || zone.locked || (!dx&&!dy)) return;
+  zone.x+=dx; zone.y+=dy;
+  zoneMembers(zone).forEach(c=>{c.x+=dx;c.y+=dy;});
+}
+
+function rotateZoneAndMembers(zone,newAngle){
+  if(!zone || zone.locked) return;
+  const old=Number(zone.angle)||0;
+  const next=Number(newAngle)||0;
+  const delta=next-old;
+  if(Math.abs(delta)<1e-8){zone.angle=next;return;}
+  const ctr=zoneCenter(zone);
+  zoneMembers(zone).forEach(c=>{
+    const cc={x:c.x+c.w/2,y:c.y+c.h/2};
+    const nc=rotatedPointAround(cc,ctr,delta);
+    c.x=nc.x-c.w/2;
+    c.y=nc.y-c.h/2;
+    c.angle=typeof normalizeCourtAngle==="function"
+      ? normalizeCourtAngle((Number(c.angle)||0)+delta)
+      : (Number(c.angle)||0)+delta;
+  });
+  zone.angle=next;
+}
+
+function fitZoneAroundMembers(zone,{preserveAngle=true}={}){
+  const members=zoneMembers(zone);
+  if(!zone || !members.length) return false;
+  const pad=Math.max(0,Number(zone.walkway)||0);
+
+  if(members.length===1 && preserveAngle){
+    const c=members[0];
+    const cx=c.x+c.w/2,cy=c.y+c.h/2;
+    zone.w=Math.max(.5,c.w+pad*2);
+    zone.h=Math.max(.5,c.h+pad*2);
+    zone.x=cx-zone.w/2;
+    zone.y=cy-zone.h/2;
+    zone.angle=Number(c.angle)||0;
+    return true;
+  }
+
+  const boxes=members.map(c=>bounds(c));
+  const minX=Math.min(...boxes.map(b=>b.minX));
+  const minY=Math.min(...boxes.map(b=>b.minY));
+  const maxX=Math.max(...boxes.map(b=>b.maxX));
+  const maxY=Math.max(...boxes.map(b=>b.maxY));
+  zone.x=minX-pad;
+  zone.y=minY-pad;
+  zone.w=Math.max(.5,maxX-minX+pad*2);
+  zone.h=Math.max(.5,maxY-minY+pad*2);
+  zone.angle=0;
+  return true;
+}
+
+function addBlankMultiZone(){
+  normalizeMultiZoneState();
+  const id=state.nextZoneId++;
+  const w=Math.min(24,Math.max(8,state.siteW*.42));
+  const h=Math.min(16,Math.max(6,state.siteH*.30));
+  const z=normalizeMultiZone({
+    id,name:\`Zone \${state.zones.length+1}\`,
+    x:Math.max(0,(state.siteW-w)/2),
+    y:Math.max(0,(state.siteH-h)/2),
+    w,h,walkway:.5,color:state.siteColor
+  },state.zones.length);
+  state.zones.push(z);
+  state.selectedZoneId=id;
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function addZoneFromCurrentSelection(){
+  const courts=selectedCourts();
+  if(!courts.length){
+    alert("Pilih sekurang-kurangnya satu court dahulu.");
+    return;
+  }
+  const id=state.nextZoneId++;
+  const z=normalizeMultiZone({
+    id,name:\`Zone \${state.zones.length+1}\`,walkway:.5,color:state.siteColor
+  },state.zones.length);
+  state.zones.push(z);
+  state.selectedZoneId=id;
+  courts.forEach(c=>c.zoneId=id);
+  fitZoneAroundMembers(z,{preserveAngle:true});
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function assignSelectionToActiveZone(){
+  const z=activeZone();
+  const courts=selectedCourts();
+  if(!z){alert("Pilih Zone aktif dahulu.");return;}
+  if(!courts.length){alert("Pilih court yang mahu dimasukkan ke Zone.");return;}
+  courts.forEach(c=>c.zoneId=z.id);
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function unassignSelectionFromZone(){
+  const courts=selectedCourts();
+  if(!courts.length){alert("Pilih court dahulu.");return;}
+  courts.forEach(c=>c.zoneId=null);
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function duplicateActiveZone(){
+  const source=activeZone();
+  if(!source) return;
+  const dx=Math.max(1,Math.min(3,source.walkway+1));
+  const dy=dx;
+  const id=state.nextZoneId++;
+  const copy=normalizeMultiZone({
+    ...cloneData(source),
+    id,
+    name:(source.name+" Copy").slice(0,50),
+    x:source.x+dx,
+    y:source.y+dy,
+    locked:false
+  },state.zones.length);
+  state.zones.push(copy);
+
+  const created=[];
+  zoneMembers(source).forEach(c=>{
+    const nc=cloneData(c);
+    nc.id=state.nextId++;
+    nc.x+=dx;nc.y+=dy;
+    nc.zoneId=id;
+    nc.name=nc.name ? (nc.name+" Copy").slice(0,80) : "";
+    state.courts.push(nc);
+    created.push(nc);
+  });
+
+  state.selectedZoneId=id;
+  if(created.length){
+    state.selectedId=created[0].id;
+    multiSelectedCourtIds.clear();
+    created.forEach(c=>multiSelectedCourtIds.add(c.id));
+  }
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function deleteActiveZone(){
+  const z=activeZone();
+  if(!z) return;
+  if(!confirm(\`Padam "\${z.name}"? Court dalam Zone akan kekal dan hanya dikeluarkan daripada Zone.\`)) return;
+  state.courts.forEach(c=>{if(c.zoneId===z.id)c.zoneId=null;});
+  state.zones=state.zones.filter(item=>item.id!==z.id);
+  state.selectedZoneId=state.zones[0]?.id ?? null;
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function applyZoneEditorValues(){
+  const z=activeZone();
+  if(!z) return;
+
+  const oldX=z.x,oldY=z.y,oldAngle=z.angle;
+  z.name=String($("zoneName")?.value||z.name).trim().slice(0,50)||z.name;
+  const nextX=Number($("zoneX")?.value);
+  const nextY=Number($("zoneY")?.value);
+  const nextW=Number($("zoneW")?.value);
+  const nextH=Number($("zoneH")?.value);
+  const nextAngle=Number($("zoneAngle")?.value);
+  const nextWalkway=Number($("zoneWalkway")?.value);
+  const nextColor=normalizeHexColor($("zoneColor")?.value||"");
+
+  if(Number.isFinite(nextX)) z.x=nextX;
+  if(Number.isFinite(nextY)) z.y=nextY;
+  if(Number.isFinite(nextW)) z.w=Math.max(.5,nextW);
+  if(Number.isFinite(nextH)) z.h=Math.max(.5,nextH);
+  if(Number.isFinite(nextWalkway)) z.walkway=Math.max(0,nextWalkway);
+  if(nextColor) z.color=nextColor;
+
+  const dx=z.x-oldX,dy=z.y-oldY;
+  if(dx||dy){
+    zoneMembers(z).forEach(c=>{c.x+=dx;c.y+=dy;});
+  }
+  z.angle=oldAngle;
+  if(Number.isFinite(nextAngle)) rotateZoneAndMembers(z,nextAngle);
+
+  syncMultiZoneUi();
+  render();
+  commitHistory();
+}
+
+function syncMultiZoneUi(){
+  const mode=$("siteLayoutMode");
+  if(mode) mode.value=state.siteLayoutMode;
+  const panel=$("multiZoneTools");
+  if(panel) panel.hidden=state.siteLayoutMode!=="multi";
+
+  const select=$("zoneSelect");
+  if(!select) return;
+  normalizeMultiZoneState();
+  const old=String(state.selectedZoneId??"");
+  select.replaceChildren();
+  if(!state.zones.length){
+    const op=document.createElement("option");op.value="";op.textContent="Tiada Zone";
+    select.appendChild(op);
+  }else{
+    state.zones.forEach(z=>{
+      const op=document.createElement("option");
+      op.value=String(z.id);
+      op.textContent=\`\${z.name} · \${zoneMembers(z).length} court\`;
+      select.appendChild(op);
+    });
+    select.value=old && state.zones.some(z=>String(z.id)===old) ? old : String(state.zones[0].id);
+    state.selectedZoneId=parseInt(select.value,10)||state.zones[0].id;
+  }
+
+  const z=activeZone();
+  const ids=["zoneName","zoneX","zoneY","zoneW","zoneH","zoneAngle","zoneWalkway","zoneColor"];
+  ids.forEach(id=>{const el=$(id);if(el)el.disabled=!z || !!z.locked;});
+  if(z){
+    $("zoneName").value=z.name;
+    $("zoneX").value=Number(z.x.toFixed(3));
+    $("zoneY").value=Number(z.y.toFixed(3));
+    $("zoneW").value=Number(z.w.toFixed(3));
+    $("zoneH").value=Number(z.h.toFixed(3));
+    $("zoneAngle").value=Number((z.angle||0).toFixed(2));
+    $("zoneWalkway").value=Number((z.walkway||0).toFixed(3));
+    $("zoneColor").value=normalizeHexColor(z.color)||"#4a7f39";
+  }else{
+    ids.forEach(id=>{const el=$(id);if(el && el.type!=="color")el.value="";});
+  }
+  if($("zoneCountBadge")) $("zoneCountBadge").textContent=\`\${state.zones.length} zone\`;
+  if($("toggleZoneLock")) $("toggleZoneLock").textContent=z?.locked?"🔒 Zone Locked":"🔓 Zone Edit";
+  if($("toggleZoneVisibility")) $("toggleZoneVisibility").textContent=z?.visible===false?"🙈 Zone Hidden":"👁 Zone Visible";
+  if($("zoneStatus")){
+    $("zoneStatus").innerHTML=z
+      ? \`<strong>\${z.name}</strong> · \${zoneMembers(z).length} court · \${formatLength(z.w)} × \${formatLength(z.h)} · \${formatLength(z.walkway)} walkway\`
+      : 'Pilih court dan tekan <strong>+ Dari Court Dipilih</strong> untuk bina zone dengan cepat.';
+  }
+}
+
+function setZoneSelection(id){
+  const parsed=parseInt(id,10);
+  state.selectedZoneId=state.zones.some(z=>z.id===parsed)?parsed:null;
+  syncMultiZoneUi();
+  render();
+}
+
+function toggleActiveZoneLock(){
+  const z=activeZone();if(!z)return;
+  z.locked=!z.locked;
+  syncMultiZoneUi();render();commitHistory();
+}
+function toggleActiveZoneVisibility(){
+  const z=activeZone();if(!z)return;
+  z.visible=!z.visible;
+  syncMultiZoneUi();render();commitHistory();
+}
+function fitActiveZone(){
+  const z=activeZone();if(!z)return;
+  if(!fitZoneAroundMembers(z,{preserveAngle:true})){
+    alert("Zone ini belum mempunyai court.");
+    return;
+  }
+  syncMultiZoneUi();render();commitHistory();
+}
+
+function beginZoneDrag(event,zone){
+  if(zone.locked || event.button!==0) return;
+  event.preventDefault();event.stopPropagation();
+  state.selectedZoneId=zone.id;
+  syncMultiZoneUi();
+
+  const start=stagePointFromClient(event.clientX,event.clientY);
+  const origin={x:zone.x,y:zone.y};
+  const memberOrigins=new Map(zoneMembers(zone).map(c=>[c.id,{x:c.x,y:c.y}]));
+  const pointerId=event.pointerId;
+  try{svg.setPointerCapture(pointerId);}catch(_){}
+
+  const move=e=>{
+    if(e.pointerId!==pointerId)return;
+    e.preventDefault();
+    const p=stagePointFromClient(e.clientX,e.clientY);
+    const dx=p.x-start.x,dy=p.y-start.y;
+    zone.x=origin.x+dx;zone.y=origin.y+dy;
+    zoneMembers(zone).forEach(c=>{
+      const o=memberOrigins.get(c.id);if(o){c.x=o.x+dx;c.y=o.y+dy;}
+    });
+    render({preserveStagePosition:false});
+  };
+  const finish=e=>{
+    if(e.pointerId!==pointerId)return;
+    svg.removeEventListener("pointermove",move);
+    svg.removeEventListener("pointerup",finish);
+    svg.removeEventListener("pointercancel",cancel);
+    try{svg.releasePointerCapture(pointerId);}catch(_){}
+    syncMultiZoneUi();commitHistory();
+  };
+  const cancel=e=>{
+    if(e?.pointerId!==undefined && e.pointerId!==pointerId)return;
+    zone.x=origin.x;zone.y=origin.y;
+    zoneMembers(zone).forEach(c=>{const o=memberOrigins.get(c.id);if(o){c.x=o.x;c.y=o.y;}});
+    svg.removeEventListener("pointermove",move);
+    svg.removeEventListener("pointerup",finish);
+    svg.removeEventListener("pointercancel",cancel);
+    render({preserveStagePosition:false});
+  };
+  svg.addEventListener("pointermove",move);
+  svg.addEventListener("pointerup",finish);
+  svg.addEventListener("pointercancel",cancel);
+}
+
+function beginSiteBackgroundDrag(event){
+  const bg=state.siteBackground;
+  if(bg.locked || event.button!==0)return;
+  event.preventDefault();event.stopPropagation();
+  const start=stagePointFromClient(event.clientX,event.clientY);
+  const ox=bg.x,oy=bg.y,pointerId=event.pointerId;
+  try{svg.setPointerCapture(pointerId);}catch(_){}
+  const move=e=>{
+    if(e.pointerId!==pointerId)return;
+    const p=stagePointFromClient(e.clientX,e.clientY);
+    bg.x=ox+(p.x-start.x);bg.y=oy+(p.y-start.y);
+    render({preserveStagePosition:false});
+  };
+  const finish=e=>{
+    if(e.pointerId!==pointerId)return;
+    svg.removeEventListener("pointermove",move);svg.removeEventListener("pointerup",finish);svg.removeEventListener("pointercancel",cancel);
+    try{svg.releasePointerCapture(pointerId);}catch(_){}
+    syncSiteBackgroundUi();commitHistory();
+  };
+  const cancel=()=>{
+    bg.x=ox;bg.y=oy;
+    svg.removeEventListener("pointermove",move);svg.removeEventListener("pointerup",finish);svg.removeEventListener("pointercancel",cancel);
+    render({preserveStagePosition:false});
+  };
+  svg.addEventListener("pointermove",move);svg.addEventListener("pointerup",finish);svg.addEventListener("pointercancel",cancel);
+}
+
+function renderSiteBackgroundAndZones(){
+  normalizeMultiZoneState();
+  const firstCourt=svg.querySelector("g[data-id]");
+  const anchor=firstCourt || null;
+  const bg=state.siteBackground;
+
+  if(bg.src && bg.visible){
+    const image=ns("image",{
+      href:bg.src,
+      x:bg.x,y:bg.y,width:bg.w,height:bg.h,
+      opacity:bg.opacity,
+      preserveAspectRatio:"none",
+      transform:\`rotate(\${bg.angle||0} \${bg.x+bg.w/2} \${bg.y+bg.h/2})\`,
+      class:bg.includeInExport ? "site-background-artwork" : "site-background-artwork editing-only",
+      "data-site-background":"1"
+    });
+    image.style.cursor=bg.locked?"default":"move";
+    image.style.pointerEvents=bg.locked?"none":"auto";
+    if(!bg.locked) image.addEventListener("pointerdown",beginSiteBackgroundDrag);
+    if(anchor) svg.insertBefore(image,anchor); else svg.appendChild(image);
+  }
+
+  if(state.siteLayoutMode!=="multi") return;
+
+  state.zones.filter(z=>z.visible!==false).forEach(z=>{
+    const ctr=zoneCenter(z);
+    const art=ns("g",{
+      "data-zone-id":z.id,
+      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`
+    });
+    const rect=ns("rect",{
+      x:z.x,y:z.y,width:z.w,height:z.h,
+      fill:z.color,"fill-opacity":".88",
+      stroke:"none",
+      rx:Math.min(.28,z.w*.02,z.h*.02)
+    });
+    rect.style.cursor=z.locked?"default":"move";
+    rect.style.pointerEvents=z.locked?"none":"auto";
+    if(!z.locked) rect.addEventListener("pointerdown",e=>beginZoneDrag(e,z));
+    art.appendChild(rect);
+    if(anchor) svg.insertBefore(art,anchor); else svg.appendChild(art);
+
+    const edit=ns("g",{class:"editing-only","pointer-events":"none","data-zone-guide":z.id});
+    const outline=ns("rect",{
+      x:z.x,y:z.y,width:z.w,height:z.h,
+      fill:"none",
+      stroke:z.id===state.selectedZoneId?"#f59e0b":"#ffffff",
+      "stroke-width":z.id===state.selectedZoneId?.06:.035,
+      "stroke-dasharray":z.id===state.selectedZoneId?".24 .12":".16 .10",
+      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`,
+      "vector-effect":"non-scaling-stroke"
+    });
+    const label=ns("text",{
+      x:ctr.x,y:z.y-.22,
+      "text-anchor":"middle",fill:"#111827",
+      "font-size":Math.max(.28,Math.min(.46,Math.min(state.siteW,state.siteH)*.012)),
+      "font-weight":"700",
+      transform:\`rotate(\${z.angle||0} \${ctr.x} \${ctr.y})\`,
+      "paint-order":"stroke","stroke":"#ffffff","stroke-width":".08"
+    });
+    label.textContent=z.name;
+    edit.append(outline,label);
+    if(anchor) svg.insertBefore(edit,anchor); else svg.appendChild(edit);
+  });
+}
+
+function syncSiteBackgroundUi(){
+  state.siteBackground=normalizeSiteBackgroundData(state.siteBackground);
+  const bg=state.siteBackground;
+  const status=$("siteBackgroundStatus");
+  if(status) status.textContent=bg.src ? (bg.name||"Background loaded") : "Tiada gambar";
+  const fields={
+    siteBgX:bg.x,siteBgY:bg.y,siteBgW:bg.w,siteBgH:bg.h,siteBgAngle:bg.angle
+  };
+  Object.entries(fields).forEach(([id,value])=>{const el=$(id);if(el)el.value=Number(Number(value).toFixed(3));});
+  if($("siteBackgroundOpacity")) $("siteBackgroundOpacity").value=bg.opacity;
+  if($("siteBackgroundOpacityValue")) $("siteBackgroundOpacityValue").value=Math.round(bg.opacity*100)+"%";
+  if($("siteBackgroundVisible")) $("siteBackgroundVisible").checked=bg.visible;
+  if($("siteBackgroundLocked")) $("siteBackgroundLocked").checked=bg.locked;
+  if($("siteBackgroundIncludeExport")) $("siteBackgroundIncludeExport").checked=bg.includeInExport;
+  ["siteBgX","siteBgY","siteBgW","siteBgH","siteBgAngle"].forEach(id=>{if($(id))$(id).disabled=bg.locked;});
+}
+
+function applySiteBackgroundEditor(){
+  const bg=state.siteBackground;
+  if(!bg)return;
+  const vals={
+    x:Number($("siteBgX")?.value),
+    y:Number($("siteBgY")?.value),
+    w:Number($("siteBgW")?.value),
+    h:Number($("siteBgH")?.value),
+    angle:Number($("siteBgAngle")?.value)
+  };
+  if(Number.isFinite(vals.x))bg.x=vals.x;
+  if(Number.isFinite(vals.y))bg.y=vals.y;
+  if(Number.isFinite(vals.w))bg.w=Math.max(.1,vals.w);
+  if(Number.isFinite(vals.h))bg.h=Math.max(.1,vals.h);
+  if(Number.isFinite(vals.angle))bg.angle=vals.angle;
+  render();commitHistory();
+}
+
+function loadSiteBackgroundFile(file){
+  if(!file)return;
+  if(!/^image\/(png|jpeg)$/i.test(file.type||"") && !/\.(png|jpe?g)$/i.test(file.name||"")){
+    alert("Gunakan fail PNG atau JPG/JPEG.");return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const src=String(reader.result||"");
+    const img=new Image();
+    img.onload=()=>{
+      const ratio=(img.naturalWidth||1)/(img.naturalHeight||1);
+      let w=state.siteW,h=w/ratio;
+      if(h>state.siteH){h=state.siteH;w=h*ratio;}
+      state.siteBackground={
+        ...normalizeSiteBackgroundData(state.siteBackground),
+        src,name:file.name||"Site Background",
+        w,h,x:(state.siteW-w)/2,y:(state.siteH-h)/2,
+        angle:0,visible:true
+      };
+      syncSiteBackgroundUi();render();commitHistory();
+    };
+    img.src=src;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fitSiteBackgroundToSite(){
+  const bg=state.siteBackground;if(!bg?.src)return;
+  bg.x=0;bg.y=0;bg.w=state.siteW;bg.h=state.siteH;bg.angle=0;
+  syncSiteBackgroundUi();render();commitHistory();
+}
+
+function calibrateSiteBackgroundFromMeasurement(){
+  const bg=state.siteBackground;
+  if(!bg?.src){alert("Masukkan background image dahulu.");return;}
+  const actual=Number($("siteBgActualDistance")?.value);
+  if(!(actual>0)){alert("Masukkan jarak sebenar dalam meter.");return;}
+  let m=state.measurements.find(item=>item.id===selectedMeasurementId);
+  if(!m) m=state.measurements.at(-1);
+  if(!m?.start || !m?.end){alert("Buat satu Measurement pada background dahulu.");return;}
+  const measured=Math.hypot(m.end.x-m.start.x,m.end.y-m.start.y);
+  if(!(measured>.001)){alert("Measurement terlalu pendek.");return;}
+  const factor=actual/measured;
+  if(!(factor>.02 && factor<50)){alert("Nilai calibration terlalu ekstrem. Semak Measurement dan jarak sebenar.");return;}
+
+  const anchor={x:m.start.x,y:m.start.y};
+  const oldCenter={x:bg.x+bg.w/2,y:bg.y+bg.h/2};
+  const newCenter={
+    x:anchor.x+(oldCenter.x-anchor.x)*factor,
+    y:anchor.y+(oldCenter.y-anchor.y)*factor
+  };
+  bg.w*=factor;bg.h*=factor;
+  bg.x=newCenter.x-bg.w/2;bg.y=newCenter.y-bg.h/2;
+  syncSiteBackgroundUi();render();commitHistory();
+  alert(\`Background calibrated. Scale × \${factor.toFixed(3)}.\`);
+}
+
+function safeProposalFileName(){
+  const base=String(state.projectTitle||"Bina Court").trim().replace(/[\\/:*?"<>|]+/g,"-").replace(/\s+/g," ").slice(0,90)||"Bina Court";
+  return base+" - Site Proposal.pdf";
+}
+
+async function exportSiteProposalPdf(){
+  const btn=$("exportSiteProposal");
+  if(!btn)return;
+  const oldText=btn.textContent;
+  const bg=state.siteBackground;
+  const previous={
+    visible:bg.visible,
+    include:bg.includeInExport,
+    selectedZoneId:state.selectedZoneId
+  };
+  try{
+    btn.disabled=true;btn.textContent="Menyediakan Aerial + Technical...";
+    if(bg.src){bg.visible=true;bg.includeInExport=true;}
+    state.selectedZoneId=null;
+    render({preserveStagePosition:false});
+    const aerialBase=await svgToCanvas(2800);
+    const aerial=await buildDrawingExportCanvas(aerialBase,"Aerial Proposal",1);
+
+    bg.visible=false;
+    render({preserveStagePosition:false});
+    const technicalBase=await svgToCanvas(2800);
+    const technical=await buildDrawingExportCanvas(technicalBase,"Technical Layout",2);
+
+    const pages=[
+      {...canvasToJpegData(aerial,.95),mode:"cover"},
+      {...canvasToJpegData(technical,.95),mode:"cover"}
+    ];
+    const pdf=createMultiPageImagePdf(pages);
+    await downloadBlob(pdf,safeProposalFileName());
+  }catch(err){
+    console.error(err);
+    alert("Export Site Proposal gagal: "+(err?.message||"Sila cuba lagi."));
+  }finally{
+    bg.visible=previous.visible;
+    bg.includeInExport=previous.include;
+    state.selectedZoneId=previous.selectedZoneId;
+    render({preserveStagePosition:false});
+    btn.disabled=false;btn.textContent=oldText;
+  }
+}
+
+/* Persist new state inside every Option / project JSON. */
+const captureCurrentOptionDataV240=captureCurrentOptionData;
+captureCurrentOptionData=function(){
+  const data=captureCurrentOptionDataV240();
+  normalizeMultiZoneState();
+  data.siteLayoutMode=state.siteLayoutMode;
+  data.zones=cloneData(state.zones);
+  data.nextZoneId=state.nextZoneId;
+  data.selectedZoneId=state.selectedZoneId;
+  data.siteBackground=cloneData(state.siteBackground);
+  return data;
+};
+
+const normalizeOptionDataV240=normalizeOptionData;
+normalizeOptionData=function(option){
+  const data=normalizeOptionDataV240(option);
+  const raw=option||{};
+  data.siteLayoutMode=raw.siteLayoutMode==="multi" ? "multi" : "single";
+  data.zones=(Array.isArray(raw.zones)?raw.zones:[]).map(normalizeMultiZone);
+  data.nextZoneId=Math.max(
+    parseInt(raw.nextZoneId||1,10)||1,
+    ...data.zones.map(z=>z.id+1),
+    1
+  );
+  const requested=parseInt(raw.selectedZoneId,10);
+  data.selectedZoneId=data.zones.some(z=>z.id===requested)?requested:(data.zones[0]?.id??null);
+  data.siteBackground=normalizeSiteBackgroundData(raw.siteBackground);
+  const valid=new Set(data.zones.map(z=>z.id));
+  data.courts.forEach(c=>{
+    const zid=parseInt(c.zoneId,10);
+    c.zoneId=valid.has(zid)?zid:null;
+  });
+  return data;
+};
+
+const applyOptionDataV240=applyOptionData;
+applyOptionData=function(optionData){
+  const normalized=normalizeOptionData(optionData);
+  applyOptionDataV240(normalized);
+  state.siteLayoutMode=normalized.siteLayoutMode;
+  state.zones=cloneData(normalized.zones);
+  state.nextZoneId=normalized.nextZoneId;
+  state.selectedZoneId=normalized.selectedZoneId;
+  state.siteBackground=cloneData(normalized.siteBackground);
+  normalizeMultiZoneState();
+};
+
+/* Add Zone colours to legends / visible-area calculation. */
+const collectUsedColorsV240=collectUsedColors;
+collectUsedColors=function(){
+  const used=collectUsedColorsV240();
+  if(state.siteLayoutMode!=="multi")return used;
+  state.zones.filter(z=>z.visible!==false).forEach(z=>{
+    const color=normalizeHexColor(z.color);if(!color)return;
+    const brand=siteBrand();
+    const info=colorInfo(color,getDefaultPaletteForBrand(brand))||{color,name:"Custom Colour"};
+    const existing=used.find(item=>item.color===info.color && item.kind==="surface" && item.brand===brand);
+    if(existing){
+      if(!existing.usage.includes("Zone / Walkway")) existing.usage+=" / Zone / Walkway";
+    }else{
+      used.push({...info,usage:"Zone / Walkway",kind:"surface",brand});
+    }
+  });
+  return used;
+};
+
+const visibleSurfacePairsV240=visibleSurfacePairs;
+visibleSurfacePairs=function(){
+  const pairs=visibleSurfacePairsV240();
+  if(state.siteLayoutMode!=="multi")return pairs;
+  state.zones.filter(z=>z.visible!==false).forEach(z=>{
+    const color=normalizeHexColor(z.color);if(!color)return;
+    const brand=siteBrand();
+    const key=surfaceLegendKey(brand,color);
+    if(!pairs.has(key)){
+      pairs.set(key,{key,hex:color,brand,name:colorInfo(color,getDefaultPaletteForBrand(brand))?.name||color.toUpperCase()});
+    }
+  });
+  return pairs;
+};
+
+/* Render extension: existing v240 canvas first, then site background + zone artwork
+   are inserted under the court groups. */
+const renderV240=render;
+render=function(options={}){
+  normalizeMultiZoneState();
+  const result=renderV240(options);
+  renderSiteBackgroundAndZones();
+  syncMultiZoneUi();
+  syncSiteBackgroundUi();
+  return result;
+};
+
+function initMultiZoneV241(){
+  normalizeMultiZoneState();
+  const mode=$("siteLayoutMode");
+  mode?.addEventListener("change",()=>{
+    state.siteLayoutMode=mode.value==="multi"?"multi":"single";
+    syncMultiZoneUi();render();commitHistory();
+  });
+
+  $("zoneSelect")?.addEventListener("change",e=>setZoneSelection(e.target.value));
+  ["zoneName","zoneX","zoneY","zoneW","zoneH","zoneAngle","zoneWalkway","zoneColor"].forEach(id=>{
+    $(id)?.addEventListener("change",applyZoneEditorValues);
+  });
+  $("addBlankZone")?.addEventListener("click",addBlankMultiZone);
+  $("addZoneFromSelection")?.addEventListener("click",addZoneFromCurrentSelection);
+  $("assignSelectionToZone")?.addEventListener("click",assignSelectionToActiveZone);
+  $("removeSelectionFromZone")?.addEventListener("click",unassignSelectionFromZone);
+  $("fitZoneToMembers")?.addEventListener("click",fitActiveZone);
+  $("duplicateZone")?.addEventListener("click",duplicateActiveZone);
+  $("deleteZone")?.addEventListener("click",deleteActiveZone);
+  $("toggleZoneLock")?.addEventListener("click",toggleActiveZoneLock);
+  $("toggleZoneVisibility")?.addEventListener("click",toggleActiveZoneVisibility);
+
+  $("chooseSiteBackground")?.addEventListener("click",()=>$("siteBackgroundInput")?.click());
+  $("siteBackgroundInput")?.addEventListener("change",e=>{
+    loadSiteBackgroundFile(e.target.files?.[0]);
+    e.target.value="";
+  });
+  $("removeSiteBackground")?.addEventListener("click",()=>{
+    if(!state.siteBackground?.src)return;
+    if(!confirm("Remove background site plan?"))return;
+    state.siteBackground=normalizeSiteBackgroundData({src:"",visible:true,locked:true,includeInExport:true});
+    syncSiteBackgroundUi();render();commitHistory();
+  });
+  $("siteBackgroundOpacity")?.addEventListener("input",e=>{
+    state.siteBackground.opacity=Math.max(.05,Math.min(1,Number(e.target.value)||.6));
+    if($("siteBackgroundOpacityValue"))$("siteBackgroundOpacityValue").value=Math.round(state.siteBackground.opacity*100)+"%";
+    render({preserveStagePosition:false});
+  });
+  $("siteBackgroundOpacity")?.addEventListener("change",()=>commitHistory());
+  ["siteBgX","siteBgY","siteBgW","siteBgH","siteBgAngle"].forEach(id=>$(id)?.addEventListener("change",applySiteBackgroundEditor));
+  $("siteBackgroundVisible")?.addEventListener("change",e=>{state.siteBackground.visible=!!e.target.checked;render();commitHistory();});
+  $("siteBackgroundLocked")?.addEventListener("change",e=>{state.siteBackground.locked=!!e.target.checked;syncSiteBackgroundUi();render();commitHistory();});
+  $("siteBackgroundIncludeExport")?.addEventListener("change",e=>{state.siteBackground.includeInExport=!!e.target.checked;render();commitHistory();});
+  $("fitBackgroundToSite")?.addEventListener("click",fitSiteBackgroundToSite);
+  $("calibrateBackground")?.addEventListener("click",calibrateSiteBackgroundFromMeasurement);
+  $("exportSiteProposal")?.addEventListener("click",()=>{
+    $("topExportMenu") && ($("topExportMenu").open=false);
+    exportSiteProposalPdf();
+  });
+
+  syncMultiZoneUi();
+  syncSiteBackgroundUi();
+  render({preserveStagePosition:false});
+}
+
+window.addEventListener("load",initMultiZoneV241,{once:true});
