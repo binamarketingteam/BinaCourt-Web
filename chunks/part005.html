@@ -141,6 +141,9 @@ function applyOptionData(optionData){
   state.siteBrand=normalizeBrand(data.siteBrand,state.brand);
   state.siteShapeMode=data.siteShapeMode;
   state.siteAreas=cloneData(data.siteAreas || []);
+  if(typeof applySiteAreaNameOverrides==="function"){
+    applySiteAreaNameOverrides(state.siteAreas,state.projectGroup,state.projectOption);
+  }
   state.activeSiteAreaId=data.activeSiteAreaId;
   state.nextSiteAreaId=data.nextSiteAreaId;
   state.sitePolygon=cloneData(data.sitePolygon || []);
