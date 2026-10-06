@@ -67,6 +67,18 @@ function normalizeHexColor(color){
   return /^#[0-9a-f]{6}$/.test(value) ? value : "";
 }
 
+function colorForSiteArea(area){
+  return normalizeHexColor(area?.color) || normalizeHexColor(state.siteColor) || "#7b7e82";
+}
+
+function currentSitePaletteColor(){
+  if(state.siteShapeMode==="custom" && typeof activeSiteArea==="function"){
+    const area=activeSiteArea();
+    if(area) return colorForSiteArea(area);
+  }
+  return normalizeHexColor(state.siteColor) || "#7b7e82";
+}
+
 function colorInfo(color, palette=getDefaultPalette()){
   const normalized=normalizeHexColor(color);
   if(!normalized) return null;
