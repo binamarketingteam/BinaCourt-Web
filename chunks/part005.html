@@ -31,6 +31,41 @@ function captureCurrentOptionData(){
   };
 }
 
+function commitCurrentSiteAreasDirectlyToOptionStore(){
+  if(state.siteShapeMode!=="custom") return;
+  ensureSiteAreas();
+  const active=state.siteAreas.find(area=>area.id===state.activeSiteAreaId) || null;
+  const nameInput=$("customSiteAreaName");
+
+  if(active && nameInput){
+    const clean=String(nameInput.value || "").replace(/\s+/g," ").trim();
+    if(clean){
+      active.name=clean;
+      if(typeof rememberSiteAreaNameOverride==="function"){
+        rememberSiteAreaNameOverride(active,clean);
+      }
+    }
+  }
+
+  syncActiveSiteAreaFromLegacy();
+
+  const optionNo=Math.max(1,parseInt(state.projectOption || 1,10) || 1);
+  const snapshot=captureCurrentOptionData();
+
+  if(!Array.isArray(state.optionPages)) state.optionPages=[];
+  while(state.optionPages.length<optionNo){
+    state.optionPages.push(cloneData(snapshot));
+  }
+  state.optionPages[optionNo-1]=cloneData(snapshot);
+
+  const groupIndex=Math.max(0,(parseInt(state.projectGroup || 1,10) || 1)-1);
+  if(Array.isArray(state.optionGroups) && state.optionGroups[groupIndex]){
+    const group=state.optionGroups[groupIndex];
+    group.currentOption=optionNo;
+    group.optionPages=cloneData(state.optionPages);
+  }
+}
+
 function normalizeOptionData(option){
   const data=option || {};
   const legacyPolygon=Array.isArray(data.sitePolygon)
