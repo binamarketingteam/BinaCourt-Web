@@ -292,6 +292,11 @@ function updateStageCursor(){
     return;
   }
 
+  if(typeof lineToolState!=="undefined" && lineToolState.active){
+    wrap.style.cursor="crosshair";
+    return;
+  }
+
   if(typeof measureToolState!=="undefined" && measureToolState.active){
     wrap.classList.add("measure-tool-active");
     wrap.style.cursor="crosshair";
@@ -506,12 +511,28 @@ function measurementLength(m){
   return Math.hypot(m.end.x-m.start.x,m.end.y-m.start.y);
 }
 
+const lineToolState={
+  active:false,
+  dragging:false,
+  pointerId:null,
+  start:null,
+  end:null,
+  color:"#111111",
+  thicknessMm:50
+};
+let selectedLineId=null;
+
 function updateToolsMenuState(){
   const main=$("toolsMenuButton");
+  const lineBtn=$("lineTool");
   const measure=$("measureTool");
   const textBtn=$("textTool");
   const imageBtn=$("imageTool");
   const panBtn=$("touchPanTool");
+  if(lineBtn){
+    lineBtn.classList.toggle("is-active",!!lineToolState.active);
+    lineBtn.setAttribute("aria-pressed",lineToolState.active?"true":"false");
+  }
   if(measure){
     measure.classList.toggle("is-active",!!measureToolState.active);
     measure.setAttribute("aria-pressed",measureToolState.active?"true":"false");
@@ -529,9 +550,9 @@ function updateToolsMenuState(){
     panBtn.setAttribute("aria-pressed",stageTouchPanMode?"true":"false");
   }
   if(main){
-    const any=!!measureToolState.active || !!textToolState.active || !!stageTouchPanMode;
+    const any=!!lineToolState.active || !!measureToolState.active || !!textToolState.active || !!stageTouchPanMode;
     main.classList.toggle("tool-active",any);
-    main.title=measureToolState.active ? "Tools · Ukur aktif" : (textToolState.active ? "Tools · Text aktif" : (stageTouchPanMode ? "Tools · Hand aktif" : "Tools"));
+    main.title=lineToolState.active ? "Tools · Line aktif" : (measureToolState.active ? "Tools · Ukur aktif" : (textToolState.active ? "Tools · Text aktif" : (stageTouchPanMode ? "Tools · Hand aktif" : "Tools")));
   }
   updateStageCursor();
 }
@@ -544,6 +565,7 @@ function setMeasureToolActive(active){
     return;
   }
   if(active && typeof textToolState!=="undefined") textToolState.active=false;
+  if(active) lineToolState.active=false;
   if(active) stageTouchPanMode=false;
   closeTextInlineEditor(false);
   measureToolState.active=!!active;
@@ -648,6 +670,7 @@ function setTextToolActive(active){
   }
   if(active){
     stageTouchPanMode=false;
+    lineToolState.active=false; lineToolState.dragging=false; lineToolState.start=null; lineToolState.end=null;
     measureToolState.active=false; measureToolState.dragging=false; measureToolState.start=null; measureToolState.end=null;
     closeMeasureInlineEditor(false);
   }

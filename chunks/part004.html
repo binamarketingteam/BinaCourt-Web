@@ -350,6 +350,7 @@ const state = {
   measurements:[], nextMeasureId:1, includeMeasurementsInExport:false,
   textAnnotations:[], nextTextId:1,
   imageAnnotations:[], nextImageId:1,
+  lineAnnotations:[], nextLineId:1,
   artworkLayerOrder:[],
   walkwayConstraints:{},
   rulerGuides:[],
@@ -406,11 +407,13 @@ function setSingleCourtSelection(id){
   const court=state.courts.find(c=>c.id===id && !c.hidden);
   state.selectedId=court ? id : null;
   if(court) multiSelectedCourtIds.add(id);
+  if(typeof selectedLineId!=="undefined") selectedLineId=null;
 }
 
 function toggleCourtSelection(id){
   const court=state.courts.find(c=>c.id===id && !c.hidden);
   if(!court) return;
+  if(typeof selectedLineId!=="undefined") selectedLineId=null;
 
   if(multiSelectedCourtIds.has(id)){
     multiSelectedCourtIds.delete(id);

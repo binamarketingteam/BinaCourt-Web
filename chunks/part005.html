@@ -24,6 +24,8 @@ function captureCurrentOptionData(){
     nextTextId:state.nextTextId,
     imageAnnotations:cloneData(state.imageAnnotations || []),
     nextImageId:state.nextImageId,
+    lineAnnotations:cloneData(state.lineAnnotations || []),
+    nextLineId:state.nextLineId,
     artworkLayerOrder:cloneData(state.artworkLayerOrder || []),
     walkwayConstraints:cloneData(state.walkwayConstraints || {})
   };
@@ -63,6 +65,7 @@ function normalizeOptionData(option){
     measurements:(data.measurements || []).map((m,index)=>normalizeMeasurement(cloneData(m),index)),
     textAnnotations:(data.textAnnotations || []).map((item,index)=>normalizeTextAnnotation(cloneData(item),index)),
     imageAnnotations:(data.imageAnnotations || []).map((item,index)=>normalizeImageAnnotation(cloneData(item),index)),
+    lineAnnotations:(data.lineAnnotations || []).map((item,index)=>normalizeLineAnnotation(cloneData(item),index)),
     artworkLayerOrder:Array.isArray(data.artworkLayerOrder)
       ? data.artworkLayerOrder.filter(item=>typeof item==="string").slice(0,500)
       : [],
@@ -85,6 +88,11 @@ function normalizeOptionData(option){
     nextImageId:Math.max(
       parseInt(data.nextImageId || 1,10) || 1,
       ...((data.imageAnnotations || []).map(item=>(parseInt(item.id,10) || 0)+1)),
+      1
+    ),
+    nextLineId:Math.max(
+      parseInt(data.nextLineId || 1,10) || 1,
+      ...((data.lineAnnotations || []).map(item=>(parseInt(item.id,10) || 0)+1)),
       1
     )
   };
@@ -144,16 +152,19 @@ function applyOptionData(optionData){
   state.measurements=data.measurements;
   state.textAnnotations=data.textAnnotations;
   state.imageAnnotations=data.imageAnnotations || [];
+  state.lineAnnotations=data.lineAnnotations || [];
   state.artworkLayerOrder=cloneData(data.artworkLayerOrder || []);
   state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
   state.nextId=data.nextId;
   state.nextMeasureId=data.nextMeasureId;
   state.nextTextId=data.nextTextId;
   state.nextImageId=data.nextImageId || 1;
+  state.nextLineId=data.nextLineId || 1;
   state.selectedId=state.courts.at(-1)?.id || null;
   selectedMeasurementId=null;
   selectedTextId=null;
   selectedImageId=null;
+  selectedLineId=null;
 }
 
 function updateOptionControls(){

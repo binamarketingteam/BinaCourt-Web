@@ -349,11 +349,23 @@
       <div id="toolsMenuWrap" class="tools-menu-wrap">
         <button id="toolsMenuButton" class="secondary" type="button" aria-expanded="false" title="Tools">🛠 Tools ▾</button>
         <div id="toolsDropdown" class="tools-dropdown" hidden>
+          <button id="lineTool" type="button" aria-pressed="false" title="Lukis garisan — drag dari titik A ke titik B"><span class="tool-icon">╱</span><span>Line</span></button>
           <button id="measureTool" type="button" aria-pressed="false" title="Ukur jarak bebas — drag dari titik A ke titik B"><span class="tool-icon">📏</span><span>Ukur</span></button>
           <button id="textTool" type="button" aria-pressed="false" title="Tambah text pada canvas"><span class="tool-icon">T</span><span>Text</span></button>
           <button id="imageTool" type="button" aria-pressed="false" title="Tambah gambar PNG / JPEG pada canvas"><span class="tool-icon">🖼️</span><span>Add Image</span></button>
           <button id="touchPanTool" type="button" aria-pressed="false" title="Pan canvas dengan sentuhan / mouse tanpa Space"><span class="tool-icon">✋</span><span>Hand / Pan</span></button>
         </div>
+      </div>
+      <div id="lineFormatToolbar" class="image-format-toolbar" hidden aria-label="Line formatting">
+        <span class="image-format-label">LINE</span>
+        <span class="image-format-label">COLOUR</span>
+        <input id="lineColour" type="color" value="#111111" title="Warna garisan" style="width:42px;height:32px;padding:2px">
+        <span class="image-format-label">THICKNESS</span>
+        <input id="lineThickness" class="image-angle-input" type="number" min="1" max="1000" step="1" value="50" title="Ketebalan garisan dalam mm">
+        <span class="image-format-label">mm</span>
+        <button id="lineDuplicate" class="secondary" type="button" title="Duplicate garisan">⧉ Duplicate</button>
+        <button id="lineDelete" class="danger" type="button" title="Padam garisan">Padam</button>
+        <span class="image-format-hint">drag dari titik A ke B · tiada ukuran dipaparkan · Shift = snap 45°</span>
       </div>
       <div id="textFormatToolbar" class="text-format-toolbar" hidden aria-label="Text formatting">
         <span class="text-format-label">TEXT SIZE</span>
