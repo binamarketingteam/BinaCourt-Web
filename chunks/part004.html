@@ -166,7 +166,7 @@ function collectUsedColors(){
     const visibleAreas=visibleCustomSiteAreas();
     if(visibleAreas.length){
       visibleAreas.forEach(area=>{
-        add(state.siteColor,`Site / Background · ${area.name}`,{
+        add(colorForSiteArea(area),`Site / Background · ${area.name}`,{
           brand:brandForSiteArea(area)
         });
       });
