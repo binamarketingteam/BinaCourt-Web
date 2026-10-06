@@ -117,6 +117,7 @@ function describeCourtLineWidth(court){
 
 function collectUsedColors(){
   const used=[];
+  const usageSets=new Map();
 
   function add(color,usage,{kind="surface",brand=state.brand,sourceCourt=null}={}){
     const normalizedBrand=normalizeBrand(brand,state.brand);
@@ -135,8 +136,14 @@ function collectUsedColors(){
     );
 
     if(existing){
-      if(!existing.usage.split(" / ").includes(usage)){
-        existing.usage=`${existing.usage} / ${usage}`;
+      let usages=usageSets.get(existing);
+      if(!usages){
+        usages=new Set(existing.usage ? [existing.usage] : []);
+        usageSets.set(existing,usages);
+      }
+      if(!usages.has(usage)){
+        usages.add(usage);
+        existing.usage=[...usages].join(" / ");
       }
       if(kind==="line" && sourceCourt){
         const detail=describeCourtLineWidth(sourceCourt);
@@ -155,6 +162,7 @@ function collectUsedColors(){
       brand:normalizedBrand,
       lineDetails:kind==="line" ? [] : undefined
     };
+    usageSets.set(entry,new Set([usage]));
     if(kind==="line" && sourceCourt){
       const detail=describeCourtLineWidth(sourceCourt);
       if(detail) entry.lineDetails.push(detail);
@@ -165,14 +173,27 @@ function collectUsedColors(){
   if(state.siteShapeMode==="custom"){
     const visibleAreas=visibleCustomSiteAreas();
     if(visibleAreas.length){
+      const siteGroups=new Map();
       visibleAreas.forEach(area=>{
-        add(colorForSiteArea(area),`Site / Background · ${area.name}`,{
-          brand:brandForSiteArea(area)
+        const color=colorForSiteArea(area);
+        const brand=brandForSiteArea(area);
+        const key=`${brand}|${normalizeHexColor(color)}`;
+        if(!siteGroups.has(key)){
+          siteGroups.set(key,{color,brand,names:[]});
+        }
+        const group=siteGroups.get(key);
+        const name=String(area.name || "").trim() || `Area ${area.id}`;
+        if(!group.names.includes(name)) group.names.push(name);
+      });
+      siteGroups.forEach(group=>{
+        const areaNames=group.names.join(", ");
+        add(group.color,areaNames ? `Site / Walkway - ${areaNames}` : "Site / Walkway",{
+          brand:group.brand
         });
       });
     }
   }else{
-    add(state.siteColor,"Site / Background",{brand:siteBrand()});
+    add(state.siteColor,"Site / Walkway",{brand:siteBrand()});
   }
 
   activeCourts().forEach(court=>{
