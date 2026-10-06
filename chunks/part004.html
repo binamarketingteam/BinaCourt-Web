@@ -182,7 +182,7 @@ function collectUsedColors(){
           siteGroups.set(key,{color,brand,names:[]});
         }
         const group=siteGroups.get(key);
-        const name=String(area.name || "").trim() || `Area ${area.id}`;
+        const name=(typeof resolvedSiteAreaName==="function" ? resolvedSiteAreaName(area) : String(area.name || "").trim()) || `Area ${area.id}`;
         if(!group.names.includes(name)) group.names.push(name);
       });
       siteGroups.forEach(group=>{
