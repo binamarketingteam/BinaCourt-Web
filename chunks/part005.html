@@ -24,6 +24,7 @@ function captureCurrentOptionData(){
     nextTextId:state.nextTextId,
     imageAnnotations:cloneData(state.imageAnnotations || []),
     nextImageId:state.nextImageId,
+    artworkLayerOrder:cloneData(state.artworkLayerOrder || []),
     walkwayConstraints:cloneData(state.walkwayConstraints || {})
   };
 }
@@ -62,6 +63,9 @@ function normalizeOptionData(option){
     measurements:(data.measurements || []).map((m,index)=>normalizeMeasurement(cloneData(m),index)),
     textAnnotations:(data.textAnnotations || []).map((item,index)=>normalizeTextAnnotation(cloneData(item),index)),
     imageAnnotations:(data.imageAnnotations || []).map((item,index)=>normalizeImageAnnotation(cloneData(item),index)),
+    artworkLayerOrder:Array.isArray(data.artworkLayerOrder)
+      ? data.artworkLayerOrder.filter(item=>typeof item==="string").slice(0,500)
+      : [],
     walkwayConstraints:normalizeWalkwayConstraints(data.walkwayConstraints),
     nextId:Math.max(
       parseInt(data.nextId || 1,10) || 1,
@@ -140,6 +144,7 @@ function applyOptionData(optionData){
   state.measurements=data.measurements;
   state.textAnnotations=data.textAnnotations;
   state.imageAnnotations=data.imageAnnotations || [];
+  state.artworkLayerOrder=cloneData(data.artworkLayerOrder || []);
   state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
   state.nextId=data.nextId;
   state.nextMeasureId=data.nextMeasureId;
