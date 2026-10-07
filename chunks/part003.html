@@ -368,7 +368,12 @@
         <span class="image-format-hint">drag dari titik A ke B · tiada ukuran dipaparkan · Shift = snap 45°</span>
       </div>
       <div id="textFormatToolbar" class="text-format-toolbar" hidden aria-label="Text formatting">
-        <span class="text-format-label">TEXT SIZE</span>
+        <span class="text-format-label">TEXT</span>
+        <button id="textEdit" class="secondary" type="button" title="Edit text semula">✎ Edit</button>
+        <button id="textDelete" class="danger" type="button" title="Padam text">Padam</button>
+        <span class="text-format-label">COLOUR</span>
+        <input id="textColour" type="color" value="#111827" title="Warna text" style="width:42px;height:32px;padding:2px">
+        <span class="text-format-label">SIZE</span>
         <button id="textSizeDown" class="secondary text-size-step" type="button" title="Kecilkan text">−</button>
         <select id="textFontSize" title="Saiz text">
           <option value="8">8</option>
@@ -390,6 +395,10 @@
           <option value="120">120</option>
         </select>
         <button id="textSizeUp" class="secondary text-size-step" type="button" title="Besarkan text">+</button>
+        <span class="text-format-label">ANGLE</span>
+        <input id="textAngle" class="image-angle-input" type="number" min="-360" max="360" step="1" value="0" title="Sudut text dalam darjah">
+        <button id="textRotateLeft" class="secondary" type="button" title="Pusing text 90° ke kiri">↺ 90°</button>
+        <button id="textRotateRight" class="secondary" type="button" title="Pusing text 90° ke kanan">↻ 90°</button>
       </div>
       <div id="imageFormatToolbar" class="image-format-toolbar" hidden aria-label="Image formatting">
         <span class="image-format-label">IMAGE</span>
