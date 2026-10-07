@@ -597,6 +597,14 @@ const textToolState={active:false};
 let selectedTextId=null;
 let activeTextInlineEditor=null;
 
+function normalizeTextAngle(value){
+  let angle=Number(value);
+  if(!Number.isFinite(angle)) angle=0;
+  angle=((angle%360)+360)%360;
+  if(angle>180) angle-=360;
+  return angle;
+}
+
 function normalizeTextAnnotation(item,index=0){
   const raw=item && typeof item==="object" ? item : {};
   return {
@@ -605,7 +613,8 @@ function normalizeTextAnnotation(item,index=0){
     y:Number.isFinite(Number(raw.y))?Number(raw.y):0,
     text:String(raw.text??"").slice(0,500),
     fontSize:Math.max(.24,Math.min(3.6,Number(raw.fontSize)||.72)),
-    fill:typeof raw.fill==="string"?raw.fill:"#111827",
+    fill:/^#[0-9a-f]{6}$/i.test(String(raw.fill||"")) ? String(raw.fill) : "#111827",
+    angle:normalizeTextAngle(raw.angle),
     hidden:!!raw.hidden,
     locked:!!raw.locked
   };
@@ -696,6 +705,48 @@ function setSelectedTextSize(value,{commit=false}={}){
   render();
   if(commit) commitHistory();
 }
+function setSelectedTextColour(value,{commit=false}={}){
+  const item=textAnnotationById(selectedTextId);
+  if(!item || item.locked) return;
+  const color=/^#[0-9a-f]{6}$/i.test(String(value||"")) ? String(value) : item.fill;
+  item.fill=color;
+  render();
+  if(commit) commitHistory();
+}
+
+function setSelectedTextAngle(value,{commit=false}={}){
+  const item=textAnnotationById(selectedTextId);
+  if(!item || item.locked) return;
+  item.angle=normalizeTextAngle(value);
+  render();
+  if(commit) commitHistory();
+}
+
+function rotateSelectedText(delta){
+  const item=textAnnotationById(selectedTextId);
+  if(!item || item.locked) return;
+  item.angle=normalizeTextAngle((Number(item.angle)||0)+Number(delta||0));
+  render();
+  commitHistory();
+}
+
+function editSelectedText(){
+  const item=textAnnotationById(selectedTextId);
+  if(!item || item.locked) return;
+  const pt=svg.getScreenCTM();
+  const screen=pt && typeof DOMPoint!=="undefined"
+    ? new DOMPoint(item.x,item.y).matrixTransform(pt)
+    : {x:window.innerWidth/2,y:window.innerHeight/2};
+  openTextInlineEditor({x:item.x,y:item.y,clientX:screen.x,clientY:screen.y},item);
+}
+
+function textAnnotationTransform(item){
+  const angle=normalizeTextAngle(item?.angle);
+  return angle
+    ? `translate(${item.x} ${item.y}) rotate(${angle})`
+    : `translate(${item.x} ${item.y})`;
+}
+
 function updateTextFormatToolbar(){
   const bar=$("textFormatToolbar");
   const select=$("textFontSize");
@@ -712,6 +763,18 @@ function updateTextFormatToolbar(){
   }
   select.value=String(size);
   select.disabled=!!item.locked;
+  if($("textColour")){
+    $("textColour").value=item.fill || "#111827";
+    $("textColour").disabled=!!item.locked;
+  }
+  if($("textAngle")){
+    $("textAngle").value=String(Math.round(normalizeTextAngle(item.angle)));
+    $("textAngle").disabled=!!item.locked;
+  }
+  if($("textEdit")) $("textEdit").disabled=!!item.locked;
+  if($("textDelete")) $("textDelete").disabled=!!item.locked;
+  if($("textRotateLeft")) $("textRotateLeft").disabled=!!item.locked;
+  if($("textRotateRight")) $("textRotateRight").disabled=!!item.locked;
   if($("textSizeDown")) $("textSizeDown").disabled=!!item.locked || size<=8;
   if($("textSizeUp")) $("textSizeUp").disabled=!!item.locked || size>=120;
 }
@@ -762,7 +825,7 @@ function bindTextDrag(hit,item){
 
       // Move the existing SVG node directly for a smooth mouse drag.
       // The full render is only done after pointerup.
-      if(group) group.setAttribute("transform",`translate(${nx} ${ny})`);
+      if(group) group.setAttribute("transform",textAnnotationTransform(current));
     };
 
     const end=e=>{
@@ -783,7 +846,7 @@ function bindTextDrag(hit,item){
 }
 
 function createTextAnnotationGroup(item){
-  const group=ns("g",{class:"text-annotation","data-text-id":item.id,transform:`translate(${item.x} ${item.y})`});
+  const group=ns("g",{class:"text-annotation","data-text-id":item.id,transform:textAnnotationTransform(item)});
   const approxW=Math.max(item.fontSize*1.2,item.text.length*item.fontSize*.58);
   const hitPad=Math.max(.16,item.fontSize*.20);
 
