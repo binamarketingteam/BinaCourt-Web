@@ -1029,3 +1029,189 @@
         else if(info.type==="shape") toggleShapeLayerLock(info.id);
       });
       item.addEventListener("click",e=>{
+        if(e.target.closest(".layer-handle,.layer-actions")) return;
+        selectArtworkLayerToken(token,e);
+      });
+      if(!info.locked) enableArtworkLayerDrag(item,token);
+      list.appendChild(item);
+    });
+  };
+
+  // ---- PDF / colour description integration --------------------------------
+  const originalCollectUsedColors=collectUsedColors;
+  collectUsedColors=function(){
+    const used=originalCollectUsedColors();
+    normalizeShapeAnnotations();
+    state.shapeAnnotations.filter(item=>!item.hidden).forEach(shape=>{
+      const brand=normalizeBrand(shape.brand,state.brand);
+      const palette=shapePalette(brand);
+      const info=colorInfo(shape.color,palette);
+      if(!info) return;
+      const usage=shapeRoleLabel(shape.role);
+      const existing=used.find(item=>
+        item.color===info.color && item.kind==="surface" && item.brand===brand
+      );
+      if(existing){
+        const text=String(existing.usage||"");
+        const hasRole=usage==="Walkway"
+          ? /walkway/i.test(text)
+          : /main surface/i.test(text);
+        if(!hasRole) existing.usage=text?`${text} / ${usage}`:usage;
+      }else{
+        used.push({...info,usage,kind:"surface",brand,lineDetails:undefined});
+      }
+    });
+    return used;
+  };
+
+  if(typeof visibleSurfacePairs==="function"){
+    const originalVisibleSurfacePairs=visibleSurfacePairs;
+    visibleSurfacePairs=function(){
+      const pairs=originalVisibleSurfacePairs();
+      normalizeShapeAnnotations();
+      state.shapeAnnotations.filter(item=>!item.hidden).forEach(shape=>{
+        const color=normalizeHexColor(shape.color);
+        if(!color) return;
+        const brand=normalizeBrand(shape.brand,state.brand);
+        const key=surfaceLegendKey(brand,color);
+        if(!pairs.has(key)){
+          pairs.set(key,{
+            key,hex:color,brand,
+            name:colorInfo(color,getDefaultPaletteForBrand(brand))?.name || color.toUpperCase()
+          });
+        }
+      });
+      return pairs;
+    };
+  }
+
+  // ---- Render and tools integration -----------------------------------------
+  const originalRender=render;
+  render=function(options={}){
+    normalizeShapeAnnotations();
+    originalRender(options);
+    drawShapeToolOverlay();
+    updateShapeFormatToolbar();
+  };
+
+  const originalUpdateToolsMenuState=updateToolsMenuState;
+  updateToolsMenuState=function(){
+    originalUpdateToolsMenuState();
+    const button=$("shapeTool");
+    if(button){
+      button.classList.toggle("is-active",!!shapeToolState.active);
+      button.setAttribute("aria-pressed",shapeToolState.active?"true":"false");
+    }
+    const main=$("toolsMenuButton");
+    if(main && shapeToolState.active){
+      main.classList.add("tool-active");
+      main.title="Tools - Shape aktif";
+    }
+  };
+
+  const originalUpdateStageCursor=updateStageCursor;
+  updateStageCursor=function(){
+    originalUpdateStageCursor();
+    const wrap=$("stageWrap");
+    if(!wrap) return;
+    if(shapeToolState.active && !stageSpaceHeld && !stagePanActive && !stageTouchPanMode){
+      wrap.style.cursor="crosshair";
+    }
+  };
+
+  // ---- Events ---------------------------------------------------------------
+  $("shapeTool")?.addEventListener("click",()=>{
+    setShapeToolActive(!shapeToolState.active);
+    if($("toolsDropdown")) $("toolsDropdown").hidden=true;
+    $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+  });
+
+  ["lineTool","measureTool","textTool","imageTool","touchPanTool"].forEach(id=>{
+    $(id)?.addEventListener("click",()=>{
+      if(!shapeToolState.active) return;
+      shapeToolState.active=false;
+      shapeToolState.dragging=false;
+      shapeToolState.start=null;
+      shapeToolState.end=null;
+      removeShapePreview();
+      updateShapeFormatToolbar();
+    },true);
+  });
+
+  $("shapeRole")?.addEventListener("change",event=>applyShapeRole(event.target.value,{commit:true}));
+  $("shapeBrand")?.addEventListener("change",event=>applyShapeBrand(event.target.value,{commit:true}));
+  $("shapeColour")?.addEventListener("change",event=>applyShapeColour(event.target.value,{commit:true}));
+  $("shapeAngle")?.addEventListener("input",event=>setSelectedShapeAngle(event.target.value));
+  $("shapeAngle")?.addEventListener("change",event=>setSelectedShapeAngle(event.target.value,{commit:true}));
+  $("shapeRotateLeft")?.addEventListener("click",()=>rotateSelectedShape(-90));
+  $("shapeRotateRight")?.addEventListener("click",()=>rotateSelectedShape(90));
+  $("shapeDuplicate")?.addEventListener("click",duplicateSelectedShape);
+  $("shapeDelete")?.addEventListener("click",()=>{
+    if(selectedShapeId!==null) deleteShapeAnnotation(selectedShapeId);
+  });
+
+  svg.addEventListener("pointerdown",handleShapePointerDown,true);
+  svg.addEventListener("pointermove",handleShapePointerMove,true);
+  svg.addEventListener("pointerup",finishShapePointer,true);
+  svg.addEventListener("pointercancel",finishShapePointer,true);
+
+  // Clicking another canvas object clears Shape selection before that object's
+  // own handler runs, so only one editing toolbar stays active.
+  svg.addEventListener("pointerdown",event=>{
+    if(event.target?.closest?.("[data-shape-id]")) return;
+    if(shapeToolState.active) return;
+    selectedShapeId=null;
+  },true);
+
+  document.addEventListener("keydown",event=>{
+    const editable=stageKeyTargetIsEditable(event.target);
+    if(event.key==="Escape" && shapeToolState.dragging){
+      event.preventDefault();
+      shapeToolState.dragging=false;
+      shapeToolState.pointerId=null;
+      shapeToolState.start=null;
+      shapeToolState.end=null;
+      removeShapePreview();
+      return;
+    }
+    if(event.key==="Escape" && shapeToolState.active && !editable){
+      event.preventDefault();
+      setShapeToolActive(false);
+      return;
+    }
+    if(!editable && selectedShapeId!==null && (event.ctrlKey||event.metaKey) && event.key.toLowerCase()==="d"){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      duplicateSelectedShape();
+      return;
+    }
+    if(!editable && selectedShapeId!==null && (event.key==="Delete"||event.key==="Backspace")){
+      const item=shapeAnnotationById(selectedShapeId);
+      if(item && !item.locked){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        deleteShapeAnnotation(item.id);
+      }
+    }
+  },true);
+
+  window.__resetShapeToolState=function(){
+    state.shapeAnnotations=[];
+    state.nextShapeId=1;
+    selectedShapeId=null;
+    shapeToolState.active=false;
+    shapeToolState.dragging=false;
+    shapeToolState.pointerId=null;
+    shapeToolState.start=null;
+    shapeToolState.end=null;
+    removeShapePreview();
+  };
+
+  // Initial normalisation after the legacy app has loaded.
+  normalizeShapeAnnotations();
+  normalizeArtworkLayerOrder();
+  updateToolsMenuState();
+  updateShapeFormatToolbar();
+})();
+
+</script>
