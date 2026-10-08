@@ -15,8 +15,9 @@
   }
 
   function perspectiveTransformCss(){
-    // Oblique/isometric presentation similar to a professional court mock-up.
-    return "rotate(-30deg) scaleY(.62) scale(.82)";
+    // Presentation angle: large enough to read, without turning the artwork
+    // into a tiny "paper card" in the middle of the canvas.
+    return "rotate(-28deg) scaleY(.64) scale(.94)";
   }
 
   function ensurePerspectiveViewUi(){
@@ -112,6 +113,35 @@
     updateStageCursor?.();
   }
 
+  function alphaBounds(canvas){
+    try{
+      const ctx=canvas.getContext("2d",{willReadFrequently:true});
+      const {width,height}=canvas;
+      const data=ctx.getImageData(0,0,width,height).data;
+      let minX=width,minY=height,maxX=-1,maxY=-1;
+      for(let y=0;y<height;y++){
+        const row=y*width*4;
+        for(let x=0;x<width;x++){
+          if(data[row+x*4+3]>8){
+            if(x<minX) minX=x;
+            if(x>maxX) maxX=x;
+            if(y<minY) minY=y;
+            if(y>maxY) maxY=y;
+          }
+        }
+      }
+      if(maxX<minX || maxY<minY) return {x:0,y:0,w:width,h:height};
+      const pad=Math.max(4,Math.round(Math.min(width,height)*.008));
+      minX=Math.max(0,minX-pad);
+      minY=Math.max(0,minY-pad);
+      maxX=Math.min(width-1,maxX+pad);
+      maxY=Math.min(height-1,maxY+pad);
+      return {x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};
+    }catch(_){
+      return {x:0,y:0,w:canvas.width,h:canvas.height};
+    }
+  }
+
   function perspectiveCanvas(source){
     if(!source || !isPerspectiveView()) return source;
 
@@ -120,35 +150,84 @@
     out.height=source.height;
     const ctx=out.getContext("2d");
 
-    // Keep the output compatible with existing PDF/PNG page composition.
-    ctx.fillStyle="#ffffff";
-    ctx.fillRect(0,0,out.width,out.height);
-
-    const angle=-30*Math.PI/180;
-    const yScale=.62;
+    // IMPORTANT: do not rotate the white export canvas. Only the actual
+    // site/court artwork is transformed. This removes the large tilted white
+    // rectangle that made the first Perspective PDF look like a floating page.
+    const crop=alphaBounds(source);
+    const angle=-28*Math.PI/180;
+    const yScale=.64;
     const absCos=Math.abs(Math.cos(angle));
     const absSin=Math.abs(Math.sin(angle));
-    const transformedW=absCos*source.width + absSin*(source.height*yScale);
-    const transformedH=absSin*source.width + absCos*(source.height*yScale);
+    const transformedW=absCos*crop.w + absSin*(crop.h*yScale);
+    const transformedH=absSin*crop.w + absCos*(crop.h*yScale);
     const fit=Math.min(
-      (out.width*.90)/Math.max(1,transformedW),
-      (out.height*.88)/Math.max(1,transformedH)
+      (out.width*.93)/Math.max(1,transformedW),
+      (out.height*.86)/Math.max(1,transformedH)
     );
 
     ctx.save();
-    ctx.translate(out.width/2,out.height/2+out.height*.015);
+    ctx.translate(out.width/2,out.height/2+out.height*.025);
     ctx.rotate(angle);
     ctx.scale(fit,fit*yScale);
 
-    // Slight shadow gives the tilted plan a presentation-board feel.
-    ctx.shadowColor="rgba(15,23,42,.22)";
-    ctx.shadowBlur=Math.max(12,Math.round(out.width*.006));
-    ctx.shadowOffsetX=Math.round(out.width*.004);
-    ctx.shadowOffsetY=Math.round(out.width*.007);
-    ctx.drawImage(source,-source.width/2,-source.height/2);
+    // Soft ground shadow follows the actual artwork alpha, not a rectangle.
+    ctx.shadowColor="rgba(15,23,42,.26)";
+    ctx.shadowBlur=Math.max(14,Math.round(out.width*.007));
+    ctx.shadowOffsetX=Math.round(out.width*.006);
+    ctx.shadowOffsetY=Math.round(out.width*.010);
+    ctx.drawImage(
+      source,
+      crop.x,crop.y,crop.w,crop.h,
+      -crop.w/2,-crop.h/2,crop.w,crop.h
+    );
     ctx.restore();
 
     return out;
+  }
+
+  function renderPerspectiveSource(pixelWidth=2800){
+    return new Promise((resolve,reject)=>{
+      try{
+        const clone=prepareSvgCloneForExport();
+        const box=exportArtworkViewBox();
+        const ratio=box.h/box.w;
+        const pixelHeight=Math.max(1,Math.round(pixelWidth*ratio));
+
+        clone.setAttribute("viewBox",`${box.x} ${box.y} ${box.w} ${box.h}`);
+        clone.setAttribute("width",pixelWidth);
+        clone.setAttribute("height",pixelHeight);
+
+        // The source canvas is deliberately transparent. White court lines
+        // stay white, but there is no white "paper" behind the site.
+        const data=new XMLSerializer().serializeToString(clone);
+        const blob=new Blob([data],{type:"image/svg+xml;charset=utf-8"});
+        const url=URL.createObjectURL(blob);
+        const img=new Image();
+
+        img.onload=()=>{
+          try{
+            const canvas=document.createElement("canvas");
+            canvas.width=pixelWidth;
+            canvas.height=pixelHeight;
+            const sourceCtx=canvas.getContext("2d");
+            sourceCtx.clearRect(0,0,canvas.width,canvas.height);
+            sourceCtx.drawImage(img,0,0,canvas.width,canvas.height);
+            URL.revokeObjectURL(url);
+            resolve(perspectiveCanvas(canvas));
+          }catch(error){
+            URL.revokeObjectURL(url);
+            reject(error);
+          }
+        };
+        img.onerror=()=>{
+          URL.revokeObjectURL(url);
+          reject(new Error("Gagal menyediakan Perspective View."));
+        };
+        img.src=url;
+      }catch(error){
+        reject(error);
+      }
+    });
   }
 
   // Keep the transform applied even after the legacy render() refreshes SVG.
@@ -158,20 +237,30 @@
     updatePerspectiveUi();
   };
 
-  // Export the active view.
+  // Export the active view. Perspective uses a transparent SVG render so
+  // only the site/courts are tilted; the PDF page itself stays perfectly flat.
   if(typeof svgToCanvas==="function"){
     const baseSvgToCanvas=svgToCanvas;
     svgToCanvas=async function(...args){
-      const canvas=await baseSvgToCanvas(...args);
-      return isPerspectiveView()?perspectiveCanvas(canvas):canvas;
+      if(isPerspectiveView()){
+        const pixelWidth=Math.max(800,Number(args[0])||2800);
+        return await renderPerspectiveSource(pixelWidth);
+      }
+      return await baseSvgToCanvas(...args);
     };
   }
 
   if(typeof svgToCanvasVectorBase==="function"){
     const baseSvgToCanvasVectorBase=svgToCanvasVectorBase;
     svgToCanvasVectorBase=async function(...args){
-      const canvas=await baseSvgToCanvasVectorBase(...args);
-      return isPerspectiveView()?perspectiveCanvas(canvas):canvas;
+      if(isPerspectiveView()){
+        const pixelWidth=Math.max(800,Number(args[0])||2800);
+        // Perspective Vector PDF intentionally uses the complete high-res
+        // artwork raster because the plan-view vector geometry is not valid
+        // after the presentation transform.
+        return await renderPerspectiveSource(pixelWidth);
+      }
+      return await baseSvgToCanvasVectorBase(...args);
     };
   }
 
