@@ -236,3 +236,205 @@
       const end=e=>{
         if(e.pointerId!==pid) return;
         window.removeEventListener("pointermove",move);
+        window.removeEventListener("pointerup",end);
+        window.removeEventListener("pointercancel",end);
+        try{target.releasePointerCapture?.(pid);}catch(_){ }
+        render();
+        if(moved) commitHistory();
+      };
+      window.addEventListener("pointermove",move,{passive:false});
+      window.addEventListener("pointerup",end);
+      window.addEventListener("pointercancel",end);
+      updateShapeFormatToolbar();
+    });
+  }
+
+  function bindShapeResize(handle,item,group,corner){
+    handle.addEventListener("pointerdown",event=>{
+      if(item.locked || event.button!==0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectedShapeId=item.id;
+      clearOtherSelectionsForShape();
+      const live=shapeAnnotationById(item.id)||item;
+      const startState={x:live.x,y:live.y,w:live.w,h:live.h,angle:live.angle||0};
+      let anchorX=startState.x, anchorY=startState.y;
+      if(corner==="nw"){anchorX=startState.x+startState.w;anchorY=startState.y+startState.h;}
+      if(corner==="ne"){anchorX=startState.x;anchorY=startState.y+startState.h;}
+      if(corner==="sw"){anchorX=startState.x+startState.w;anchorY=startState.y;}
+      if(corner==="se"){anchorX=startState.x;anchorY=startState.y;}
+      const pid=event.pointerId;
+      let moved=false;
+      try{handle.setPointerCapture?.(pid);}catch(_){ }
+
+      const move=e=>{
+        if(e.pointerId!==pid) return;
+        e.preventDefault?.();
+        const world=stagePointFromClient(e.clientX,e.clientY);
+        const p=worldPointToShapeLocal(world,startState);
+        const minSize=.15;
+        let left,right,top,bottom;
+        if(corner==="nw" || corner==="sw"){
+          left=Math.min(p.x,anchorX-minSize);right=anchorX;
+        }else{
+          left=anchorX;right=Math.max(p.x,anchorX+minSize);
+        }
+        if(corner==="nw" || corner==="ne"){
+          top=Math.min(p.y,anchorY-minSize);bottom=anchorY;
+        }else{
+          top=anchorY;bottom=Math.max(p.y,anchorY+minSize);
+        }
+        const current=shapeAnnotationById(item.id);
+        if(!current) return;
+        current.x=left;
+        current.y=top;
+        current.w=Math.max(minSize,right-left);
+        current.h=Math.max(minSize,bottom-top);
+        moved=true;
+        updateShapeAnnotationGroup(group,current);
+      };
+      const end=e=>{
+        if(e.pointerId!==pid) return;
+        window.removeEventListener("pointermove",move);
+        window.removeEventListener("pointerup",end);
+        window.removeEventListener("pointercancel",end);
+        try{handle.releasePointerCapture?.(pid);}catch(_){ }
+        render();
+        if(moved) commitHistory();
+      };
+      window.addEventListener("pointermove",move,{passive:false});
+      window.addEventListener("pointerup",end);
+      window.addEventListener("pointercancel",end);
+    });
+  }
+
+  function bindShapeRotate(handle,item,group){
+    handle.addEventListener("pointerdown",event=>{
+      if(item.locked || event.button!==0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectedShapeId=item.id;
+      clearOtherSelectionsForShape();
+      const live=shapeAnnotationById(item.id)||item;
+      const cx=live.x+live.w/2, cy=live.y+live.h/2;
+      const start=stagePointFromClient(event.clientX,event.clientY);
+      const pointerStart=Math.atan2(start.y-cy,start.x-cx)*180/Math.PI;
+      const angleStart=normalizeShapeAngle(live.angle);
+      const pid=event.pointerId;
+      let moved=false;
+      try{handle.setPointerCapture?.(pid);}catch(_){ }
+
+      const move=e=>{
+        if(e.pointerId!==pid) return;
+        e.preventDefault?.();
+        const p=stagePointFromClient(e.clientX,e.clientY);
+        const pointerAngle=Math.atan2(p.y-cy,p.x-cx)*180/Math.PI;
+        let next=angleStart+(pointerAngle-pointerStart);
+        if(e.shiftKey) next=Math.round(next/45)*45;
+        const current=shapeAnnotationById(item.id);
+        if(!current) return;
+        current.angle=normalizeShapeAngle(next);
+        moved=true;
+        updateShapeAnnotationGroup(group,current);
+        if($("shapeAngle")) $("shapeAngle").value=String(Math.round(current.angle));
+      };
+      const end=e=>{
+        if(e.pointerId!==pid) return;
+        window.removeEventListener("pointermove",move);
+        window.removeEventListener("pointerup",end);
+        window.removeEventListener("pointercancel",end);
+        try{handle.releasePointerCapture?.(pid);}catch(_){ }
+        render();
+        if(moved) commitHistory();
+      };
+      window.addEventListener("pointermove",move,{passive:false});
+      window.addEventListener("pointerup",end);
+      window.addEventListener("pointercancel",end);
+    });
+  }
+
+  function createShapeAnnotationGroup(item){
+    const attrs={class:"shape-annotation","data-shape-id":item.id,"data-shape-role":item.role,"data-shape-brand":item.brand};
+    const transform=shapeGroupTransform(item);
+    if(transform) attrs.transform=transform;
+    const group=ns("g",attrs);
+
+    const rect=ns("rect",{
+      class:"shape-content",
+      x:item.x,y:item.y,width:item.w,height:item.h,
+      fill:item.color,
+      stroke:"none",
+      "shape-rendering":"geometricPrecision"
+    });
+    group.appendChild(rect);
+
+    const hit=ns("rect",{
+      class:"shape-hit-area",
+      x:item.x,y:item.y,width:item.w,height:item.h,
+      fill:"rgba(0,0,0,0)",stroke:"none","pointer-events":"all"
+    });
+    hit.style.cursor=item.locked?"default":"move";
+    group.appendChild(hit);
+    bindShapeDrag(hit,item,group);
+    bindShapeDrag(rect,item,group);
+
+    if(item.id===selectedShapeId){
+      group.appendChild(ns("rect",{
+        class:"editing-only shape-selection",
+        x:item.x,y:item.y,width:item.w,height:item.h,
+        fill:"none",stroke:"#2563eb","stroke-width":.045,"stroke-dasharray":".16 .10",
+        "vector-effect":"non-scaling-stroke","pointer-events":"none"
+      }));
+
+      if(!item.locked){
+        const handles={
+          nw:[item.x,item.y],ne:[item.x+item.w,item.y],
+          sw:[item.x,item.y+item.h],se:[item.x+item.w,item.y+item.h]
+        };
+        const hitSize=shapeResizeHitWorldSize();
+        Object.entries(handles).forEach(([key,[x,y]])=>{
+          const touch=ns("rect",{
+            class:"editing-only shape-resize-hit",
+            "data-handle":key,
+            x:x-hitSize/2,y:y-hitSize/2,width:hitSize,height:hitSize,
+            fill:"rgba(0,0,0,0)",stroke:"none","pointer-events":"all"
+          });
+          touch.style.cursor=(key==="nw"||key==="se")?"nwse-resize":"nesw-resize";
+          group.appendChild(touch);
+          const knob=ns("rect",{
+            class:"editing-only shape-resize-knob",
+            "data-handle":key,
+            x:x-.20,y:y-.20,width:.40,height:.40,
+            rx:.05,fill:"#ffffff",stroke:"#2563eb","stroke-width":.04,
+            "vector-effect":"non-scaling-stroke","pointer-events":"none"
+          });
+          group.appendChild(knob);
+          bindShapeResize(touch,item,group,key);
+        });
+
+        const rotateGap=Math.max(.7,Math.min(1.2,item.h*.18));
+        const rotateX=item.x+item.w;
+        const rotateY=item.y-rotateGap;
+        group.appendChild(ns("line",{
+          class:"editing-only shape-rotate-connector",
+          x1:item.x+item.w,y1:item.y,x2:rotateX,y2:rotateY,
+          stroke:"#2563eb","stroke-width":.04,"vector-effect":"non-scaling-stroke","pointer-events":"none"
+        }));
+        const rotate=ns("circle",{
+          class:"editing-only shape-rotate-handle",
+          cx:rotateX,cy:rotateY,r:.24,
+          fill:"#ffffff",stroke:"#2563eb","stroke-width":.04,
+          "vector-effect":"non-scaling-stroke","pointer-events":"all"
+        });
+        rotate.style.cursor="grab";
+        group.appendChild(rotate);
+        bindShapeRotate(rotate,item,group);
+      }
+    }
+
+    return group;
+  }
+
+  function deleteShapeAnnotation(id){
+    const item=shapeAnnotationById(id);
+    if(!item || item.locked) return;
