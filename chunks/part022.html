@@ -1,0 +1,281 @@
+<script>
+(function(){
+  // -------------------------------------------------------------------------
+  // Plan / Perspective View
+  // Perspective is a presentation-only view. It never changes court geometry.
+  // PNG/PDF Preview/PDF follow the active view. Vector PDF falls back to a
+  // high-resolution perspective raster page so the visual stays correct.
+  // -------------------------------------------------------------------------
+
+  let perspectiveViewMode=false;
+  const PERSPECTIVE_STORAGE_KEY="binacourt-view-mode-v1";
+
+  function isPerspectiveView(){
+    return !!perspectiveViewMode;
+  }
+
+  function perspectiveTransformCss(){
+    // Oblique/isometric presentation similar to a professional court mock-up.
+    return "rotate(-30deg) scaleY(.62) scale(.82)";
+  }
+
+  function ensurePerspectiveViewUi(){
+    const wrap=$("stageWrap");
+    if(!wrap) return;
+
+    if(!document.getElementById("courtViewModeSwitch")){
+      const switcher=document.createElement("div");
+      switcher.id="courtViewModeSwitch";
+      switcher.className="court-view-mode-switch";
+      switcher.setAttribute("aria-label","Court view");
+      switcher.innerHTML=`
+        <button id="planViewButton" type="button" class="active" aria-pressed="true" title="Paparan pelan untuk edit">Plan View</button>
+        <button id="perspectiveViewButton" type="button" aria-pressed="false" title="Paparan perspective untuk presentation">Perspective View</button>
+      `;
+      wrap.appendChild(switcher);
+
+      const note=document.createElement("div");
+      note.id="perspectiveViewNote";
+      note.className="perspective-view-note";
+      note.hidden=true;
+      note.textContent="Perspective View · presentation only";
+      wrap.appendChild(note);
+
+      $("planViewButton")?.addEventListener("click",()=>setPerspectiveView(false));
+      $("perspectiveViewButton")?.addEventListener("click",()=>setPerspectiveView(true));
+    }
+  }
+
+  function updatePerspectiveUi(){
+    ensurePerspectiveViewUi();
+    const wrap=$("stageWrap");
+    const svgEl=$("courtSvg") || document.querySelector("#stageWrap svg");
+    if(!wrap || !svgEl) return;
+
+    wrap.classList.toggle("perspective-view",perspectiveViewMode);
+
+    if(perspectiveViewMode){
+      svgEl.style.transform=perspectiveTransformCss();
+      svgEl.style.transformOrigin="50% 50%";
+      svgEl.style.transition="transform .28s ease, filter .28s ease";
+      svgEl.style.filter="drop-shadow(12px 20px 12px rgba(15,23,42,.22))";
+      svgEl.style.pointerEvents="none";
+    }else{
+      svgEl.style.transform="";
+      svgEl.style.transformOrigin="";
+      svgEl.style.transition="transform .22s ease, filter .22s ease";
+      svgEl.style.filter="";
+      svgEl.style.pointerEvents="";
+    }
+
+    const plan=$("planViewButton");
+    const perspective=$("perspectiveViewButton");
+    if(plan){
+      plan.classList.toggle("active",!perspectiveViewMode);
+      plan.setAttribute("aria-pressed",perspectiveViewMode?"false":"true");
+    }
+    if(perspective){
+      perspective.classList.toggle("active",perspectiveViewMode);
+      perspective.setAttribute("aria-pressed",perspectiveViewMode?"true":"false");
+    }
+    if($("perspectiveViewNote")) $("perspectiveViewNote").hidden=!perspectiveViewMode;
+
+    // Editing aids make the presentation view look technical and also have
+    // pointer positions that do not match the transformed plane.
+    const toolsButton=$("toolsMenuButton");
+    if(toolsButton) toolsButton.disabled=perspectiveViewMode;
+  }
+
+  function setPerspectiveView(enabled){
+    perspectiveViewMode=!!enabled;
+
+    // Finish/close transient editors before entering presentation mode.
+    if(perspectiveViewMode){
+      try{ closeTextInlineEditor(false); }catch(_){}
+      try{ closeMeasureInlineEditor(false); }catch(_){}
+      try{ removeWalkwayInlineEditor(); }catch(_){}
+      try{ removeCustomSiteEdgeInlineEditor(); }catch(_){}
+      try{
+        if(typeof setShapeToolActive==="function" && typeof shapeToolState!=="undefined" && shapeToolState.active){
+          setShapeToolActive(false);
+        }
+      }catch(_){}
+      try{
+        lineToolState.active=false;
+        measureToolState.active=false;
+        textToolState.active=false;
+      }catch(_){}
+    }
+
+    try{ localStorage.setItem(PERSPECTIVE_STORAGE_KEY,perspectiveViewMode?"perspective":"plan"); }catch(_){}
+    updatePerspectiveUi();
+    updateStageCursor?.();
+  }
+
+  function perspectiveCanvas(source){
+    if(!source || !isPerspectiveView()) return source;
+
+    const out=document.createElement("canvas");
+    out.width=source.width;
+    out.height=source.height;
+    const ctx=out.getContext("2d");
+
+    // Keep the output compatible with existing PDF/PNG page composition.
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(0,0,out.width,out.height);
+
+    const angle=-30*Math.PI/180;
+    const yScale=.62;
+    const absCos=Math.abs(Math.cos(angle));
+    const absSin=Math.abs(Math.sin(angle));
+    const transformedW=absCos*source.width + absSin*(source.height*yScale);
+    const transformedH=absSin*source.width + absCos*(source.height*yScale);
+    const fit=Math.min(
+      (out.width*.90)/Math.max(1,transformedW),
+      (out.height*.88)/Math.max(1,transformedH)
+    );
+
+    ctx.save();
+    ctx.translate(out.width/2,out.height/2+out.height*.015);
+    ctx.rotate(angle);
+    ctx.scale(fit,fit*yScale);
+
+    // Slight shadow gives the tilted plan a presentation-board feel.
+    ctx.shadowColor="rgba(15,23,42,.22)";
+    ctx.shadowBlur=Math.max(12,Math.round(out.width*.006));
+    ctx.shadowOffsetX=Math.round(out.width*.004);
+    ctx.shadowOffsetY=Math.round(out.width*.007);
+    ctx.drawImage(source,-source.width/2,-source.height/2);
+    ctx.restore();
+
+    return out;
+  }
+
+  // Keep the transform applied even after the legacy render() refreshes SVG.
+  const baseRender=render;
+  render=function(options={}){
+    baseRender(options);
+    updatePerspectiveUi();
+  };
+
+  // Export the active view.
+  if(typeof svgToCanvas==="function"){
+    const baseSvgToCanvas=svgToCanvas;
+    svgToCanvas=async function(...args){
+      const canvas=await baseSvgToCanvas(...args);
+      return isPerspectiveView()?perspectiveCanvas(canvas):canvas;
+    };
+  }
+
+  if(typeof svgToCanvasVectorBase==="function"){
+    const baseSvgToCanvasVectorBase=svgToCanvasVectorBase;
+    svgToCanvasVectorBase=async function(...args){
+      const canvas=await baseSvgToCanvasVectorBase(...args);
+      return isPerspectiveView()?perspectiveCanvas(canvas):canvas;
+    };
+  }
+
+  // In perspective mode, do not overlay the original plan-view vector geometry
+  // on top of the already transformed raster drawing.
+  if(typeof buildOptionPageVectorCommands==="function"){
+    const baseBuildOptionPageVectorCommands=buildOptionPageVectorCommands;
+    buildOptionPageVectorCommands=async function(...args){
+      if(isPerspectiveView()) return "";
+      return await baseBuildOptionPageVectorCommands(...args);
+    };
+  }
+
+  // Small visual polish for the floating toggle.
+  const style=document.createElement("style");
+  style.textContent=`
+    .court-view-mode-switch{
+      position:absolute;
+      top:14px;
+      right:14px;
+      z-index:190;
+      display:flex;
+      align-items:center;
+      gap:3px;
+      padding:4px;
+      background:rgba(255,255,255,.94);
+      border:1px solid #d0d5dd;
+      border-radius:10px;
+      box-shadow:0 7px 22px rgba(16,24,40,.14);
+      backdrop-filter:blur(8px);
+    }
+    .court-view-mode-switch button{
+      width:auto!important;
+      min-width:86px;
+      height:34px;
+      padding:5px 10px!important;
+      border:0!important;
+      border-radius:7px!important;
+      background:transparent!important;
+      color:#475467!important;
+      font-size:11px!important;
+      font-weight:800!important;
+      white-space:nowrap;
+      box-shadow:none!important;
+    }
+    .court-view-mode-switch button.active{
+      background:#111827!important;
+      color:#ffffff!important;
+    }
+    .perspective-view-note{
+      position:absolute;
+      left:50%;
+      bottom:14px;
+      transform:translateX(-50%);
+      z-index:189;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(17,24,39,.82);
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      pointer-events:none;
+      white-space:nowrap;
+    }
+    #stageWrap.perspective-view{
+      background:
+        radial-gradient(circle at 45% 35%,#f8fafc 0,#edf2f7 42%,#dce3ea 100%);
+      cursor:default!important;
+    }
+    #stageWrap.perspective-view .stage-ruler,
+    #stageWrap.perspective-view .stage-ruler-corner,
+    #stageWrap.perspective-view .measure-inline-editor-wrap,
+    #stageWrap.perspective-view .walkway-inline-editor,
+    #stageWrap.perspective-view .custom-site-edge-inline-editor{
+      display:none!important;
+    }
+    #stageWrap.perspective-view svg .editing-only,
+    #stageWrap.perspective-view svg .svg-action,
+    #stageWrap.perspective-view svg .smart-guide{
+      display:none!important;
+    }
+    @media(max-width:700px){
+      .court-view-mode-switch{
+        top:8px;
+        right:8px;
+      }
+      .court-view-mode-switch button{
+        min-width:72px;
+        font-size:10px!important;
+        padding:4px 7px!important;
+      }
+      .perspective-view-note{bottom:8px;font-size:10px}
+    }
+  `;
+  document.head.appendChild(style);
+
+  ensurePerspectiveViewUi();
+
+  try{
+    perspectiveViewMode=localStorage.getItem(PERSPECTIVE_STORAGE_KEY)==="perspective";
+  }catch(_){
+    perspectiveViewMode=false;
+  }
+
+  updatePerspectiveUi();
+})();
+</script>
