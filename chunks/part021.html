@@ -646,3 +646,197 @@
   function finishShapePointer(event){
     if(!shapeToolState.dragging || event.pointerId!==shapeToolState.pointerId) return;
     event.preventDefault?.();
+    const a=shapeToolState.start;
+    const b=shapeToolState.end || stagePointFromClient(event.clientX,event.clientY);
+    shapeToolState.dragging=false;
+    try{svg.releasePointerCapture?.(event.pointerId);}catch(_){ }
+    shapeToolState.pointerId=null;
+    shapeToolState.start=null;
+    shapeToolState.end=null;
+    removeShapePreview();
+    if(!a || !b) return render();
+
+    const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
+    const w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    if(w<.08 || h<.08) return render();
+
+    normalizeShapeAnnotations();
+    const brand=normalizeBrand(shapeToolState.brand,state.brand);
+    const item=normalizeShapeAnnotation({
+      id:state.nextShapeId++,
+      x,y,w,h,
+      angle:0,
+      role:shapeToolState.role,
+      brand,
+      color:shapeToolState.color||shapeDefaultColor(brand),
+      hidden:false,locked:false
+    },state.shapeAnnotations.length);
+    state.shapeAnnotations.push(item);
+    selectedShapeId=item.id;
+    clearOtherSelectionsForShape();
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=state.artworkLayerOrder.filter(token=>token!==`shape:${item.id}`);
+    state.artworkLayerOrder.push(`shape:${item.id}`);
+    render();
+    commitHistory();
+  }
+
+  function toggleShapeLayerVisibility(id){
+    const item=shapeAnnotationById(id);
+    if(!item) return;
+    item.hidden=!item.hidden;
+    if(item.hidden && selectedShapeId===id) selectedShapeId=null;
+    render();
+    commitHistory();
+  }
+
+  function toggleShapeLayerLock(id){
+    const item=shapeAnnotationById(id);
+    if(!item) return;
+    item.locked=!item.locked;
+    render();
+    commitHistory();
+  }
+
+  // ---- UI -----------------------------------------------------------------
+  const toolsDropdown=$("toolsDropdown");
+  if(toolsDropdown && !$("shapeTool")){
+    const button=document.createElement("button");
+    button.id="shapeTool";
+    button.type="button";
+    button.setAttribute("aria-pressed","false");
+    button.title="Tambah shape petak segi empat";
+    button.innerHTML='<span class="tool-icon">&#9633;</span><span>Shape</span>';
+    const imageButton=$("imageTool");
+    toolsDropdown.insertBefore(button,imageButton||toolsDropdown.lastChild);
+  }
+
+  const lineBar=$("lineFormatToolbar");
+  if(lineBar && !$("shapeFormatToolbar")){
+    const bar=document.createElement("div");
+    bar.id="shapeFormatToolbar";
+    bar.className="image-format-toolbar";
+    bar.hidden=true;
+    bar.setAttribute("aria-label","Shape formatting");
+    bar.innerHTML=`
+      <span class="image-format-label">SHAPE</span>
+      <span class="image-format-label">TYPE</span>
+      <select id="shapeRole" title="Fungsi shape" style="width:118px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
+        <option value="walkway">Walkway</option>
+        <option value="main_surface">Main Surface</option>
+      </select>
+      <span class="image-format-label">SYSTEM</span>
+      <select id="shapeBrand" title="Sistem produk" style="width:112px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
+        <option value="duracourt">Duracourt</option>
+        <option value="primacourt">Primacourt</option>
+        <option value="terracourt">Terracourt</option>
+      </select>
+      <span class="image-format-label">COLOUR</span>
+      <span id="shapeColourPreview" style="width:24px;height:24px;border:1px solid #98a2b3;border-radius:5px;display:inline-block;flex:0 0 auto"></span>
+      <select id="shapeColour" title="Warna court palette" style="width:190px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700"></select>
+      <span class="image-format-label">ANGLE</span>
+      <input id="shapeAngle" class="image-angle-input" type="number" min="-360" max="360" step="1" value="0" title="Sudut shape dalam darjah">
+      <button id="shapeRotateLeft" class="secondary" type="button" title="Pusing 90 darjah ke kiri">&#8634; 90</button>
+      <button id="shapeRotateRight" class="secondary" type="button" title="Pusing 90 darjah ke kanan">&#8635; 90</button>
+      <button id="shapeDuplicate" class="secondary" type="button" title="Duplicate shape">&#10799; Duplicate</button>
+      <button id="shapeDelete" class="danger" type="button" title="Padam shape">Padam</button>
+      <span class="image-format-hint">drag untuk buat petak; tarik bucu untuk resize; Shift semasa rotate = snap 45 darjah</span>
+    `;
+    lineBar.parentNode.insertBefore(bar,lineBar);
+  }
+
+  shapeToolState.color=shapeDefaultColor(shapeToolState.brand);
+
+  // ---- Persist Shape data in every Option/Group/JSON -----------------------
+  const originalCaptureCurrentOptionData=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizeShapeAnnotations();
+    const data=originalCaptureCurrentOptionData();
+    data.shapeAnnotations=cloneData(state.shapeAnnotations||[]);
+    data.nextShapeId=state.nextShapeId;
+    return data;
+  };
+
+  const originalNormalizeOptionData=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const raw=option||{};
+    const data=originalNormalizeOptionData(option);
+    const shapes=Array.isArray(raw.shapeAnnotations)
+      ? raw.shapeAnnotations.map((item,index)=>normalizeShapeAnnotation(cloneData(item),index))
+      : [];
+    data.shapeAnnotations=shapes;
+    data.nextShapeId=Math.max(
+      parseInt(raw.nextShapeId||1,10)||1,
+      ...shapes.map(item=>item.id+1),
+      1
+    );
+    return data;
+  };
+
+  const originalApplyOptionData=applyOptionData;
+  applyOptionData=function(optionData){
+    const data=normalizeOptionData(optionData);
+    originalApplyOptionData(data);
+    state.shapeAnnotations=cloneData(data.shapeAnnotations||[]);
+    state.nextShapeId=data.nextShapeId||1;
+    selectedShapeId=null;
+    normalizeShapeAnnotations();
+  };
+
+  // ---- Artwork Layers -------------------------------------------------------
+  function artworkLayerShapeTokens(){
+    normalizeShapeAnnotations();
+    return state.shapeAnnotations.map(item=>`shape:${item.id}`);
+  }
+
+  normalizeArtworkLayerOrder=function(value=state.artworkLayerOrder){
+    const siteTokens=artworkLayerSiteTokens();
+    const courtTokens=artworkLayerCourtTokens();
+    const imageTokens=artworkLayerImageTokens();
+    const lineTokens=artworkLayerLineTokens();
+    const shapeTokens=artworkLayerShapeTokens();
+    const available=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens];
+    const availableSet=new Set(available);
+    let order=Array.isArray(value) ? value.filter(token=>typeof token==="string") : [];
+
+    if(state.siteShapeMode==="custom" && order.includes("site:main")){
+      const index=order.indexOf("site:main");
+      order.splice(index,1,...siteTokens);
+    }else if(state.siteShapeMode!=="custom"){
+      const oldSiteIndexes=order
+        .map((token,index)=>token.startsWith("site:") ? index : -1)
+        .filter(index=>index>=0);
+      if(oldSiteIndexes.length && !order.includes("site:main")){
+        const insertAt=Math.min(...oldSiteIndexes);
+        order=order.filter(token=>!token.startsWith("site:"));
+        order.splice(Math.min(insertAt,order.length),0,"site:main");
+      }
+    }
+
+    const seen=new Set();
+    order=order.filter(token=>{
+      if(!availableSet.has(token) || seen.has(token)) return false;
+      seen.add(token);
+      return true;
+    });
+
+    if(!order.length){
+      order=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens];
+    }else{
+      siteTokens.forEach(token=>{
+        if(order.includes(token)) return;
+        let insertAt=-1;
+        order.forEach((existing,index)=>{if(existing.startsWith("site:")) insertAt=index+1;});
+        order.splice(insertAt>=0?insertAt:0,0,token);
+      });
+      [...courtTokens,...imageTokens,...lineTokens,...shapeTokens].forEach(token=>{
+        if(!order.includes(token)) order.push(token);
+      });
+    }
+
+    state.artworkLayerOrder=order;
+    return order;
+  };
+
+  drawArtworkLayers=function(){
+    normalizeImageAnnotations();
