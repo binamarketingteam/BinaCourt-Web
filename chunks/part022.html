@@ -58,13 +58,22 @@
     // Perspective is a visual presentation. Remove technical labels/numbers.
     clone.querySelectorAll("text").forEach(node=>node.remove());
 
-    // Walkway/site dimensions are mostly ungrouped legacy lines. Remove the
-    // dark CAD strokes while retaining white/yellow court markings.
-    clone.querySelectorAll("line,path,polyline,polygon,circle").forEach(el=>{
+    // Walkway/site dimensions are mostly ungrouped legacy dark strokes.
+    // IMPORTANT: some site/court surfaces also use a dark outline on the SAME
+    // filled SVG element. Do not remove those filled shapes. Strip only the
+    // dark outline; remove the element only when it is stroke-only.
+    clone.querySelectorAll("line,path,polyline,polygon,circle,rect").forEach(el=>{
       const stroke=String(el.getAttribute("stroke")||"").trim().toLowerCase();
-      if([
+      if(![
         "#111827","#26303c","#344054","#475467","#000000","black"
-      ].includes(stroke)){
+      ].includes(stroke)) return;
+
+      const fill=String(el.getAttribute("fill")||"").trim().toLowerCase();
+      const hasVisibleFill=!!fill && fill!=="none" && fill!=="transparent" && fill!=="rgba(0,0,0,0)";
+
+      if(hasVisibleFill){
+        el.setAttribute("stroke","none");
+      }else{
         el.remove();
       }
     });
@@ -416,6 +425,14 @@
     #stageWrap.perspective-view .measure-inline-editor-wrap,
     #stageWrap.perspective-view .walkway-inline-editor,
     #stageWrap.perspective-view .custom-site-edge-inline-editor{display:none!important}
+
+    /* Hide editing action bars while Perspective View is active. */
+    body:has(#stageWrap.perspective-view) .court-action-toolbar,
+    body:has(#stageWrap.perspective-view) .bottom-action-toolbar,
+    body:has(#stageWrap.perspective-view) .mobile-action-toolbar,
+    body:has(#stageWrap.perspective-view) .selected-court-toolbar{
+      display:none!important;
+    }
     @media(max-width:700px){
       .court-view-mode-switch{top:8px;right:8px}
       .court-view-mode-switch button{min-width:72px;font-size:10px!important;padding:4px 7px!important}
