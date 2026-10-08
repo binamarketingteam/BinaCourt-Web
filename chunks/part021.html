@@ -438,3 +438,211 @@
   function deleteShapeAnnotation(id){
     const item=shapeAnnotationById(id);
     if(!item || item.locked) return;
+    state.shapeAnnotations=state.shapeAnnotations.filter(shape=>shape.id!==id);
+    state.artworkLayerOrder=(state.artworkLayerOrder||[]).filter(token=>token!==`shape:${id}`);
+    if(selectedShapeId===id) selectedShapeId=null;
+    render();
+    commitHistory();
+  }
+
+  function duplicateSelectedShape(){
+    const item=shapeAnnotationById(selectedShapeId);
+    if(!item) return;
+    normalizeShapeAnnotations();
+    const copy=normalizeShapeAnnotation({
+      ...cloneData(item),
+      id:state.nextShapeId++,
+      x:item.x+.45,
+      y:item.y+.45,
+      locked:false,
+      hidden:false
+    },state.shapeAnnotations.length);
+    state.shapeAnnotations.push(copy);
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=(state.artworkLayerOrder||[]).filter(token=>token!==`shape:${copy.id}`);
+    state.artworkLayerOrder.push(`shape:${copy.id}`);
+    selectedShapeId=copy.id;
+    clearOtherSelectionsForShape();
+    render();
+    commitHistory();
+  }
+
+  function rotateSelectedShape(delta){
+    const item=shapeAnnotationById(selectedShapeId);
+    if(!item || item.locked) return;
+    item.angle=normalizeShapeAngle((Number(item.angle)||0)+Number(delta||0));
+    render();
+    commitHistory();
+  }
+
+  function setSelectedShapeAngle(value,{commit=false}={}){
+    const item=shapeAnnotationById(selectedShapeId);
+    if(!item || item.locked) return;
+    item.angle=normalizeShapeAngle(value);
+    render();
+    if(commit) commitHistory();
+  }
+
+  function populateShapeColourOptions(brand,color){
+    const select=$("shapeColour");
+    if(!select) return;
+    const palette=shapePalette(brand);
+    const current=normalizeHexColor(color)||shapeDefaultColor(brand);
+    select.innerHTML="";
+    palette.forEach(entry=>{
+      const hex=normalizeHexColor(entry.color);
+      if(!hex) return;
+      const option=document.createElement("option");
+      option.value=hex;
+      option.textContent=`${entry.name} (${hex.toUpperCase()})`;
+      select.appendChild(option);
+    });
+    const exists=Array.from(select.options).some(option=>option.value===current);
+    select.value=exists?current:(select.options[0]?.value||current);
+    const swatch=$("shapeColourPreview");
+    if(swatch) swatch.style.background=select.value||current;
+  }
+
+  function updateShapeFormatToolbar(){
+    const bar=$("shapeFormatToolbar");
+    if(!bar) return;
+    const item=selectedShapeId!==null ? shapeAnnotationById(selectedShapeId) : null;
+    const show=!!item || !!shapeToolState.active;
+    bar.hidden=!show;
+    if(!show) return;
+
+    const role=item?.role || shapeToolState.role;
+    const brand=item?.brand || shapeToolState.brand || normalizeBrand(state.brand);
+    const color=item?.color || shapeToolState.color || shapeDefaultColor(brand);
+    if($("shapeRole")) $("shapeRole").value=normalizeShapeRole(role);
+    if($("shapeBrand")) $("shapeBrand").value=normalizeBrand(brand,state.brand);
+    populateShapeColourOptions(brand,color);
+    if($("shapeAngle")){
+      $("shapeAngle").value=String(Math.round(normalizeShapeAngle(item?.angle||0)));
+      $("shapeAngle").disabled=!item || !!item.locked;
+    }
+    if($("shapeRotateLeft")) $("shapeRotateLeft").disabled=!item || !!item.locked;
+    if($("shapeRotateRight")) $("shapeRotateRight").disabled=!item || !!item.locked;
+    if($("shapeDuplicate")) $("shapeDuplicate").disabled=!item;
+    if($("shapeDelete")) $("shapeDelete").disabled=!item || !!item.locked;
+    if($("shapeRole")) $("shapeRole").disabled=!!item?.locked;
+    if($("shapeBrand")) $("shapeBrand").disabled=!!item?.locked;
+    if($("shapeColour")) $("shapeColour").disabled=!!item?.locked;
+  }
+
+  function applyShapeRole(value,{commit=false}={}){
+    const role=normalizeShapeRole(value);
+    shapeToolState.role=role;
+    const item=shapeAnnotationById(selectedShapeId);
+    if(item && !item.locked) item.role=role;
+    render();
+    if(commit && item && !item.locked) commitHistory();
+  }
+
+  function applyShapeBrand(value,{commit=false}={}){
+    const brand=normalizeBrand(value,state.brand);
+    shapeToolState.brand=brand;
+    const item=shapeAnnotationById(selectedShapeId);
+    if(item && !item.locked){
+      const oldColor=normalizeHexColor(item.color);
+      item.brand=brand;
+      const palette=shapePalette(brand);
+      item.color=palette.some(entry=>normalizeHexColor(entry.color)===oldColor)
+        ? oldColor
+        : shapeDefaultColor(brand);
+      shapeToolState.color=item.color;
+    }else{
+      shapeToolState.color=shapeDefaultColor(brand);
+    }
+    render();
+    if(commit && item && !item.locked) commitHistory();
+  }
+
+  function applyShapeColour(value,{commit=false}={}){
+    const item=shapeAnnotationById(selectedShapeId);
+    const brand=item?.brand || shapeToolState.brand;
+    const palette=shapePalette(brand);
+    const normalized=normalizeHexColor(value);
+    const allowed=normalized && palette.some(entry=>normalizeHexColor(entry.color)===normalized);
+    const color=allowed?normalized:shapeDefaultColor(brand);
+    shapeToolState.color=color;
+    if(item && !item.locked) item.color=color;
+    const swatch=$("shapeColourPreview");
+    if(swatch) swatch.style.background=color;
+    render();
+    if(commit && item && !item.locked) commitHistory();
+  }
+
+  function removeShapePreview(){
+    svg.querySelectorAll(".shape-tool-preview").forEach(node=>node.remove());
+  }
+
+  function drawShapeToolOverlay(){
+    removeShapePreview();
+    if(!shapeToolState.active || !shapeToolState.dragging || !shapeToolState.start || !shapeToolState.end) return;
+    const a=shapeToolState.start,b=shapeToolState.end;
+    const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
+    const w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    const rect=ns("rect",{
+      class:"editing-only shape-tool-preview",
+      x,y,width:w,height:h,
+      fill:shapeToolState.color||shapeDefaultColor(shapeToolState.brand),
+      "fill-opacity":.28,
+      stroke:"#2563eb","stroke-width":.06,"stroke-dasharray":".20 .12",
+      "vector-effect":"non-scaling-stroke","pointer-events":"none"
+    });
+    svg.appendChild(rect);
+  }
+
+  function setShapeToolActive(active){
+    if(active && typeof customSiteDrawing!=="undefined" && customSiteDrawing){
+      alert("Selesaikan atau Batal Draw Site dahulu sebelum guna Shape Tool.");
+      return;
+    }
+    if(active){
+      lineToolState.active=false;
+      measureToolState.active=false;
+      textToolState.active=false;
+      stageTouchPanMode=false;
+      closeTextInlineEditor(false);
+      closeMeasureInlineEditor(false);
+      shapeToolState.brand=normalizeBrand(shapeToolState.brand||state.brand,state.brand);
+      if(!shapeToolState.color) shapeToolState.color=shapeDefaultColor(shapeToolState.brand);
+    }
+    shapeToolState.active=!!active;
+    shapeToolState.dragging=false;
+    shapeToolState.pointerId=null;
+    shapeToolState.start=null;
+    shapeToolState.end=null;
+    removeShapePreview();
+    updateToolsMenuState();
+    updateShapeFormatToolbar();
+    render();
+  }
+
+  function handleShapePointerDown(event){
+    if(!shapeToolState.active || stageSpaceHeld || stagePanActive || event.button!==0) return;
+    if(event.target?.closest?.("[data-shape-id]")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    const p=stagePointFromClient(event.clientX,event.clientY);
+    shapeToolState.dragging=true;
+    shapeToolState.pointerId=event.pointerId;
+    shapeToolState.start={x:p.x,y:p.y};
+    shapeToolState.end={x:p.x,y:p.y};
+    try{svg.setPointerCapture?.(event.pointerId);}catch(_){ }
+    drawShapeToolOverlay();
+  }
+
+  function handleShapePointerMove(event){
+    if(!shapeToolState.dragging || event.pointerId!==shapeToolState.pointerId) return;
+    event.preventDefault?.();
+    const p=stagePointFromClient(event.clientX,event.clientY);
+    shapeToolState.end={x:p.x,y:p.y};
+    drawShapeToolOverlay();
+  }
+
+  function finishShapePointer(event){
+    if(!shapeToolState.dragging || event.pointerId!==shapeToolState.pointerId) return;
+    event.preventDefault?.();
