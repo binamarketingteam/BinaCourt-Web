@@ -35,12 +35,12 @@ jobs:
           mkdir -p _site/downloads
           OUT="_site/index.html"
           : > "$OUT"
-          for f in chunks/part*.html; do
-            cat "$f" >> "$OUT"
-          done
-          for f in chunks/part*.b64; do
-            base64 -d "$f" >> "$OUT"
-          done
+          while IFS= read -r f; do
+            case "$f" in
+              *.html) cat "$f" >> "$OUT" ;;
+              *.b64) base64 -d "$f" >> "$OUT" ;;
+            esac
+          done < <(find chunks -maxdepth 1 -type f \( -name 'part*.html' -o -name 'part*.b64' \) | sort -V)
           test -s "$OUT"
           grep -q "Bina Court Designer" "$OUT"
 
