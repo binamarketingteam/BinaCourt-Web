@@ -840,3 +840,192 @@
 
   drawArtworkLayers=function(){
     normalizeImageAnnotations();
+    normalizeLineAnnotations();
+    normalizeShapeAnnotations();
+    const order=normalizeArtworkLayerOrder();
+    const customAreas=state.siteShapeMode==="custom"
+      ? new Map(siteAreasForRender().map((area,index)=>[area.id,{area,index}]))
+      : null;
+
+    let index=0;
+    while(index<order.length){
+      const token=order[index];
+
+      if(token.startsWith("court:")){
+        const segment=[];
+        while(index<order.length && order[index].startsWith("court:")){
+          const id=parseInt(order[index].slice(6),10);
+          const court=state.courts.find(item=>item.id===id);
+          if(court && !court.hidden) segment.push(court);
+          index++;
+        }
+        segment.forEach(drawCourt);
+        if(state.overlayMode) segment.forEach(drawCourtLineOverlay);
+        continue;
+      }
+
+      if(token==="site:main"){
+        if(state.siteShapeMode!=="custom") drawRectSiteLayer();
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("site:")){
+        const id=parseInt(token.slice(5),10);
+        const entry=customAreas?.get(id);
+        if(entry) drawCustomSiteAreaLayer(entry.area,entry.index);
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("image:")){
+        const id=parseInt(token.slice(6),10);
+        const item=state.imageAnnotations.find(image=>image.id===id);
+        if(item && !item.hidden && item.src){
+          const group=createImageAnnotationGroup(item);
+          group.setAttribute("data-layer-token",token);
+          svg.appendChild(group);
+        }
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("line:")){
+        const id=parseInt(token.slice(5),10);
+        const item=state.lineAnnotations.find(line=>line.id===id);
+        if(item && !item.hidden && lineLength(item)>.001){
+          const group=createLineAnnotationGroup(item);
+          group.setAttribute("data-layer-token",token);
+          svg.appendChild(group);
+        }
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("shape:")){
+        const id=parseInt(token.slice(6),10);
+        const item=shapeAnnotationById(id);
+        if(item && !item.hidden){
+          const group=createShapeAnnotationGroup(item);
+          group.setAttribute("data-layer-token",token);
+          svg.appendChild(group);
+        }
+        index++;
+        continue;
+      }
+
+      index++;
+    }
+  };
+
+  const originalLayerItemInfo=layerItemInfo;
+  layerItemInfo=function(token,displayIndex,total){
+    if(token.startsWith("shape:")){
+      const id=parseInt(token.slice(6),10);
+      const item=shapeAnnotationById(id);
+      if(!item) return null;
+      const rankText=displayIndex===0 ? "Paling atas" : (displayIndex===total-1 ? "Paling bawah" : `Layer ${displayIndex+1}`);
+      return {
+        token,type:"shape",id,
+        name:`${shapeRoleLabel(item.role)} Shape ${id}`,
+        meta:`${item.w.toFixed(1)} x ${item.h.toFixed(1)} m - ${productBrandName(item.brand)} - Shape - ${rankText}`,
+        color:item.color,
+        hidden:!!item.hidden,
+        locked:!!item.locked,
+        active:selectedShapeId===id
+      };
+    }
+    return originalLayerItemInfo(token,displayIndex,total);
+  };
+
+  const originalSelectArtworkLayerToken=selectArtworkLayerToken;
+  selectArtworkLayerToken=function(token,event=null){
+    if(token.startsWith("shape:")){
+      const id=parseInt(token.slice(6),10);
+      if(!shapeAnnotationById(id)) return;
+      selectedShapeId=id;
+      clearOtherSelectionsForShape();
+      render();
+      return;
+    }
+    selectedShapeId=null;
+    originalSelectArtworkLayerToken(token,event);
+  };
+
+  syncArtworkTypeOrders=function(){
+    const order=normalizeArtworkLayerOrder();
+
+    const courtById=new Map(state.courts.map(c=>[c.id,c]));
+    const orderedCourts=order.filter(token=>token.startsWith("court:"))
+      .map(token=>courtById.get(parseInt(token.slice(6),10))).filter(Boolean);
+    if(orderedCourts.length===state.courts.length) state.courts=orderedCourts;
+
+    const imageById=new Map(state.imageAnnotations.map(item=>[item.id,item]));
+    const orderedImages=order.filter(token=>token.startsWith("image:"))
+      .map(token=>imageById.get(parseInt(token.slice(6),10))).filter(Boolean);
+    if(orderedImages.length===state.imageAnnotations.length) state.imageAnnotations=orderedImages;
+
+    const lineById=new Map(state.lineAnnotations.map(item=>[item.id,item]));
+    const orderedLines=order.filter(token=>token.startsWith("line:"))
+      .map(token=>lineById.get(parseInt(token.slice(5),10))).filter(Boolean);
+    if(orderedLines.length===state.lineAnnotations.length) state.lineAnnotations=orderedLines;
+
+    const shapeById=new Map(state.shapeAnnotations.map(item=>[item.id,item]));
+    const orderedShapes=order.filter(token=>token.startsWith("shape:"))
+      .map(token=>shapeById.get(parseInt(token.slice(6),10))).filter(Boolean);
+    if(orderedShapes.length===state.shapeAnnotations.length) state.shapeAnnotations=orderedShapes;
+  };
+
+  updateCourtList=function(){
+    const list=$("courtList");
+    if(!list) return;
+    list.innerHTML="";
+    updateMeasurementLayerList();
+
+    const order=normalizeArtworkLayerOrder();
+    const displayTokens=order.slice().reverse();
+    if(!displayTokens.length){
+      list.innerHTML='<div class="hint">Belum ada Site, Court, Image, Line atau Shape.</div>';
+      return;
+    }
+
+    displayTokens.forEach((token,index)=>{
+      const info=layerItemInfo(token,index,displayTokens.length);
+      if(!info) return;
+      const item=document.createElement("div");
+      item.className=`court-item artwork-layer-item ${info.active?"active":""} ${info.hidden?"hidden-layer":""} ${info.locked?"locked-layer":""}`;
+      item.dataset.layerToken=token;
+      const marker=info.icon
+        ? `<span style="width:16px;display:inline-flex;justify-content:center">${info.icon}</span>`
+        : `<span class="court-dot" style="background:${info.color||"#7b7e82"}"></span>`;
+      item.innerHTML=`
+        <button type="button" class="layer-handle" aria-label="Drag layer" ${info.locked?"disabled":""} title="${info.locked?"Unlock dahulu untuk ubah susunan layer":"Drag untuk ubah susunan layer"}">&#8801;</button>
+        <span class="layer-main">
+          <span class="layer-name">${marker}${escapeHtml(info.name)}${info.locked?" - Locked":""}${info.hidden?" - Hidden":""}</span>
+          <span class="layer-meta">${escapeHtml(info.meta)}</span>
+        </span>
+        <span class="layer-actions">
+          ${info.staticActions?"":`
+          <button type="button" class="layer-visibility ${info.hidden?"hide-active":""}" title="${info.hidden?"Show layer":"Hide layer"}" aria-label="${info.hidden?"Show layer":"Hide layer"}">${info.hidden?"Show":"Hide"}</button>
+          <button type="button" class="layer-lock ${info.locked?"lock-active":""}" title="${info.locked?"Unlock layer":"Lock layer"}" aria-label="${info.locked?"Unlock layer":"Lock layer"}">${info.locked?"Unlock":"Lock"}</button>
+          `}
+        </span>
+      `;
+
+      item.querySelector(".layer-visibility")?.addEventListener("click",e=>{
+        e.preventDefault();e.stopPropagation();
+        if(info.type==="court") toggleCourtVisibility(info.id);
+        else if(info.type==="image") toggleImageLayerVisibility(info.id);
+        else if(info.type==="line") toggleLineLayerVisibility(info.id);
+        else if(info.type==="site") toggleSiteAreaLayerVisibility(info.id);
+        else if(info.type==="shape") toggleShapeLayerVisibility(info.id);
+      });
+      item.querySelector(".layer-lock")?.addEventListener("click",e=>{
+        e.preventDefault();e.stopPropagation();
+        if(info.type==="court") toggleCourtLock(info.id);
+        else if(info.type==="image") toggleImageLayerLock(info.id);
+        else if(info.type==="line") toggleLineLayerLock(info.id);
+        else if(info.type==="site") toggleSiteAreaLayerLock(info.id);
+        else if(info.type==="shape") toggleShapeLayerLock(info.id);
+      });
+      item.addEventListener("click",e=>{
