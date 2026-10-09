@@ -1,0 +1,521 @@
+<script>
+(function(){
+  "use strict";
+  // Movable low wiremesh partition. Draw by dragging from its start to end.
+  state.partitionAnnotations=Array.isArray(state.partitionAnnotations)?state.partitionAnnotations:[];
+  state.nextPartitionId=Math.max(1,Number(state.nextPartitionId)||1);
+  let selectedPartitionId=null;
+  let placingPartition=false;
+  let drawing=null;
+  const $f=id=>document.getElementById(id);
+  const byId=id=>state.partitionAnnotations.find(f=>f.id===id)||null;
+  const angle=v=>((Number(v)||0)%360+360)%360;
+  const finite=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
+  const clamp=(v,min,max,fallback)=>Math.max(min,Math.min(max,finite(v,fallback)));
+
+  function normalizePartition(raw={},i=0){
+    return {
+      id:Number.isInteger(Number(raw.id))&&Number(raw.id)>0?Number(raw.id):i+1,
+      x:clamp(raw.x,-10000,10000,0),
+      y:clamp(raw.y,-10000,10000,0),
+      length:clamp(raw.length,.3,500,2),
+      angle:angle(raw.angle),
+      hidden:!!raw.hidden,
+      locked:!!raw.locked
+    };
+  }
+  function normalizePartitions(){
+    const used=new Set();
+    state.partitionAnnotations=(Array.isArray(state.partitionAnnotations)?state.partitionAnnotations:[])
+      .map((raw,i)=>{
+        const part=normalizePartition(raw,i);
+        while(used.has(part.id))part.id++;
+        used.add(part.id);
+        if(raw&&typeof raw==="object"){Object.assign(raw,part);return raw;}
+        return part;
+      });
+    state.nextPartitionId=Math.max(1,Number(state.nextPartitionId)||1,
+      ...state.partitionAnnotations.map(f=>f.id+1));
+    if(selectedPartitionId!==null&&!byId(selectedPartitionId))selectedPartitionId=null;
+  }
+  normalizePartitions();
+
+  function getTransform(f){
+    return "translate("+f.x+" "+f.y+") rotate("+f.angle+")";
+  }
+  function drawFence(f,{preview=false}={}){
+    const length=f.length;
+    const group=ns("g",{
+      "class":preview?"editing-only partition-preview":"partition-2d",
+      "data-partition-id":f.id||"",
+      "data-layer-token":f.id?"partition:"+f.id:"",
+      transform:getTransform(f)
+    });
+
+    group.appendChild(ns("rect",{x:0,y:-.13,width:length,height:.26,rx:.012,
+      fill:preview?"#dbeafe":"#e2e8f0",stroke:preview?"#2563eb":"#64748b",
+      "stroke-width":".035","pointer-events":"none"}));
+
+    // Lightweight overhead wiremesh hatch (not a solid wall).
+    const mesh=ns("g",{"pointer-events":"none"});
+    const steps=Math.min(300,Math.floor(length/.22)+1);
+    const increment=length/Math.max(1,steps);
+    for(let i=0;i<steps;i++){
+      const x=i*increment;
+      mesh.appendChild(ns("line",{x1:x,y1:-.12,x2:Math.min(length,x+.17),
+        y2:.12,stroke:preview?"#60a5fa":"#94a3b8",
+        "stroke-width":".025","pointer-events":"none"}));
+    }
+    mesh.appendChild(ns("line",{x1:0,y1:0,x2:length,y2:0,
+      stroke:"#64748b","stroke-width":".018","pointer-events":"none"}));
+    group.appendChild(mesh);
+
+    // Both end posts are visible in the finished floor plan.
+    [0,length].forEach(x=>{
+      group.appendChild(ns("rect",{x:x-.18,y:-.20,width:.36,height:.40,rx:.03,
+        fill:preview?"#93c5fd":"#64748b",stroke:"#f8fafc",
+        "stroke-width":".042","pointer-events":"none"}));
+      group.appendChild(ns("rect",{x:x-.09,y:-.095,width:.18,height:.19,
+        fill:"#cbd5e1","pointer-events":"none"}));
+    });
+
+    if(preview){
+      group.appendChild(ns("line",{x1:0,y1:0,x2:length,y2:0,stroke:"#2563eb",
+        "stroke-width":".06","stroke-dasharray":".14 .10","pointer-events":"none"}));
+      return group;
+    }
+
+    const hit=ns("rect",{x:-.22,y:-.39,width:length+.44,height:.78,
+      fill:"rgba(0,0,0,0)","pointer-events":"all"});
+    hit.style.cursor=f.locked?"default":"move";
+    hit.addEventListener("pointerdown",e=>beginMove(e,f,group));
+    group.appendChild(hit);
+
+    if(selectedPartitionId===f.id){
+      group.appendChild(ns("rect",{"class":"editing-only",x:-.26,y:-.45,
+        width:length+.52,height:.90,fill:"none",stroke:"#2563eb",
+        "stroke-width":".043","stroke-dasharray":".18 .10",
+        "pointer-events":"none"}));
+
+      const text=ns("text",{"class":"editing-only",x:length/2,y:-.58,
+        "font-size":".37","text-anchor":"middle",
+        fill:"#1d4ed8","font-weight":"500","pointer-events":"none"});
+      text.textContent=length.toFixed(2)+" m";
+      group.appendChild(text);
+
+      if(!f.locked){
+        group.appendChild(ns("line",{"class":"editing-only",x1:length/2,y1:-.45,
+          x2:length/2,y2:-1.05,stroke:"#2563eb","stroke-width":".045",
+          "pointer-events":"none"}));
+        const rotateHandle=ns("circle",{"class":"editing-only",
+          cx:length/2,cy:-1.05,r:.22,fill:"#fff",stroke:"#2563eb",
+          "stroke-width":".072","pointer-events":"all"});
+        rotateHandle.style.cursor="grab";
+        rotateHandle.addEventListener("pointerdown",e=>beginRotate(e,f,group));
+        group.appendChild(rotateHandle);
+
+        const lengthHandle=ns("circle",{"class":"editing-only",
+          cx:length,cy:0,r:.23,fill:"#2563eb",stroke:"#fff",
+          "stroke-width":".06","pointer-events":"all"});
+        lengthHandle.style.cursor="ew-resize";
+        lengthHandle.title="Tarik untuk ubah panjang partition";
+        lengthHandle.addEventListener("pointerdown",e=>beginLength(e,f,group));
+        group.appendChild(lengthHandle);
+      }
+    }
+    return group;
+  }
+
+  function otherSelectionOff(){
+    window.__clearBinaShapeSelection?.();
+    window.BinaCourtLighting?.clear?.();
+    window.BinaCourtDoors?.clear?.();
+    selectedImageId=null;
+    selectedLineId=null;
+    selectedTextId=null;
+    selectedMeasurementId=null;
+    clearCourtSelection();
+    closeTextInlineEditor(false);
+    closeMeasureInlineEditor(false);
+  }
+  function selectFence(id,redraw=true){
+    if(!byId(id))return;
+    selectedPartitionId=id;
+    placingPartition=false;drawing=null;
+    otherSelectionOff();
+    updateToolsMenuState();
+    if(redraw)render();
+    else updateFenceBar();
+  }
+  function trackPointer(e,onMove,onFinish){
+    const pid=e.pointerId;
+    const move=event=>{
+      if(event.pointerId!==pid)return;
+      event.preventDefault?.();
+      onMove(event);
+    };
+    const end=event=>{
+      if(event.pointerId!==pid)return;
+      cleanup();
+      onFinish(event.type!=="pointercancel");
+    };
+    function cleanup(){
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+    }
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+  function beginMove(e,f,group){
+    if(e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectFence(f.id,false);
+    if(f.locked){render();return;}
+    const origin=stagePointFromClient(e.clientX,e.clientY);
+    const startX=f.x,startY=f.y;
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      f.x=startX+point.x-origin.x;f.y=startY+point.y-origin.y;
+      group.setAttribute("transform",getTransform(f));
+      moved=true;
+    },()=>{
+      render();
+      if(moved)commitHistory();
+    });
+  }
+  function beginRotate(e,f,group){
+    if(f.locked||e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectFence(f.id,false);
+    const rad=f.angle*Math.PI/180;
+    const center={x:f.x+f.length/2*Math.cos(rad),y:f.y+f.length/2*Math.sin(rad)};
+    const start=stagePointFromClient(e.clientX,e.clientY);
+    const baseAngle=Math.atan2(start.y-center.y,start.x-center.x)*180/Math.PI;
+    const original=f.angle;
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      let next=original+Math.atan2(point.y-center.y,point.x-center.x)*180/Math.PI-baseAngle;
+      if(event.shiftKey)next=Math.round(next/45)*45;
+      f.angle=angle(next);
+      // Keep the fence centre stationary during rotation.
+      const theta=f.angle*Math.PI/180;
+      f.x=center.x-f.length/2*Math.cos(theta);
+      f.y=center.y-f.length/2*Math.sin(theta);
+      group.setAttribute("transform",getTransform(f));
+      if($f("partitionAngle"))$f("partitionAngle").value=String(Math.round(f.angle));
+      moved=true;
+    },()=>{
+      render();if(moved)commitHistory();
+    });
+  }
+  function beginLength(e,f){
+    if(f.locked||e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectFence(f.id,false);
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      const dx=point.x-f.x,dy=point.y-f.y;
+      let newAngle=Math.atan2(dy,dx)*180/Math.PI;
+      if(event.shiftKey)newAngle=Math.round(newAngle/45)*45;
+      f.angle=angle(newAngle);
+      f.length=clamp(Math.hypot(dx,dy),.3,500,2);
+      // Recreate mesh/posts live to match the changing length.
+      const node=svg.querySelector('[data-partition-id="'+f.id+'"]');
+      if(node)node.replaceWith(drawFence(f));
+      updateFenceBar();moved=true;
+    },()=>{render();if(moved)commitHistory();});
+  }
+
+  function putFence(x,y,length,orientation){
+    normalizePartitions();
+    const f=normalizePartition({id:state.nextPartitionId++,x,y,length,
+      angle:orientation,locked:false,hidden:false},state.partitionAnnotations.length);
+    state.partitionAnnotations.push(f);
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=state.artworkLayerOrder.filter(token=>token!=="partition:"+f.id);
+    state.artworkLayerOrder.push("partition:"+f.id);
+    selectFence(f.id);commitHistory();
+  }
+  function modifyFence(action){
+    const f=byId(selectedPartitionId);
+    if(!f||f.locked)return;
+    if(action==="delete"){
+      state.partitionAnnotations=state.partitionAnnotations.filter(item=>item.id!==f.id);
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(token=>token!=="partition:"+f.id);
+      selectedPartitionId=null;render();commitHistory();return;
+    }
+    if(action==="duplicate"){
+      const theta=f.angle*Math.PI/180;
+      const copy=normalizePartition({...cloneData(f),id:state.nextPartitionId++,
+        x:f.x-.7*Math.sin(theta),y:f.y+.7*Math.cos(theta),
+        hidden:false,locked:false},state.partitionAnnotations.length);
+      state.partitionAnnotations.push(copy);
+      normalizeArtworkLayerOrder();
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="partition:"+copy.id);
+      state.artworkLayerOrder.push("partition:"+copy.id);
+      selectFence(copy.id);commitHistory();return;
+    }
+    if(action==="left"||action==="right"){
+      f.angle=angle(f.angle+(action==="left"?-90:90));
+      render();commitHistory();
+    }
+  }
+  function hideFence(id){
+    const f=byId(id);if(!f)return;
+    f.hidden=!f.hidden;
+    if(f.hidden&&selectedPartitionId===id)selectedPartitionId=null;
+    render();commitHistory();
+  }
+  function lockFence(id){
+    const f=byId(id);if(!f)return;
+    f.locked=!f.locked;render();commitHistory();
+  }
+  window.BinaCourtPartitions={
+    draw(id){const f=byId(id);if(f&&!f.hidden)svg.appendChild(drawFence(f));},
+    select:selectFence,hide:hideFence,lock:lockFence,
+    clear(){selectedPartitionId=null;placingPartition=false;drawing=null;updateFenceBar();}
+  };
+
+  // Partitions belong to each Option, and are retained in saved projects.
+  const oldCapture=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizePartitions();
+    const data=oldCapture();
+    data.partitionAnnotations=cloneData(state.partitionAnnotations);
+    data.nextPartitionId=state.nextPartitionId;
+    return data;
+  };
+  const oldNormalize=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const data=oldNormalize(option),raw=option||{};
+    data.partitionAnnotations=Array.isArray(raw.partitionAnnotations)
+      ?raw.partitionAnnotations.map((f,i)=>normalizePartition(f,i)):[];
+    data.nextPartitionId=Math.max(1,Number(raw.nextPartitionId)||1,
+      ...data.partitionAnnotations.map(f=>f.id+1));
+    return data;
+  };
+  const oldApply=applyOptionData;
+  applyOptionData=function(option){
+    const data=normalizeOptionData(option);
+    oldApply(data);
+    state.partitionAnnotations=cloneData(data.partitionAnnotations);
+    state.nextPartitionId=data.nextPartitionId;
+    selectedPartitionId=null;normalizePartitions();
+  };
+
+  const oldLayerInfo=layerItemInfo;
+  layerItemInfo=function(token,index,total){
+    if(token.startsWith("partition:")){
+      const id=parseInt(token.slice(10),10),f=byId(id);
+      if(!f)return null;
+      return {token,type:"partition",id,name:"Partition Pagar Rendah",
+        meta:f.length.toFixed(2)+" m | Wiremesh | "+
+          (index===0?"Paling atas":index===total-1?"Paling bawah":"Layer "+(index+1)),
+        color:"#94a3b8",hidden:f.hidden,locked:f.locked,
+        active:selectedPartitionId===id};
+    }
+    return oldLayerInfo(token,index,total);
+  };
+  const oldSelectLayer=selectArtworkLayerToken;
+  selectArtworkLayerToken=function(token,event=null){
+    if(token.startsWith("partition:")){selectFence(parseInt(token.slice(10),10));return;}
+    selectedPartitionId=null;return oldSelectLayer(token,event);
+  };
+  const oldUpdateList=updateCourtList;
+  updateCourtList=function(){
+    oldUpdateList();
+    $f("courtList")?.querySelectorAll('.artwork-layer-item[data-layer-token^="partition:"]')
+      .forEach(row=>{
+        const id=parseInt(row.dataset.layerToken.slice(10),10);
+        row.querySelector(".layer-visibility")?.addEventListener("click",e=>{
+          e.stopPropagation();hideFence(id);
+        });
+        row.querySelector(".layer-lock")?.addEventListener("click",e=>{
+          e.stopPropagation();lockFence(id);
+        });
+      });
+  };
+  const oldRender=render;
+  render=function(options={}){
+    normalizePartitions();
+    oldRender(options);
+    updateFenceBar();
+  };
+
+  // UI: Tools > Partition Pagar Rendah
+  const menu=$f("toolsDropdown");
+  if(menu&&!$f("partitionTool")){
+    const button=document.createElement("button");
+    button.id="partitionTool";button.type="button";
+    button.title="Klik dan tarik dari titik mula ke titik akhir pagar";
+    button.innerHTML='<span class="tool-icon">&#9776;</span><span>Partition Pagar Rendah</span>';
+    menu.insertBefore(button,$f("imageTool")||null);
+    button.addEventListener("click",()=>{
+      const next=!placingPartition;
+      if(next){
+        const shape=$f("shapeTool");
+        if(shape?.getAttribute("aria-pressed")==="true")shape.click();
+        for(const id of ["lampSingleTool","lampDoubleTool","doorTool"]){
+          const btn=$f(id);
+          if(btn?.getAttribute("aria-pressed")==="true")btn.click();
+        }
+        lineToolState.active=false;measureToolState.active=false;
+        textToolState.active=false;stageTouchPanMode=false;
+        window.BinaCourtLighting?.clear?.();
+        window.BinaCourtDoors?.clear?.();
+      }
+      placingPartition=next;
+      selectedPartitionId=null;drawing=null;
+      menu.hidden=true;
+      $f("toolsMenuButton")?.setAttribute("aria-expanded","false");
+      updateToolsMenuState();render();
+    });
+  }
+
+  const toolbarBefore=$f("doorFormatToolbar")||$f("lineFormatToolbar");
+  if(toolbarBefore&&!$f("partitionFormatToolbar")){
+    const bar=document.createElement("div");
+    bar.id="partitionFormatToolbar";bar.hidden=true;
+    bar.className="image-format-toolbar";
+    bar.setAttribute("aria-label","Partition Pagar Rendah");
+    bar.innerHTML=
+      '<span class="image-format-label">PARTITION PAGAR RENDAH</span>'+
+      '<label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:11px;font-weight:400">Panjang (m) <input id="partitionLength" type="number" min="0.3" max="500" step=".1" style="width:78px;height:34px;padding:5px;font-size:11px"></label>'+
+      '<button id="partitionRotateLeft" class="secondary" type="button" title="Rotate -90°">&#8634; 90°</button>'+
+      '<button id="partitionRotateRight" class="secondary" type="button" title="Rotate +90°">&#8635; 90°</button>'+
+      '<label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:11px;font-weight:400">Sudut <input id="partitionAngle" type="number" step="45" min="0" max="359" style="width:64px;height:34px;padding:5px;font-size:11px"></label>'+
+      '<button id="partitionDuplicate" class="secondary" type="button">Duplicate</button>'+
+      '<button id="partitionDelete" class="danger" type="button">Delete</button>';
+    toolbarBefore.insertAdjacentElement("afterend",bar);
+    bar.querySelectorAll("button").forEach(button=>{
+      button.style.width="auto";button.style.padding="5px 8px";
+      button.style.fontSize="11px";
+    });
+  }
+  function updateFenceBar(){
+    const bar=$f("partitionFormatToolbar"),f=byId(selectedPartitionId);
+    if(!bar)return;
+    bar.hidden=!f;
+    if(!f)return;
+    $f("partitionLength").value=f.length.toFixed(2);
+    $f("partitionAngle").value=String(Math.round(f.angle));
+    ["partitionLength","partitionAngle","partitionRotateLeft","partitionRotateRight",
+      "partitionDuplicate","partitionDelete"].forEach(id=>{
+      if($f(id))$f(id).disabled=f.locked;
+    });
+  }
+  $f("partitionLength")?.addEventListener("change",e=>{
+    const f=byId(selectedPartitionId);if(!f||f.locked)return;
+    f.length=clamp(e.target.value,.3,500,2);
+    render();commitHistory();
+  });
+  $f("partitionAngle")?.addEventListener("change",e=>{
+    const f=byId(selectedPartitionId);if(!f||f.locked)return;
+    f.angle=angle(e.target.value);
+    render();commitHistory();
+  });
+  [["partitionRotateLeft","left"],["partitionRotateRight","right"],
+    ["partitionDuplicate","duplicate"],["partitionDelete","delete"]]
+    .forEach(([id,action])=>$f(id)?.addEventListener("click",()=>modifyFence(action)));
+
+  const oldMenuState=updateToolsMenuState;
+  updateToolsMenuState=function(){
+    oldMenuState();
+    const button=$f("partitionTool");if(!button)return;
+    button.classList.toggle("is-active",placingPartition);
+    button.setAttribute("aria-pressed",String(placingPartition));
+    if(placingPartition)$f("toolsMenuButton")?.classList.add("tool-active");
+  };
+  const oldCursor=updateStageCursor;
+  updateStageCursor=function(){
+    oldCursor();
+    if(placingPartition&&!stageSpaceHeld)$f("stageWrap").style.cursor="crosshair";
+  };
+
+  // Switching to other editing tools cancels partition placement.
+  ["shapeTool","lineTool","measureTool","textTool","imageTool","touchPanTool",
+    "lampSingleTool","lampDoubleTool","doorTool"].forEach(id=>{
+    $f(id)?.addEventListener("click",()=>{
+      if(!placingPartition)return;
+      placingPartition=false;
+      drawing=null;
+      svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
+      updateToolsMenuState();
+    },true);
+  });
+
+  function drawPreview(){
+    svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
+    if(!drawing)return;
+    const dx=drawing.end.x-drawing.start.x;
+    const dy=drawing.end.y-drawing.start.y;
+    const width=Math.max(.3,Math.hypot(dx,dy));
+    const value={x:drawing.start.x,y:drawing.start.y,length:width,
+      angle:angle(Math.atan2(dy,dx)*180/Math.PI)};
+    const g=drawFence(value,{preview:true});
+    g.style.pointerEvents="none";
+    svg.appendChild(g);
+  }
+  svg.addEventListener("pointerdown",event=>{
+    if(placingPartition&&!stageSpaceHeld&&!stagePanActive&&event.button===0){
+      if(event.target?.closest?.("[data-partition-id]"))return;
+      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+      const p=stagePointFromClient(event.clientX,event.clientY);
+      drawing={start:{x:p.x,y:p.y},end:{x:p.x,y:p.y}};
+      drawPreview();
+      trackPointer(event,moveEvent=>{
+        if(!drawing)return;
+        const pt=stagePointFromClient(moveEvent.clientX,moveEvent.clientY);
+        drawing.end={x:pt.x,y:pt.y};
+        drawPreview();
+      },success=>{
+        svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
+        if(!drawing)return;
+        const a=drawing.start,b=drawing.end;
+        drawing=null;
+        if(!success)return;
+        const dx=b.x-a.x,dy=b.y-a.y;
+        const length=Math.max(.3,Math.hypot(dx,dy));
+        putFence(a.x,a.y,Math.hypot(dx,dy)<.15?2:length,
+          Math.hypot(dx,dy)<.15?0:angle(Math.atan2(dy,dx)*180/Math.PI));
+      });
+      return;
+    }
+    if(!event.target?.closest?.("[data-partition-id]")&&selectedPartitionId!==null){
+      selectedPartitionId=null;updateFenceBar();
+    }
+  },true);
+
+  document.addEventListener("keydown",event=>{
+    if(stageKeyTargetIsEditable(event.target))return;
+    if(event.key==="Escape"&&placingPartition){
+      placingPartition=false;drawing=null;
+      svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
+      updateToolsMenuState();return;
+    }
+    if(selectedPartitionId===null)return;
+    const f=byId(selectedPartitionId);if(!f||f.locked)return;
+    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="d"){
+      event.preventDefault();event.stopImmediatePropagation();modifyFence("duplicate");
+    }else if(event.key==="Delete"||event.key==="Backspace"){
+      event.preventDefault();event.stopImmediatePropagation();modifyFence("delete");
+    }
+  },true);
+
+  // Reset project clears all partition objects.
+  const oldReset=window.__resetShapeToolState;
+  window.__resetShapeToolState=function(){
+    oldReset?.();
+    state.partitionAnnotations=[];state.nextPartitionId=1;
+    selectedPartitionId=null;placingPartition=false;drawing=null;
+  };
+
+  updateToolsMenuState();
+  updateFenceBar();
+})();
+</script>
