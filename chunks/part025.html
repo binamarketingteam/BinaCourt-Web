@@ -439,7 +439,7 @@
 
   // Switching to other editing tools cancels partition placement.
   ["shapeTool","lineTool","measureTool","textTool","imageTool","touchPanTool",
-    "lampSingleTool","lampDoubleTool","doorTool"].forEach(id=>{
+    "lampSingleTool","lampDoubleTool","doorTool","netTool"].forEach(id=>{
     $f(id)?.addEventListener("click",()=>{
       if(!placingPartition)return;
       placingPartition=false;
