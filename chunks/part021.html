@@ -11,6 +11,7 @@
   if(!Number.isFinite(Number(state.nextShapeId))) state.nextShapeId=1;
 
   let selectedShapeId=null;
+  window.__clearBinaShapeSelection=()=>{selectedShapeId=null;};
   const shapeToolState={
     active:false,
     dragging:false,
@@ -795,7 +796,8 @@
     const imageTokens=artworkLayerImageTokens();
     const lineTokens=artworkLayerLineTokens();
     const shapeTokens=artworkLayerShapeTokens();
-    const available=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens];
+    const lampTokens=(state.lampAnnotations||[]).map(item=>`lamp:${item.id}`);
+    const available=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens];
     const availableSet=new Set(available);
     let order=Array.isArray(value) ? value.filter(token=>typeof token==="string") : [];
 
@@ -821,7 +823,7 @@
     });
 
     if(!order.length){
-      order=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens];
+      order=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens];
     }else{
       siteTokens.forEach(token=>{
         if(order.includes(token)) return;
@@ -829,7 +831,7 @@
         order.forEach((existing,index)=>{if(existing.startsWith("site:")) insertAt=index+1;});
         order.splice(insertAt>=0?insertAt:0,0,token);
       });
-      [...courtTokens,...imageTokens,...lineTokens,...shapeTokens].forEach(token=>{
+      [...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens].forEach(token=>{
         if(!order.includes(token)) order.push(token);
       });
     }
@@ -898,6 +900,12 @@
           group.setAttribute("data-layer-token",token);
           svg.appendChild(group);
         }
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("lamp:")){
+        if(window.BinaCourtLighting) window.BinaCourtLighting.draw(parseInt(token.slice(5),10));
         index++;
         continue;
       }
