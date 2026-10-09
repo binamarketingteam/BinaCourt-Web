@@ -797,7 +797,8 @@
     const lineTokens=artworkLayerLineTokens();
     const shapeTokens=artworkLayerShapeTokens();
     const lampTokens=(state.lampAnnotations||[]).map(item=>`lamp:${item.id}`);
-    const available=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens];
+    const doorTokens=(state.doorAnnotations||[]).map(item=>`door:${item.id}`);
+    const available=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens,...doorTokens];
     const availableSet=new Set(available);
     let order=Array.isArray(value) ? value.filter(token=>typeof token==="string") : [];
 
@@ -823,7 +824,7 @@
     });
 
     if(!order.length){
-      order=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens];
+      order=[...siteTokens,...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens,...doorTokens];
     }else{
       siteTokens.forEach(token=>{
         if(order.includes(token)) return;
@@ -831,7 +832,7 @@
         order.forEach((existing,index)=>{if(existing.startsWith("site:")) insertAt=index+1;});
         order.splice(insertAt>=0?insertAt:0,0,token);
       });
-      [...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens].forEach(token=>{
+      [...courtTokens,...imageTokens,...lineTokens,...shapeTokens,...lampTokens,...doorTokens].forEach(token=>{
         if(!order.includes(token)) order.push(token);
       });
     }
@@ -906,6 +907,12 @@
 
       if(token.startsWith("lamp:")){
         if(window.BinaCourtLighting) window.BinaCourtLighting.draw(parseInt(token.slice(5),10));
+        index++;
+        continue;
+      }
+
+      if(token.startsWith("door:")){
+        window.BinaCourtDoors?.draw(parseInt(token.slice(5),10));
         index++;
         continue;
       }
