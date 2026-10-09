@@ -4,10 +4,10 @@
   // View / Display (#4): global visibility for centre nets, keeping each court's own preference.
   if(typeof drawCourtCenterNet!=="function" || typeof render!=="function") return;
 
-  const preferenceKey="binacourt-center-net-view-v1";
-  let showAllCenterNets=true;
+  const preferenceKey="binacourt-center-net-view-v2";
+  let showAllCenterNets=false;
   try{
-    showAllCenterNets=localStorage.getItem(preferenceKey)!=="0";
+    showAllCenterNets=localStorage.getItem(preferenceKey)==="1";
   }catch(_){ /* Storage may be blocked. */ }
 
   const originalDrawCourtCenterNet=drawCourtCenterNet;
@@ -49,6 +49,9 @@
     const after=grid.querySelector("#showCourtSizes")?.closest(".inline");
     if(after) after.insertAdjacentElement("afterend",row);
     else grid.appendChild(row);
+
+    // Apply the OFF default to the first live SVG render as well.
+    render();
   }
 
   if(document.readyState==="loading"){
