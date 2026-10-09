@@ -68,7 +68,7 @@ function normalizeHexColor(color){
 }
 
 function colorForSiteArea(area){
-  return normalizeHexColor(area?.color) || normalizeHexColor(state.siteColor) || "#7b7e82";
+  return normalizeHexColor(area?.color) || normalizeHexColor(state.siteColor) || "#a53531";
 }
 
 function currentSitePaletteColor(){
@@ -76,7 +76,7 @@ function currentSitePaletteColor(){
     const area=activeSiteArea();
     if(area) return colorForSiteArea(area);
   }
-  return normalizeHexColor(state.siteColor) || "#7b7e82";
+  return normalizeHexColor(state.siteColor) || "#a53531";
 }
 
 function colorInfo(color, palette=getDefaultPalette()){
@@ -375,7 +375,7 @@ const state = {
   pdfPageOrder:"option_first",
   optionGroups:[],
   optionPages:[],
-  siteW:40, siteH:40, siteColor:"#7b7e82",
+  siteW:40, siteH:40, siteColor:"#a53531",
   siteSizeMode:"manual", siteTargetArea:1600, siteLockedRatio:1,
   siteShapeMode:"rect", sitePolygon:[],
   siteAreas:[], activeSiteAreaId:null, nextSiteAreaId:1,
