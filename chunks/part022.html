@@ -1,15 +1,14 @@
 <script>
 (function(){
   "use strict";
-  // Global view toggle for centre nets. Each court retains its own showNet value.
-  // Export rendering uses the same SVG renderer, so the current view is exported.
+  // View / Display (#4): global visibility for centre nets, keeping each court's own preference.
   if(typeof drawCourtCenterNet!=="function" || typeof render!=="function") return;
 
   const preferenceKey="binacourt-center-net-view-v1";
   let showAllCenterNets=true;
   try{
     showAllCenterNets=localStorage.getItem(preferenceKey)!=="0";
-  }catch(_){ /* Browsers may block local storage. */ }
+  }catch(_){ /* Storage may be blocked. */ }
 
   const originalDrawCourtCenterNet=drawCourtCenterNet;
   drawCourtCenterNet=function(g,c){
@@ -19,43 +18,37 @@
 
   function setupNetViewToggle(){
     if(document.getElementById("centerNetViewToggle")) return;
-    const stageWrap=document.getElementById("stageWrap");
-    if(!stageWrap || !stageWrap.parentElement) return;
+    const grid=document.querySelector("#panelView .sidebar-view-grid");
+    if(!grid) return;
 
-    const toolbar=document.createElement("div");
-    toolbar.id="centerNetViewToolbar";
-    toolbar.style.cssText="display:flex;justify-content:flex-end;align-items:center;margin:0 0 7px;gap:8px;";
+    const row=document.createElement("label");
+    row.className="inline";
+    row.style.cssText="cursor:pointer;";
 
-    const button=document.createElement("button");
-    button.id="centerNetViewToggle";
-    button.type="button";
-    button.className="secondary";
-    button.style.cssText="width:auto;min-height:32px;padding:6px 13px;border-radius:8px;font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer;touch-action:manipulation;";
-    button.title="ON/OFF net tengah bagi semua court. Tetapan net bagi setiap court masih boleh diubah dalam Court Dipilih.";
-    button.setAttribute("aria-label","Paparkan atau sembunyikan semua net tengah");
+    const checkbox=document.createElement("input");
+    checkbox.id="centerNetViewToggle";
+    checkbox.type="checkbox";
+    checkbox.checked=showAllCenterNets;
+    checkbox.setAttribute("aria-label","View net tengah bagi semua court");
+    checkbox.title="Paparkan atau sembunyikan net tengah semua court. Tetapan setiap court masih dikekalkan.";
 
-    function updateButton(){
-      button.textContent=showAllCenterNets?"👁 Net Tengah: ON":"👁 Net Tengah: OFF";
-      button.setAttribute("aria-pressed",String(showAllCenterNets));
-      button.style.background=showAllCenterNets?"#23344c":"#f1f5f9";
-      button.style.color=showAllCenterNets?"#ffffff":"#475569";
-      button.style.border="1px solid "+(showAllCenterNets?"#23344c":"#cbd5e1");
-    }
+    const label=document.createElement("span");
+    label.textContent="View Net Tengah (semua court)";
 
-    button.addEventListener("click",function(event){
-      event.preventDefault();
-      event.stopPropagation();
-      showAllCenterNets=!showAllCenterNets;
+    checkbox.addEventListener("change",function(){
+      showAllCenterNets=checkbox.checked;
       try{
         localStorage.setItem(preferenceKey,showAllCenterNets?"1":"0");
       }catch(_){ }
-      updateButton();
       render();
     });
 
-    toolbar.appendChild(button);
-    stageWrap.parentElement.insertBefore(toolbar,stageWrap);
-    updateButton();
+    row.appendChild(checkbox);
+    row.appendChild(label);
+
+    const after=grid.querySelector("#showCourtSizes")?.closest(".inline");
+    if(after) after.insertAdjacentElement("afterend",row);
+    else grid.appendChild(row);
   }
 
   if(document.readyState==="loading"){
