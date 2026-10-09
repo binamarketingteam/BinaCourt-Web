@@ -1,0 +1,403 @@
+<script>
+(function(){
+  "use strict";
+  // Architectural 2D swing door tool. Coordinates are in court metres.
+  state.doorAnnotations=Array.isArray(state.doorAnnotations)?state.doorAnnotations:[];
+  state.nextDoorId=Math.max(1,Number(state.nextDoorId)||1);
+  let selectedDoorId=null,placingDoor=false;
+  const getDoor=id=>state.doorAnnotations.find(d=>d.id===id)||null;
+  const angle=v=>((Number(v)||0)%360+360)%360;
+  const inRange=(value,lo,hi,fallback)=>{
+    const n=Number(value);
+    return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):fallback;
+  };
+  function normalizeDoor(raw={},i=0){
+    return {
+      id:Number.isInteger(Number(raw.id))&&Number(raw.id)>0?Number(raw.id):i+1,
+      x:inRange(raw.x,-10000,10000,state.siteW/2),
+      y:inRange(raw.y,-10000,10000,state.siteH/2),
+      w:inRange(raw.w,.5,6,1.4),
+      angle:angle(raw.angle),
+      swing:raw.swing==="right"?"right":"left",
+      hidden:!!raw.hidden,locked:!!raw.locked
+    };
+  }
+  function normalizeDoors(){
+    const ids=new Set();
+    state.doorAnnotations=(Array.isArray(state.doorAnnotations)?state.doorAnnotations:[])
+      .map((door,i)=>{
+        const d=normalizeDoor(door,i);
+        while(ids.has(d.id))d.id++;
+        ids.add(d.id);
+        if(door&&typeof door==="object"){Object.assign(door,d);return door;}
+        return d;
+      });
+    state.nextDoorId=Math.max(1,Number(state.nextDoorId)||1,...state.doorAnnotations.map(d=>d.id+1));
+    if(selectedDoorId!==null&&!getDoor(selectedDoorId))selectedDoorId=null;
+  }
+  normalizeDoors();
+
+  function clearOtherSelections(){
+    window.__clearBinaShapeSelection?.();
+    window.BinaCourtLighting?.clear?.();
+    selectedImageId=null;
+    selectedTextId=null;
+    selectedLineId=null;
+    selectedMeasurementId=null;
+    clearCourtSelection();
+    closeTextInlineEditor(false);
+    closeMeasureInlineEditor(false);
+  }
+  function transform(d){return "translate("+d.x+" "+d.y+") rotate("+d.angle+")";}
+  function symbol(d){
+    const w=d.w;
+    const group=ns("g",{class:"door-2d-symbol","data-door-id":d.id,
+      "data-layer-token":"door:"+d.id,transform:transform(d)});
+    const h=ns("g",{transform:d.swing==="right"?"scale(1,-1)":""});
+    const join=attrs=>{h.appendChild(ns(attrs[0],attrs[1]));};
+    // Hinges, swing arc, threshold and open door leaf (90-degree plan).
+    join(["line",{x1:0,y1:0,x2:w,y2:0,stroke:"#334155","stroke-width":".05",
+      "stroke-dasharray":".15 .09","pointer-events":"none"}]);
+    join(["path",{d:"M "+w+" 0 A "+w+" "+w+" 0 0 0 0 "+(-w),
+      fill:"none",stroke:"#475569","stroke-width":".045",
+      "stroke-dasharray":".12 .09","pointer-events":"none"}]);
+    join(["line",{x1:0,y1:0,x2:0,y2:-w,stroke:"#0f172a","stroke-width":".14",
+      "stroke-linecap":"round","pointer-events":"none"}]);
+    join(["rect",{x:-.22,y:-.23,width:.44,height:.46,rx:.04,fill:"#475569",
+      stroke:"#fff","stroke-width":".04","pointer-events":"none"}]);
+    join(["circle",{cx:0,cy:0,r:.11,fill:"#f8fafc",stroke:"#334155",
+      "stroke-width":".045","pointer-events":"none"}]);
+    join(["rect",{x:w-.1,y:-.22,width:.2,height:.44,fill:"#334155",
+      "pointer-events":"none"}]);
+    group.appendChild(h);
+
+    const hit=ns("rect", {x:-.28,y:-w-.25,width:w+.55,height:w+.55,
+      fill:"rgba(0,0,0,0)","pointer-events":"all"});
+    hit.style.cursor=d.locked?"default":"move";
+    hit.addEventListener("pointerdown",e=>moveDoor(e,d,group));
+    group.appendChild(hit);
+
+    if(d.id===selectedDoorId){
+      const outline=ns("rect",{class:"editing-only",x:-.3,y:-w-.3,
+        width:w+.6,height:w+.6,fill:"none",stroke:"#2563eb",
+        "stroke-width":".045","stroke-dasharray":".16 .10",
+        "pointer-events":"none"});
+      group.appendChild(outline);
+      if(!d.locked){
+        const arm=ns("line",{class:"editing-only",x1:w/2,y1:-w,
+          x2:w/2,y2:-w-.65,stroke:"#2563eb","stroke-width":".045",
+          "pointer-events":"none"});
+        group.appendChild(arm);
+        const handle=ns("circle",{class:"editing-only",cx:w/2,cy:-w-.65,
+          r:.24,fill:"#fff",stroke:"#2563eb",
+          "stroke-width":".075","pointer-events":"all"});
+        handle.style.cursor="grab";
+        handle.addEventListener("pointerdown",e=>rotateDoor(e,d,group));
+        group.appendChild(handle);
+      }
+    }
+    return group;
+  }
+  function selectDoor(id,refresh=true){
+    if(!getDoor(id))return;
+    selectedDoorId=id;placingDoor=false;
+    clearOtherSelections();
+    updateToolsMenuState();
+    if(refresh)render();
+    else updateDoorBar();
+  }
+  function moveDoor(event,d,g){
+    if(event.button!==0)return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    selectDoor(d.id,false);
+    if(d.locked){render();return;}
+    const start=stagePointFromClient(event.clientX,event.clientY);
+    const x0=d.x,y0=d.y,pid=event.pointerId;
+    let changed=false;
+    const move=e=>{
+      if(e.pointerId!==pid)return;
+      e.preventDefault?.();
+      const point=stagePointFromClient(e.clientX,e.clientY);
+      d.x=x0+point.x-start.x;d.y=y0+point.y-start.y;
+      g.setAttribute("transform",transform(d));changed=true;
+    };
+    const end=e=>{
+      if(e.pointerId!==pid)return;
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+      render();if(changed)commitHistory();
+    };
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+  function rotateDoor(event,d,g){
+    if(d.locked||event.button!==0)return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    selectDoor(d.id,false);
+    const first=stagePointFromClient(event.clientX,event.clientY);
+    const start=Math.atan2(first.y-d.y,first.x-d.x)*180/Math.PI;
+    const initial=d.angle,pid=event.pointerId;let changed=false;
+    const move=e=>{
+      if(e.pointerId!==pid)return;
+      e.preventDefault?.();
+      const p=stagePointFromClient(e.clientX,e.clientY);
+      let a=initial+Math.atan2(p.y-d.y,p.x-d.x)*180/Math.PI-start;
+      if(e.shiftKey)a=Math.round(a/45)*45;
+      d.angle=angle(a);g.setAttribute("transform",transform(d));
+      if($("doorAngle"))$("doorAngle").value=String(Math.round(d.angle));
+      changed=true;
+    };
+    const end=e=>{
+      if(e.pointerId!==pid)return;
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+      render();if(changed)commitHistory();
+    };
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+  function addDoor(x,y){
+    normalizeDoors();
+    const d=normalizeDoor({id:state.nextDoorId++,x,y,w:1.4,angle:0},state.doorAnnotations.length);
+    state.doorAnnotations.push(d);
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="door:"+d.id);
+    state.artworkLayerOrder.push("door:"+d.id);
+    selectDoor(d.id);commitHistory();
+  }
+  function changeDoor(action){
+    const d=getDoor(selectedDoorId);
+    if(!d||d.locked)return;
+    if(action==="delete"){
+      state.doorAnnotations=state.doorAnnotations.filter(item=>item.id!==d.id);
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="door:"+d.id);
+      selectedDoorId=null;render();commitHistory();return;
+    }
+    if(action==="duplicate"){
+      const clone=normalizeDoor({...cloneData(d),id:state.nextDoorId++,
+        x:d.x+d.w+.35,hidden:false,locked:false},state.doorAnnotations.length);
+      state.doorAnnotations.push(clone);
+      normalizeArtworkLayerOrder();
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="door:"+clone.id);
+      state.artworkLayerOrder.push("door:"+clone.id);
+      selectDoor(clone.id);commitHistory();return;
+    }
+    if(action==="left")d.angle=angle(d.angle-90);
+    if(action==="right")d.angle=angle(d.angle+90);
+    render();commitHistory();
+  }
+  function toggleVisibility(id){
+    const d=getDoor(id);if(!d)return;
+    d.hidden=!d.hidden;
+    if(d.hidden&&selectedDoorId===id)selectedDoorId=null;
+    render();commitHistory();
+  }
+  function toggleLock(id){
+    const d=getDoor(id);if(!d)return;
+    d.locked=!d.locked;render();commitHistory();
+  }
+  window.BinaCourtDoors={
+    draw(id){const d=getDoor(id);if(d&&!d.hidden)svg.appendChild(symbol(d));},
+    select:selectDoor,toggleVisibility,toggleLock,
+    clear(){selectedDoorId=null;placingDoor=false;updateDoorBar();}
+  };
+
+  // Use the same saved option/group/project file and undo snapshot as other art objects.
+  const oldCapture=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizeDoors();
+    const data=oldCapture();
+    data.doorAnnotations=cloneData(state.doorAnnotations);
+    data.nextDoorId=state.nextDoorId;
+    return data;
+  };
+  const oldNormalize=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const data=oldNormalize(option),raw=option||{};
+    data.doorAnnotations=Array.isArray(raw.doorAnnotations)
+      ?raw.doorAnnotations.map((d,i)=>normalizeDoor(d,i)):[];
+    data.nextDoorId=Math.max(1,Number(raw.nextDoorId)||1,
+      ...data.doorAnnotations.map(d=>d.id+1));
+    return data;
+  };
+  const oldApply=applyOptionData;
+  applyOptionData=function(option){
+    const data=normalizeOptionData(option);
+    oldApply(data);
+    state.doorAnnotations=cloneData(data.doorAnnotations);
+    state.nextDoorId=data.nextDoorId;
+    selectedDoorId=null;normalizeDoors();
+  };
+  const oldLayerInfo=layerItemInfo;
+  layerItemInfo=function(token,index,total){
+    if(token.startsWith("door:")){
+      const id=parseInt(token.slice(5),10),d=getDoor(id);
+      if(!d)return null;
+      return {token,type:"door",id,name:"Pintu 2D",
+        meta:d.w.toFixed(2)+" m | "+(d.swing==="right"?"Buka kanan":"Buka kiri")+
+             " | "+(index===0?"Paling atas":"Layer "+(index+1)),
+        color:"#475569",hidden:d.hidden,locked:d.locked,active:selectedDoorId===id};
+    }
+    return oldLayerInfo(token,index,total);
+  };
+  const oldSelect=selectArtworkLayerToken;
+  selectArtworkLayerToken=function(token,event=null){
+    if(token.startsWith("door:")){selectDoor(parseInt(token.slice(5),10));return;}
+    selectedDoorId=null;
+    return oldSelect(token,event);
+  };
+  const oldUpdate=updateCourtList;
+  updateCourtList=function(){
+    oldUpdate();
+    $("courtList")?.querySelectorAll('.artwork-layer-item[data-layer-token^="door:"]')
+      .forEach(row=>{
+        const id=parseInt(row.dataset.layerToken.slice(5),10);
+        row.querySelector(".layer-visibility")?.addEventListener("click",e=>{
+          e.stopPropagation();toggleVisibility(id);
+        });
+        row.querySelector(".layer-lock")?.addEventListener("click",e=>{
+          e.stopPropagation();toggleLock(id);
+        });
+      });
+  };
+  const oldRender=render;
+  render=function(options={}){
+    normalizeDoors();oldRender(options);updateDoorBar();
+  };
+
+  // Tools dropdown: add a real placed 2D doorway symbol, not an imported image.
+  const menu=$("toolsDropdown");
+  if(menu&&!$("doorTool")){
+    const btn=document.createElement("button");
+    btn.id="doorTool";btn.type="button";
+    btn.title="Klik pada court untuk tambah simbol pintu 2D";
+    btn.innerHTML='<span class="tool-icon">&#9633;</span><span>Pintu 2D</span>';
+    menu.insertBefore(btn,$("imageTool")||null);
+    btn.addEventListener("click",()=>{
+      const next=!placingDoor;
+      if(next){
+        const shape=$("shapeTool");
+        if(shape?.getAttribute("aria-pressed")==="true")shape.click();
+        for(const id of ["lampSingleTool","lampDoubleTool"]){
+          const lamp=$(id);
+          if(lamp?.getAttribute("aria-pressed")==="true")lamp.click();
+        }
+        lineToolState.active=false;measureToolState.active=false;
+        textToolState.active=false;stageTouchPanMode=false;
+        window.BinaCourtLighting?.clear?.();
+      }
+      placingDoor=next;selectedDoorId=null;
+      menu.hidden=true;
+      $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+      updateToolsMenuState();updateDoorBar();render();
+    });
+  }
+  const before=$("lampFormatToolbar")||$("lineFormatToolbar");
+  if(before&&!$("doorFormatToolbar")){
+    const bar=document.createElement("div");
+    bar.id="doorFormatToolbar";bar.hidden=true;
+    bar.className="image-format-toolbar";
+    bar.setAttribute("aria-label","Pintu 2D");
+    bar.innerHTML=
+      '<span class="image-format-label">PINTU 2D</span>'+
+      '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:0;font-weight:400">Lebar (m) <input id="doorWidth" type="number" min=".5" max="6" step=".1" style="width:64px;height:34px;padding:5px"></label>'+
+      '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:0;font-weight:400">Bukaan <select id="doorSwing" style="width:92px;height:34px;padding:5px"><option value="left">Kiri</option><option value="right">Kanan</option></select></label>'+
+      '<button id="doorRotateLeft" class="secondary" type="button">↶ 90°</button>'+
+      '<button id="doorRotateRight" class="secondary" type="button">↷ 90°</button>'+
+      '<input id="doorAngle" type="number" min="0" max="359" step="45" title="Sudut pintu" style="width:65px;height:34px;padding:5px">'+
+      '<button id="doorDuplicate" class="secondary" type="button">Duplicate</button>'+
+      '<button id="doorDelete" class="danger" type="button">Delete</button>';
+    before.insertAdjacentElement("afterend",bar);
+    bar.querySelectorAll("button").forEach(b=>{
+      b.style.width="auto";b.style.padding="5px 8px";b.style.fontSize="11px";
+    });
+  }
+  function updateDoorBar(){
+    const bar=$("doorFormatToolbar"),d=getDoor(selectedDoorId);
+    if(!bar)return;
+    bar.hidden=!d;
+    if(!d)return;
+    $("doorWidth").value=d.w.toFixed(1);
+    $("doorSwing").value=d.swing;
+    $("doorAngle").value=String(Math.round(d.angle));
+    ["doorWidth","doorSwing","doorAngle","doorRotateLeft","doorRotateRight",
+      "doorDuplicate","doorDelete"].forEach(id=>{if($(id))$(id).disabled=d.locked;});
+  }
+  [["doorRotateLeft","left"],["doorRotateRight","right"],
+   ["doorDuplicate","duplicate"],["doorDelete","delete"]].forEach(([id,action])=>{
+    $(id)?.addEventListener("click",()=>changeDoor(action));
+  });
+  $("doorWidth")?.addEventListener("change",e=>{
+    const d=getDoor(selectedDoorId);if(!d||d.locked)return;
+    d.w=inRange(e.target.value,.5,6,1.4);
+    render();commitHistory();
+  });
+  $("doorSwing")?.addEventListener("change",e=>{
+    const d=getDoor(selectedDoorId);if(!d||d.locked)return;
+    d.swing=e.target.value==="right"?"right":"left";
+    render();commitHistory();
+  });
+  $("doorAngle")?.addEventListener("change",e=>{
+    const d=getDoor(selectedDoorId);if(!d||d.locked)return;
+    d.angle=angle(e.target.value);
+    render();commitHistory();
+  });
+
+  const oldMenuState=updateToolsMenuState;
+  updateToolsMenuState=function(){
+    oldMenuState();
+    const btn=$("doorTool");if(!btn)return;
+    btn.classList.toggle("is-active",placingDoor);
+    btn.setAttribute("aria-pressed",String(placingDoor));
+    if(placingDoor)$("toolsMenuButton")?.classList.add("tool-active");
+  };
+  const oldCursor=updateStageCursor;
+  updateStageCursor=function(){
+    oldCursor();
+    if(placingDoor&&!stageSpaceHeld)$("stageWrap").style.cursor="crosshair";
+  };
+  ["shapeTool","lineTool","measureTool","textTool","imageTool","touchPanTool",
+    "lampSingleTool","lampDoubleTool"].forEach(id=>{
+    $(id)?.addEventListener("click",()=>{
+      if(placingDoor){placingDoor=false;updateToolsMenuState();}
+    },true);
+  });
+
+  svg.addEventListener("pointerdown",e=>{
+    if(placingDoor&&!stageSpaceHeld&&!stagePanActive&&e.button===0){
+      if(e.target?.closest?.("[data-door-id]"))return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      const point=stagePointFromClient(e.clientX,e.clientY);
+      addDoor(point.x,point.y);return;
+    }
+    if(!e.target?.closest?.("[data-door-id]")&&selectedDoorId!==null){
+      selectedDoorId=null;updateDoorBar();
+    }
+  },true);
+  document.addEventListener("keydown",e=>{
+    if(stageKeyTargetIsEditable(e.target))return;
+    if(e.key==="Escape"&&placingDoor){
+      placingDoor=false;updateToolsMenuState();return;
+    }
+    if(selectedDoorId===null)return;
+    const d=getDoor(selectedDoorId);if(!d||d.locked)return;
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="d"){
+      e.preventDefault();e.stopImmediatePropagation();changeDoor("duplicate");
+    }else if(e.key==="Delete"||e.key==="Backspace"){
+      e.preventDefault();e.stopImmediatePropagation();changeDoor("delete");
+    }
+  },true);
+
+  const oldReset=window.__resetShapeToolState;
+  window.__resetShapeToolState=function(){
+    oldReset?.();
+    state.doorAnnotations=[];state.nextDoorId=1;
+    selectedDoorId=null;placingDoor=false;
+  };
+  updateToolsMenuState();updateDoorBar();
+})();
+</script>
