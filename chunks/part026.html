@@ -17,7 +17,7 @@
       list.push({type:"single",label:"SINGLE FLOODLIGHT"});
     }
     if(lamps.some(item=>item.type==="double")){
-      list.push({type:"double",label:"DOUBLE-SIDED FLOODLIGHT"});
+      list.push({type:"double",label:"FLOODLIGHT"});
     }
     if(visible(state.partitionAnnotations).length){
       list.push({type:"fence",label:"LOW PARTITION FENCE"});
@@ -133,7 +133,7 @@
     ctx.fillStyle="#172b45";
     ctx.font="600 32px Arial, Helvetica, sans-serif";
     ctx.textAlign="left";ctx.textBaseline="middle";
-    ctx.fillText("SYMBOL LEGEND",30,48);
+    ctx.fillText("Rujukan",30,48);
 
     ctx.strokeStyle="#e5eaf0";ctx.lineWidth=1.8;
     ctx.beginPath();ctx.moveTo(28,79);ctx.lineTo(baseW-28,79);ctx.stroke();
