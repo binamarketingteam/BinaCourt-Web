@@ -1,0 +1,440 @@
+<script>
+(function(){
+  "use strict";
+  // BinaCourt lighting layout: fixed warm beam, 1-head and opposite 2-head fixtures.
+  state.lampAnnotations=Array.isArray(state.lampAnnotations)?state.lampAnnotations:[];
+  state.nextLampId=Number(state.nextLampId)||1;
+  let selectedLampId=null;
+  let placingLamp=null;
+
+  const byId=id=>state.lampAnnotations.find(l=>l.id===id)||null;
+  const wrapAngle=v=>((Number(v)||0)%360+360)%360;
+  function normalLamp(raw,index){
+    const l=raw && typeof raw==="object"?raw:{};
+    return {
+      id:Number.isInteger(Number(l.id)) && Number(l.id)>0?Number(l.id):index+1,
+      type:l.type==="double"?"double":"single",
+      x:Number.isFinite(Number(l.x))?Number(l.x):state.siteW/2,
+      y:Number.isFinite(Number(l.y))?Number(l.y):state.siteH/2,
+      angle:wrapAngle(l.angle),
+      beam:l.beam!==false,
+      hidden:!!l.hidden,
+      locked:!!l.locked
+    };
+  }
+  function normalizeLamps(){
+    const used=new Set();
+    state.lampAnnotations=(Array.isArray(state.lampAnnotations)?state.lampAnnotations:[]).map((l,i)=>{
+      const n=normalLamp(l,i);
+      while(used.has(n.id)) n.id++;
+      used.add(n.id);
+      if(l && typeof l==="object"){Object.assign(l,n);return l;}
+      return n;
+    });
+    state.nextLampId=Math.max(Number(state.nextLampId)||1,1,...state.lampAnnotations.map(l=>l.id+1));
+    if(selectedLampId!==null && !byId(selectedLampId)) selectedLampId=null;
+  }
+  normalizeLamps();
+
+  function clearOtherSelections(){
+    window.__clearBinaShapeSelection?.();
+    selectedImageId=null;
+    selectedLineId=null;
+    selectedTextId=null;
+    selectedMeasurementId=null;
+    clearCourtSelection();
+    closeMeasureInlineEditor(false);
+    closeTextInlineEditor(false);
+  }
+  function lampTransform(l){
+    return "translate("+l.x+" "+l.y+") rotate("+l.angle+")";
+  }
+  function createLampGroup(l){
+    const g=ns("g",{"class":"lighting-annotation","data-lamp-id":l.id,
+      "data-layer-token":"lamp:"+l.id,transform:lampTransform(l)});
+    const head=(direction)=>{
+      const reverse=direction<0;
+      const side=ns("g", {transform:reverse?"rotate(180)":""});
+      if(l.beam){
+        side.appendChild(ns("path",{
+          d:"M .54 -.30 L 3.5 -1.65 L 3.5 1.65 L .54 .30 Z",
+          fill:"#f6d965","fill-opacity":".24",stroke:"#e1c455",
+          "stroke-opacity":".36","stroke-width":".025",
+          "pointer-events":"none"
+        }));
+      }
+      side.appendChild(ns("rect",{
+        x:.31,y:-.27,width:.43,height:.54,rx:.045,
+        fill:"#202833",stroke:"#edf2f7","stroke-width":".035",
+        "pointer-events":"none"
+      }));
+      side.appendChild(ns("rect",{
+        x:.39,y:-.19,width:.26,height:.38,rx:.02,
+        fill:"#c5d0d8",stroke:"#556575","stroke-width":".025",
+        "pointer-events":"none"
+      }));
+      return side;
+    };
+    g.appendChild(head(1));
+    if(l.type==="double")g.appendChild(head(-1));
+    g.appendChild(ns("circle",{cx:0,cy:0,r:.28,fill:"#192534",
+      stroke:"#f4f7fa","stroke-width":".045","pointer-events":"none"}));
+    g.appendChild(ns("circle",{cx:0,cy:0,r:.09,fill:"#9aaaba","pointer-events":"none"}));
+
+    const hit=ns("circle",{cx:0,cy:0,r:.78,fill:"rgba(0,0,0,0)",
+      "data-lamp-hit":"1","pointer-events":"all"});
+    hit.style.cursor=l.locked?"default":"move";
+    g.appendChild(hit);
+    hit.addEventListener("pointerdown",e=>beginLampMove(e,l,g));
+
+    if(selectedLampId===l.id){
+      g.appendChild(ns("circle",{"class":"editing-only",cx:0,cy:0,r:.87,
+        fill:"none",stroke:"#2563eb","stroke-width":".055",
+        "stroke-dasharray":".13 .10","pointer-events":"none"}));
+      if(!l.locked){
+        g.appendChild(ns("line",{"class":"editing-only",x1:0,y1:0,x2:0,y2:-1.28,
+          stroke:"#2563eb","stroke-width":".045","pointer-events":"none"}));
+        const handle=ns("circle",{"class":"editing-only",cx:0,cy:-1.28,r:.21,
+          fill:"#fff",stroke:"#2563eb","stroke-width":".07","pointer-events":"all"});
+        handle.style.cursor="grab";
+        handle.addEventListener("pointerdown",e=>beginLampRotate(e,l,g));
+        g.appendChild(handle);
+      }
+    }
+    return g;
+  }
+  function selectLamp(id,refresh=true){
+    if(!byId(id))return;
+    selectedLampId=id;
+    clearOtherSelections();
+    placingLamp=null;
+    updateToolsMenuState();
+    if(refresh)render();
+    else updateLampToolbar();
+  }
+  function beginLampMove(event,l,g){
+    if(event.button!==0)return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    selectLamp(l.id,false);
+    const start=stagePointFromClient(event.clientX,event.clientY);
+    const x0=l.x,y0=l.y,pid=event.pointerId;
+    let moved=false;
+    const move=e=>{
+      if(e.pointerId!==pid || l.locked)return;
+      e.preventDefault?.();
+      const p=stagePointFromClient(e.clientX,e.clientY);
+      l.x=x0+p.x-start.x;l.y=y0+p.y-start.y;
+      g.setAttribute("transform",lampTransform(l));
+      moved=true;
+    };
+    const end=e=>{
+      if(e.pointerId!==pid)return;
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+      render();
+      if(moved)commitHistory();
+    };
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+  function beginLampRotate(event,l,g){
+    if(l.locked || event.button!==0)return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    selectLamp(l.id,false);
+    const p=stagePointFromClient(event.clientX,event.clientY);
+    const a0=Math.atan2(p.y-l.y,p.x-l.x)*180/Math.PI;
+    const initial=l.angle,pid=event.pointerId;
+    let moved=false;
+    const move=e=>{
+      if(e.pointerId!==pid)return;
+      e.preventDefault?.();
+      const next=stagePointFromClient(e.clientX,e.clientY);
+      let angle=initial+Math.atan2(next.y-l.y,next.x-l.x)*180/Math.PI-a0;
+      if(e.shiftKey)angle=Math.round(angle/45)*45;
+      l.angle=wrapAngle(angle);
+      g.setAttribute("transform",lampTransform(l));
+      const input=$("lampAngle");
+      if(input)input.value=String(Math.round(l.angle));
+      moved=true;
+    };
+    const end=e=>{
+      if(e.pointerId!==pid)return;
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+      render();if(moved)commitHistory();
+    };
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+
+  function addLamp(type,x,y){
+    normalizeLamps();
+    const lamp=normalLamp({id:state.nextLampId++,type,x,y,angle:0,beam:true},state.lampAnnotations.length);
+    state.lampAnnotations.push(lamp);
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="lamp:"+lamp.id);
+    state.artworkLayerOrder.push("lamp:"+lamp.id);
+    selectLamp(lamp.id);
+    commitHistory();
+  }
+  function updateLamp(operation){
+    const l=byId(selectedLampId);
+    if(!l || l.locked)return;
+    if(operation==="duplicate"){
+      const copy=normalLamp({...cloneData(l),id:state.nextLampId++,x:l.x+1,y:l.y+1,
+        hidden:false,locked:false},state.lampAnnotations.length);
+      state.lampAnnotations.push(copy);
+      normalizeArtworkLayerOrder();
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="lamp:"+copy.id);
+      state.artworkLayerOrder.push("lamp:"+copy.id);
+      selectLamp(copy.id);commitHistory();return;
+    }
+    if(operation==="delete"){
+      state.lampAnnotations=state.lampAnnotations.filter(item=>item.id!==l.id);
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="lamp:"+l.id);
+      selectedLampId=null;
+      render();commitHistory();return;
+    }
+    if(operation==="left")l.angle=wrapAngle(l.angle-90);
+    if(operation==="right")l.angle=wrapAngle(l.angle+90);
+    render();commitHistory();
+  }
+  function toggleVisibility(id){
+    const l=byId(id);if(!l)return;
+    l.hidden=!l.hidden;if(l.hidden && selectedLampId===id)selectedLampId=null;
+    render();commitHistory();
+  }
+  function toggleLock(id){
+    const l=byId(id);if(!l)return;
+    l.locked=!l.locked;render();commitHistory();
+  }
+
+  // Called in-place by the shared ordered artwork renderer.
+  window.BinaCourtLighting={
+    draw(id){
+      const l=byId(id);
+      if(!l || l.hidden)return;
+      svg.appendChild(createLampGroup(l));
+    },
+    select:selectLamp,
+    toggleVisibility,toggleLock
+  };
+
+  // Preserve lamp objects across Options, Groups, JSON Save/Open and Undo/Redo.
+  const oldCapture=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizeLamps();
+    const data=oldCapture();
+    data.lampAnnotations=cloneData(state.lampAnnotations);
+    data.nextLampId=state.nextLampId;
+    return data;
+  };
+  const oldNormalize=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const data=oldNormalize(option);
+    const raw=option||{};
+    data.lampAnnotations=Array.isArray(raw.lampAnnotations)
+      ?raw.lampAnnotations.map((l,i)=>normalLamp(l,i)):[];
+    data.nextLampId=Math.max(Number(raw.nextLampId)||1,1,
+      ...data.lampAnnotations.map(l=>l.id+1));
+    return data;
+  };
+  const oldApply=applyOptionData;
+  applyOptionData=function(option){
+    const data=normalizeOptionData(option);
+    oldApply(data);
+    state.lampAnnotations=cloneData(data.lampAnnotations);
+    state.nextLampId=data.nextLampId;
+    selectedLampId=null;
+    normalizeLamps();
+  };
+
+  const originalLayerInfo=layerItemInfo;
+  layerItemInfo=function(token,index,total){
+    if(token.startsWith("lamp:")){
+      const id=parseInt(token.slice(5),10);
+      const l=byId(id);
+      if(!l)return null;
+      return {token,type:"lamp",id,name:l.type==="double"?"Lampu Depan & Belakang":"Lampu 1 Kepala",
+        meta:"Sport Court Lighting | "+(index===0?"Paling atas":"Layer "+(index+1)),
+        color:"#e3b855",hidden:l.hidden,locked:l.locked,active:selectedLampId===id};
+    }
+    return originalLayerInfo(token,index,total);
+  };
+
+  const originalSelectLayer=selectArtworkLayerToken;
+  selectArtworkLayerToken=function(token,event=null){
+    if(token.startsWith("lamp:")){selectLamp(parseInt(token.slice(5),10));return;}
+    selectedLampId=null;
+    return originalSelectLayer(token,event);
+  };
+  const originalOrderSync=syncArtworkTypeOrders;
+  syncArtworkTypeOrders=function(){
+    originalOrderSync();
+    const map=new Map(state.lampAnnotations.map(l=>[l.id,l]));
+    const arranged=state.artworkLayerOrder.filter(t=>t.startsWith("lamp:"))
+      .map(t=>map.get(parseInt(t.slice(5),10))).filter(Boolean);
+    if(arranged.length===state.lampAnnotations.length)state.lampAnnotations=arranged;
+  };
+
+  const oldUpdateCourtList=updateCourtList;
+  updateCourtList=function(){
+    oldUpdateCourtList();
+    $("courtList")?.querySelectorAll('.artwork-layer-item[data-layer-token^="lamp:"]')
+      .forEach(el=>{
+        const id=parseInt(el.dataset.layerToken.slice(5),10);
+        el.querySelector(".layer-visibility")?.addEventListener("click",e=>{
+          e.stopPropagation();toggleVisibility(id);
+        });
+        el.querySelector(".layer-lock")?.addEventListener("click",e=>{
+          e.stopPropagation();toggleLock(id);
+        });
+      });
+  };
+  const oldRender=render;
+  render=function(options={}){
+    normalizeLamps();
+    oldRender(options);
+    updateLampToolbar();
+  };
+
+  // Add two actual object tools in the existing Tools dropdown.
+  const menu=$("toolsDropdown"),imageTool=$("imageTool");
+  [["lampSingleTool","Lampu 1 Kepala","single"],
+   ["lampDoubleTool","Lampu Depan & Belakang","double"]].forEach(entry=>{
+    if(!menu || $(entry[0]))return;
+    const btn=document.createElement("button");
+    btn.id=entry[0];btn.type="button";
+    btn.title="Klik pada canvas untuk letakkan "+entry[1];
+    btn.innerHTML='<span class="tool-icon">&#9788;</span><span>'+entry[1]+"</span>";
+    menu.insertBefore(btn,imageTool||null);
+    btn.addEventListener("click",()=>{
+      const kind=entry[2];
+      const next=placingLamp===kind?null:kind;
+      if(next){
+        const shape=$("shapeTool");
+        if(shape?.getAttribute("aria-pressed")==="true")shape.click();
+        lineToolState.active=false;measureToolState.active=false;
+        textToolState.active=false;stageTouchPanMode=false;
+      }
+      placingLamp=next;
+      selectedLampId=null;
+      menu.hidden=true;
+      $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+      updateToolsMenuState();
+      render();
+    });
+  });
+
+  const toolsBar=$("lineFormatToolbar");
+  if(toolsBar && !$("lampFormatToolbar")){
+    const bar=document.createElement("div");
+    bar.id="lampFormatToolbar";
+    bar.className="image-format-toolbar";
+    bar.hidden=true;
+    bar.setAttribute("aria-label","Sport Court Lighting");
+    bar.innerHTML=
+      '<span class="image-format-label">LAMPU</span>'+
+      '<span id="lampTypeLabel" class="image-format-label"></span>'+
+      '<button id="lampRotateLeft" class="secondary" type="button" title="Rotate -90 darjah">&#8634; 90&#176;</button>'+
+      '<button id="lampRotateRight" class="secondary" type="button" title="Rotate +90 darjah">&#8635; 90&#176;</button>'+
+      '<input id="lampAngle" type="number" step="45" min="0" max="359" title="Sudut lampu (darjah)" style="width:67px;height:33px;padding:4px 6px;font-size:11px">'+
+      '<label style="display:inline-flex;align-items:center;gap:4px;margin:0;font-size:11px;white-space:nowrap;font-weight:400"><input id="lampBeam" type="checkbox" checked style="width:auto"> View cahaya</label>'+
+      '<button id="lampDuplicate" class="secondary" type="button">Duplicate</button>'+
+      '<button id="lampDelete" class="danger" type="button">Delete</button>';
+    toolsBar.insertAdjacentElement("afterend",bar);
+    bar.querySelectorAll("button").forEach(b=>{
+      b.style.width="auto";b.style.minHeight="32px";b.style.padding="5px 8px";b.style.fontSize="11px";
+    });
+  }
+  function updateLampToolbar(){
+    const bar=$("lampFormatToolbar"),l=byId(selectedLampId);
+    if(!bar)return;
+    bar.hidden=!l;
+    if(!l)return;
+    $("lampTypeLabel").textContent=l.type==="double"?"DEPAN & BELAKANG":"1 KEPALA";
+    $("lampAngle").value=String(Math.round(l.angle));
+    $("lampBeam").checked=l.beam;
+    ["lampRotateLeft","lampRotateRight","lampAngle","lampBeam","lampDuplicate","lampDelete"]
+      .forEach(id=>{if($(id))$(id).disabled=!!l.locked;});
+  }
+  [["lampRotateLeft","left"],["lampRotateRight","right"],
+   ["lampDuplicate","duplicate"],["lampDelete","delete"]].forEach(([id,action])=>{
+    $(id)?.addEventListener("click",()=>updateLamp(action));
+  });
+  $("lampAngle")?.addEventListener("input",e=>{
+    const l=byId(selectedLampId);if(!l||l.locked)return;
+    l.angle=wrapAngle(e.target.value);render();
+  });
+  $("lampAngle")?.addEventListener("change",()=>commitHistory());
+  $("lampBeam")?.addEventListener("change",e=>{
+    const l=byId(selectedLampId);if(!l||l.locked)return;
+    l.beam=e.target.checked;render();commitHistory();
+  });
+
+  const oldMenuState=updateToolsMenuState;
+  updateToolsMenuState=function(){
+    oldMenuState();
+    [["lampSingleTool","single"],["lampDoubleTool","double"]].forEach(([id,type])=>{
+      const btn=$(id);if(!btn)return;
+      btn.classList.toggle("is-active",placingLamp===type);
+      btn.setAttribute("aria-pressed",placingLamp===type?"true":"false");
+    });
+    if(placingLamp)$("toolsMenuButton")?.classList.add("tool-active");
+  };
+  const oldCursor=updateStageCursor;
+  updateStageCursor=function(){
+    oldCursor();
+    if(placingLamp && !stageSpaceHeld)$("stageWrap").style.cursor="crosshair";
+  };
+  // Other drawing tools cancel lighting placement.
+  ["shapeTool","lineTool","measureTool","textTool","imageTool","touchPanTool"].forEach(id=>{
+    $(id)?.addEventListener("click",()=>{
+      if(placingLamp){placingLamp=null;updateToolsMenuState();}
+    },true);
+  });
+
+  svg.addEventListener("pointerdown",e=>{
+    if(placingLamp && !stageSpaceHeld && !stagePanActive && e.button===0){
+      if(e.target?.closest?.("[data-lamp-id]"))return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      const p=stagePointFromClient(e.clientX,e.clientY);
+      addLamp(placingLamp,p.x,p.y);
+      return;
+    }
+    if(!e.target?.closest?.("[data-lamp-id]") && selectedLampId!==null){
+      selectedLampId=null;
+      updateLampToolbar();
+    }
+  },true);
+
+  document.addEventListener("keydown",e=>{
+    if(stageKeyTargetIsEditable(e.target))return;
+    if(e.key==="Escape" && placingLamp){
+      placingLamp=null;updateToolsMenuState();return;
+    }
+    if(selectedLampId===null)return;
+    const lamp=byId(selectedLampId);if(!lamp||lamp.locked)return;
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="d"){
+      e.preventDefault();e.stopImmediatePropagation();updateLamp("duplicate");
+    }else if(e.key==="Delete"||e.key==="Backspace"){
+      e.preventDefault();e.stopImmediatePropagation();updateLamp("delete");
+    }
+  },true);
+
+  // Project reset must clear lighting without affecting other drawing tools.
+  const oldResetShapeTool=window.__resetShapeToolState;
+  window.__resetShapeToolState=function(){
+    oldResetShapeTool?.();
+    state.lampAnnotations=[];state.nextLampId=1;
+    selectedLampId=null;placingLamp=null;
+  };
+
+  updateToolsMenuState();
+  updateLampToolbar();
+})();
+</script>
