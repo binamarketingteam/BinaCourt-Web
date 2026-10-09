@@ -356,7 +356,7 @@
     oldUpdateList();
     $f("courtList")?.querySelectorAll('.artwork-layer-item[data-layer-token^="net:"]')
       .forEach(row=>{
-        const id=parseInt(row.dataset.layerToken.slice(10),10);
+        const id=parseInt(row.dataset.layerToken.slice(4),10);
         row.querySelector(".layer-visibility")?.addEventListener("click",e=>{
           e.stopPropagation();hideNet(id);
         });
@@ -377,7 +377,7 @@
   if(menu&&!$f("netTool")){
     const button=document.createElement("button");
     button.id="netTool";button.type="button";
-    button.title="Klik dan tarik dari titik mula ke titik akhir pagar";
+    button.title="Klik dan tarik dari titik mula ke titik akhir jaring";
     button.innerHTML='<span class="tool-icon">&#9641;</span><span>Jaring Pagar (Chain-Link)</span>';
     menu.insertBefore(button,$f("imageTool")||null);
     button.addEventListener("click",()=>{
