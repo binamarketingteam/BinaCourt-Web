@@ -1,0 +1,67 @@
+<script>
+(function(){
+  "use strict";
+  // Global view toggle for centre nets. Each court retains its own showNet value.
+  // Export rendering uses the same SVG renderer, so the current view is exported.
+  if(typeof drawCourtCenterNet!=="function" || typeof render!=="function") return;
+
+  const preferenceKey="binacourt-center-net-view-v1";
+  let showAllCenterNets=true;
+  try{
+    showAllCenterNets=localStorage.getItem(preferenceKey)!=="0";
+  }catch(_){ /* Browsers may block local storage. */ }
+
+  const originalDrawCourtCenterNet=drawCourtCenterNet;
+  drawCourtCenterNet=function(g,c){
+    if(!showAllCenterNets) return;
+    return originalDrawCourtCenterNet(g,c);
+  };
+
+  function setupNetViewToggle(){
+    if(document.getElementById("centerNetViewToggle")) return;
+    const stageWrap=document.getElementById("stageWrap");
+    if(!stageWrap || !stageWrap.parentElement) return;
+
+    const toolbar=document.createElement("div");
+    toolbar.id="centerNetViewToolbar";
+    toolbar.style.cssText="display:flex;justify-content:flex-end;align-items:center;margin:0 0 7px;gap:8px;";
+
+    const button=document.createElement("button");
+    button.id="centerNetViewToggle";
+    button.type="button";
+    button.className="secondary";
+    button.style.cssText="width:auto;min-height:32px;padding:6px 13px;border-radius:8px;font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer;touch-action:manipulation;";
+    button.title="ON/OFF net tengah bagi semua court. Tetapan net bagi setiap court masih boleh diubah dalam Court Dipilih.";
+    button.setAttribute("aria-label","Paparkan atau sembunyikan semua net tengah");
+
+    function updateButton(){
+      button.textContent=showAllCenterNets?"👁 Net Tengah: ON":"👁 Net Tengah: OFF";
+      button.setAttribute("aria-pressed",String(showAllCenterNets));
+      button.style.background=showAllCenterNets?"#23344c":"#f1f5f9";
+      button.style.color=showAllCenterNets?"#ffffff":"#475569";
+      button.style.border="1px solid "+(showAllCenterNets?"#23344c":"#cbd5e1");
+    }
+
+    button.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      showAllCenterNets=!showAllCenterNets;
+      try{
+        localStorage.setItem(preferenceKey,showAllCenterNets?"1":"0");
+      }catch(_){ }
+      updateButton();
+      render();
+    });
+
+    toolbar.appendChild(button);
+    stageWrap.parentElement.insertBefore(toolbar,stageWrap);
+    updateButton();
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",setupNetViewToggle,{once:true});
+  }else{
+    setupNetViewToggle();
+  }
+})();
+</script>
