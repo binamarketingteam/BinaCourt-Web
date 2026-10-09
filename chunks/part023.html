@@ -221,6 +221,7 @@
       svg.appendChild(createLampGroup(l));
     },
     select:selectLamp,
+    clear(){selectedLampId=null;placingLamp=null;updateLampToolbar();updateToolsMenuState();},
     toggleVisibility,toggleLock
   };
 
