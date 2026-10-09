@@ -449,14 +449,21 @@
     },true);
   });
 
+  function dragFenceGeometry(start,end,shiftKey=false){
+    const dx=end.x-start.x,dy=end.y-start.y;
+    const distance=Math.hypot(dx,dy);
+    let degrees=Math.atan2(dy,dx)*180/Math.PI;
+    // Holding Shift constrains the fence direction to 45-degree increments.
+    if(shiftKey)degrees=Math.round(degrees/45)*45;
+    return {length:distance<.15?2:clamp(distance,.3,500,2),
+      angle:distance<.15?0:angle(degrees)};
+  }
   function drawPreview(){
     svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
     if(!drawing)return;
-    const dx=drawing.end.x-drawing.start.x;
-    const dy=drawing.end.y-drawing.start.y;
-    const width=Math.max(.3,Math.hypot(dx,dy));
-    const value={x:drawing.start.x,y:drawing.start.y,length:width,
-      angle:angle(Math.atan2(dy,dx)*180/Math.PI)};
+    const geometry=dragFenceGeometry(drawing.start,drawing.end,drawing.shiftKey);
+    const value={x:drawing.start.x,y:drawing.start.y,length:geometry.length,
+      angle:geometry.angle};
     const g=drawFence(value,{preview:true});
     g.style.pointerEvents="none";
     svg.appendChild(g);
@@ -466,23 +473,22 @@
       if(event.target?.closest?.("[data-partition-id]"))return;
       event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
       const p=stagePointFromClient(event.clientX,event.clientY);
-      drawing={start:{x:p.x,y:p.y},end:{x:p.x,y:p.y}};
+      drawing={start:{x:p.x,y:p.y},end:{x:p.x,y:p.y},shiftKey:event.shiftKey};
       drawPreview();
       trackPointer(event,moveEvent=>{
         if(!drawing)return;
         const pt=stagePointFromClient(moveEvent.clientX,moveEvent.clientY);
         drawing.end={x:pt.x,y:pt.y};
+        drawing.shiftKey=moveEvent.shiftKey;
         drawPreview();
       },success=>{
         svg.querySelectorAll(".partition-preview").forEach(node=>node.remove());
         if(!drawing)return;
-        const a=drawing.start,b=drawing.end;
+        const {start,end,shiftKey}=drawing;
         drawing=null;
         if(!success)return;
-        const dx=b.x-a.x,dy=b.y-a.y;
-        const length=Math.max(.3,Math.hypot(dx,dy));
-        putFence(a.x,a.y,Math.hypot(dx,dy)<.15?2:length,
-          Math.hypot(dx,dy)<.15?0:angle(Math.atan2(dy,dx)*180/Math.PI));
+        const geometry=dragFenceGeometry(start,end,shiftKey);
+        putFence(start.x,start.y,geometry.length,geometry.angle);
       });
       return;
     }
@@ -490,6 +496,19 @@
       selectedPartitionId=null;updateFenceBar();
     }
   },true);
+
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Shift" && drawing && !drawing.shiftKey){
+      drawing.shiftKey=true;
+      drawPreview();
+    }
+  });
+  document.addEventListener("keyup",event=>{
+    if(event.key==="Shift" && drawing){
+      drawing.shiftKey=false;
+      drawPreview();
+    }
+  });
 
   document.addEventListener("keydown",event=>{
     if(stageKeyTargetIsEditable(event.target))return;
