@@ -995,6 +995,16 @@
       const item=document.createElement("div");
       item.className=`court-item artwork-layer-item ${info.active?"active":""} ${info.hidden?"hidden-layer":""} ${info.locked?"locked-layer":""}`;
       item.dataset.layerToken=token;
+      // Use simple, readable separators for court measurements.
+      const layerMeta=info.type==="court"
+        ? (()=>{
+            const court=state.courts.find(c=>c.id===info.id);
+            if(!court) return String(info.meta||"");
+            const rank=index===0 ? "Paling atas"
+              : index===displayTokens.length-1 ? "Paling bawah" : "Layer "+(index+1);
+            return Number(court.w).toFixed(1)+" x "+Number(court.h).toFixed(1)+" m | Court | "+rank;
+          })()
+        : String(info.meta||"").replace(/\uFFFD/g," | ");
       const marker=info.icon
         ? `<span style="width:16px;display:inline-flex;justify-content:center">${info.icon}</span>`
         : `<span class="court-dot" style="background:${info.color||"#7b7e82"}"></span>`;
@@ -1002,12 +1012,12 @@
         <button type="button" class="layer-handle" aria-label="Drag layer" ${info.locked?"disabled":""} title="${info.locked?"Unlock dahulu untuk ubah susunan layer":"Drag untuk ubah susunan layer"}">&#8801;</button>
         <span class="layer-main">
           <span class="layer-name">${marker}${escapeHtml(info.name)}${info.locked?" - Locked":""}${info.hidden?" - Hidden":""}</span>
-          <span class="layer-meta">${escapeHtml(info.meta)}</span>
+          <span class="layer-meta">${escapeHtml(layerMeta)}</span>
         </span>
         <span class="layer-actions">
           ${info.staticActions?"":`
-          <button type="button" class="layer-visibility ${info.hidden?"hide-active":""}" title="${info.hidden?"Show layer":"Hide layer"}" aria-label="${info.hidden?"Show layer":"Hide layer"}">${info.hidden?"Show":"Hide"}</button>
-          <button type="button" class="layer-lock ${info.locked?"lock-active":""}" title="${info.locked?"Unlock layer":"Lock layer"}" aria-label="${info.locked?"Unlock layer":"Lock layer"}">${info.locked?"Unlock":"Lock"}</button>
+          <button type="button" class="layer-visibility ${info.hidden?"hide-active":""}" title="${info.hidden?"Show layer":"Hide layer"}" aria-label="${info.hidden?"Show layer":"Hide layer"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.7"/></svg></button>
+          <button type="button" class="layer-lock ${info.locked?"lock-active":""}" title="${info.locked?"Unlock layer":"Lock layer"}" aria-label="${info.locked?"Unlock layer":"Lock layer"}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="${info.locked?"M8 10V7a4 4 0 0 1 8 0v3":"M8 10V7a4 4 0 0 1 8 0"}"/></svg></button>
           `}
         </span>
       `;
