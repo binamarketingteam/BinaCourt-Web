@@ -1,0 +1,157 @@
+<script>
+(function(){
+  "use strict";
+  // Professional English plan symbol legend on PDF option pages.
+  // Cover, product colour key, approval block and artwork geometry are unchanged.
+  if(typeof buildDrawingExportCanvas!=="function" ||
+     typeof computeVectorOptionLayout!=="function")return;
+
+  function activePlanSymbols(){
+    const list=[];
+    const visible=items=>(Array.isArray(items)?items:[]).filter(item=>item&&!item.hidden);
+    if(visible(state.doorAnnotations).length){
+      list.push({type:"door",label:"SWING DOOR"});
+    }
+    const lamps=visible(state.lampAnnotations);
+    if(lamps.some(item=>item.type!=="double")){
+      list.push({type:"single",label:"SINGLE FLOODLIGHT"});
+    }
+    if(lamps.some(item=>item.type==="double")){
+      list.push({type:"double",label:"DOUBLE-SIDED FLOODLIGHT"});
+    }
+    if(visible(state.partitionAnnotations).length){
+      list.push({type:"fence",label:"LOW PARTITION FENCE"});
+    }
+    return list;
+  }
+
+  // All symbols mimic the top-down marks already used in the editor.
+  function drawSymbol(ctx,type,x,y){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.strokeStyle="#334155";
+    ctx.fillStyle="#64748b";
+    ctx.lineWidth=3.8;
+    ctx.lineCap="round";
+    ctx.lineJoin="round";
+
+    if(type==="door"){
+      // Door leaf + 90 degree swing arc + threshold, as a floor plan.
+      ctx.strokeStyle="#475569";
+      ctx.lineWidth=2.7;
+      ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.arc(0,21,24,-Math.PI/2,0);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle="#0f172a";ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(0,21);ctx.lineTo(0,-3);ctx.stroke();
+      ctx.fillStyle="#475569";ctx.fillRect(-5,16,10,10);
+      ctx.strokeStyle="#94a3b8";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,21);ctx.lineTo(25,21);ctx.stroke();
+    }else if(type==="single"||type==="double"){
+      ctx.fillStyle="#1f2937";
+      ctx.beginPath();ctx.arc(0,10,6,0,2*Math.PI);ctx.fill();
+      const head=side=>{
+        ctx.save();if(side<0)ctx.scale(-1,1);
+        ctx.fillStyle="#1f2937";ctx.fillRect(7,2,16,17);
+        ctx.fillStyle="#cbd5e1";ctx.fillRect(10,5,10,11);
+        ctx.restore();
+      };
+      head(1);if(type==="double")head(-1);
+    }else if(type==="fence"){
+      // Slim wiremesh strip with endpoint posts and diagonal hatching.
+      ctx.fillStyle="#e2e8f0";ctx.fillRect(-27,1,54,16);
+      ctx.strokeStyle="#94a3b8";ctx.lineWidth=1.7;
+      for(let i=-24;i<27;i+=8){
+        ctx.beginPath();ctx.moveTo(i,2);ctx.lineTo(Math.min(26,i+10),16);ctx.stroke();
+      }
+      ctx.strokeStyle="#64748b";ctx.strokeRect(-27,1,54,16);
+      ctx.fillStyle="#64748b";ctx.fillRect(-31,-3,8,24);ctx.fillRect(23,-3,8,24);
+    }
+    ctx.restore();
+  }
+
+  function drawPlanLegend(canvas,layout,entries){
+    if(!entries.length)return;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    // Work in the same physical A3 coordinate system as the PDF renderer.
+    const baseW=510;
+    const baseH=88+entries.length*92+23;
+    const edge=140;
+    const drawRight=layout.drawX+layout.drawWidth;
+    const rightRoom=canvas.width-edge-drawRight;
+    const leftRoom=layout.drawX-edge;
+    const gap=37;
+
+    let side=null;
+    if(rightRoom>=365)side="right";
+    else if(leftRoom>=365)side="left";
+    else if(rightRoom>=leftRoom&&rightRoom>=265)side="right";
+    else if(leftRoom>=265)side="left";
+
+    let scale=1,x=0,y=0;
+    if(side){
+      const room=side==="right"?rightRoom:leftRoom;
+      scale=Math.min(1,(room-gap)/baseW);
+      x=side==="right" ? drawRight+gap : layout.drawX-gap-baseW*scale;
+      y=Math.max(layout.drawingTop+24,Math.min(layout.drawY+46,
+        layout.drawingBottom-baseH*scale-22));
+    }else{
+      // For very wide drawings, use the larger free band below/above the plan.
+      const bottomGap=layout.drawingBottom-(layout.drawY+layout.drawHeight);
+      const topGap=layout.drawY-layout.drawingTop;
+      scale=.75;
+      const scaledH=baseH*scale;
+      const below=bottomGap>=scaledH+22;
+      const above=topGap>=scaledH+22;
+      if(!below&&!above)return; // Never cover the court when the page is full.
+      x=canvas.width/2-baseW*scale/2;
+      y=below ? layout.drawY+layout.drawHeight+12 : layout.drawY-scaledH-12;
+    }
+
+    ctx.save();
+    ctx.translate(x,y);ctx.scale(scale,scale);
+    ctx.fillStyle="#ffffff";
+    ctx.strokeStyle="#cfd6df";
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.rect(0,0,baseW,baseH);ctx.fill();ctx.stroke();
+
+    ctx.fillStyle="#172b45";
+    ctx.font="600 32px Arial, Helvetica, sans-serif";
+    ctx.textAlign="left";ctx.textBaseline="middle";
+    ctx.fillText("LAYOUT LEGEND",30,48);
+
+    ctx.strokeStyle="#e5eaf0";ctx.lineWidth=1.8;
+    ctx.beginPath();ctx.moveTo(28,79);ctx.lineTo(baseW-28,79);ctx.stroke();
+
+    entries.forEach((entry,index)=>{
+      const yy=92+index*92;
+      drawSymbol(ctx,entry.type,64,yy+24);
+      ctx.font="500 27px Arial, Helvetica, sans-serif";
+      ctx.fillStyle="#344054";
+      ctx.fillText(entry.label,115,yy+29);
+      if(index<entries.length-1){
+        ctx.strokeStyle="#f1f3f6";ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(115,yy+77);ctx.lineTo(baseW-28,yy+77);ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+
+  const previous=buildDrawingExportCanvas;
+  buildDrawingExportCanvas=async function(baseDrawingCanvas,...args){
+    const canvas=await previous.call(this,baseDrawingCanvas,...args);
+    try{
+      const entries=activePlanSymbols();
+      if(entries.length){
+        const layout=await computeVectorOptionLayout(baseDrawingCanvas);
+        drawPlanLegend(canvas,layout,entries);
+      }
+    }catch(error){
+      console.warn("Could not draw optional layout legend",error);
+    }
+    return canvas;
+  };
+  window.BinaCourtPlanLegend={activePlanSymbols};
+})();
+</script>
