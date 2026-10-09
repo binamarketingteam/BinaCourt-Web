@@ -1,0 +1,566 @@
+<script>
+(function(){
+  "use strict";
+  // 2D chain-link perimeter netting. Draw by dragging from start to end.
+  state.netAnnotations=Array.isArray(state.netAnnotations)?state.netAnnotations:[];
+  state.nextNetId=Math.max(1,Number(state.nextNetId)||1);
+  let selectedNetId=null;
+  let placingNet=false;
+  let drawing=null;
+  const $f=id=>document.getElementById(id);
+  const byId=id=>state.netAnnotations.find(f=>f.id===id)||null;
+  const angle=v=>((Number(v)||0)%360+360)%360;
+  const finite=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
+  const clamp=(v,min,max,fallback)=>Math.max(min,Math.min(max,finite(v,fallback)));
+
+  function normalizeNet(raw={},i=0){
+    return {
+      id:Number.isInteger(Number(raw.id))&&Number(raw.id)>0?Number(raw.id):i+1,
+      x:clamp(raw.x,-10000,10000,0),
+      y:clamp(raw.y,-10000,10000,0),
+      length:clamp(raw.length,.3,500,2),
+      angle:angle(raw.angle),
+      hidden:!!raw.hidden,
+      locked:!!raw.locked
+    };
+  }
+  function normalizeNets(){
+    const used=new Set();
+    state.netAnnotations=(Array.isArray(state.netAnnotations)?state.netAnnotations:[])
+      .map((raw,i)=>{
+        const part=normalizeNet(raw,i);
+        while(used.has(part.id))part.id++;
+        used.add(part.id);
+        if(raw&&typeof raw==="object"){Object.assign(raw,part);return raw;}
+        return part;
+      });
+    state.nextNetId=Math.max(1,Number(state.nextNetId)||1,
+      ...state.netAnnotations.map(f=>f.id+1));
+    if(selectedNetId!==null&&!byId(selectedNetId))selectedNetId=null;
+  }
+  normalizeNets();
+
+  function getTransform(f){
+    return "translate("+f.x+" "+f.y+") rotate("+f.angle+")";
+  }
+  function drawNet(f,{preview=false}={}){
+    const length=f.length;
+    const group=ns("g",{
+      "class":preview?"editing-only net-preview":"net-2d",
+      "data-net-id":f.id||"",
+      "data-layer-token":f.id?"net:"+f.id:"",
+      transform:getTransform(f)
+    });
+
+    group.appendChild(ns("rect",{
+      x:0,y:-.20,width:length,height:.40,rx:.012,
+      fill:preview?"#dbeafe":"#d8dee4",
+      stroke:preview?"#2563eb":"#334155",
+      "stroke-width":".045","pointer-events":"none"
+    }));
+
+    // Dark chain-link mesh shown schematically from above. Distinct from
+    // the silver single-diagonal low partition fence.
+    const mesh=ns("g",{"pointer-events":"none"});
+    const steps=Math.min(260,Math.max(1,Math.ceil(length/.30)));
+    const spacing=length/steps;
+    for(let i=0;i<steps;i++){
+      const x=i*spacing;
+      const end=Math.min(length,x+spacing);
+      mesh.appendChild(ns("line",{
+        x1:x,y1:-.19,x2:end,y2:.19,
+        stroke:preview?"#2563eb":"#334155",
+        "stroke-width":".032","pointer-events":"none"
+      }));
+      mesh.appendChild(ns("line",{
+        x1:x,y1:.19,x2:end,y2:-.19,
+        stroke:preview?"#2563eb":"#475569",
+        "stroke-width":".032","pointer-events":"none"
+      }));
+    }
+    // Continuous dark perimeter rails to read as fencing in 2D plan.
+    [-.20,.20].forEach(y=>mesh.appendChild(ns("line",{
+      x1:0,y1:y,x2:length,y2:y,stroke:"#334155",
+      "stroke-width":".047","pointer-events":"none"
+    })));
+    group.appendChild(mesh);
+
+    // Posts at both ends and regular 2.5m spans, with capped visual density.
+    const spans=Math.min(100,Math.max(1,Math.ceil(length/2.5)));
+    for(let index=0;index<=spans;index++){
+      const x=length*index/spans;
+      const endPost=index===0||index===spans;
+      const postSize=endPost?.35:.27;
+      group.appendChild(ns("rect",{
+        x:x-postSize/2,y:-postSize/2,
+        width:postSize,height:postSize,rx:.018,
+        fill:preview?"#60a5fa":"#334155",
+        stroke:"#f8fafc","stroke-width":".04","pointer-events":"none"
+      }));
+      group.appendChild(ns("circle",{
+        cx:x,cy:0,r:endPost?.06:.04,fill:"#cbd5e1",
+        "pointer-events":"none"
+      }));
+    }
+
+    if(preview){
+      group.appendChild(ns("line",{x1:0,y1:0,x2:length,y2:0,stroke:"#2563eb",
+        "stroke-width":".06","stroke-dasharray":".14 .10","pointer-events":"none"}));
+      return group;
+    }
+
+    const hit=ns("rect",{x:-.22,y:-.39,width:length+.44,height:.78,
+      fill:"rgba(0,0,0,0)","pointer-events":"all"});
+    hit.style.cursor=f.locked?"default":"move";
+    hit.addEventListener("pointerdown",e=>beginMove(e,f,group));
+    group.appendChild(hit);
+
+    if(selectedNetId===f.id){
+      group.appendChild(ns("rect",{"class":"editing-only",x:-.26,y:-.45,
+        width:length+.52,height:.90,fill:"none",stroke:"#2563eb",
+        "stroke-width":".043","stroke-dasharray":".18 .10",
+        "pointer-events":"none"}));
+
+      const text=ns("text",{"class":"editing-only",x:length/2,y:-.58,
+        "font-size":".37","text-anchor":"middle",
+        fill:"#1d4ed8","font-weight":"500","pointer-events":"none"});
+      text.textContent=length.toFixed(2)+" m";
+      group.appendChild(text);
+
+      if(!f.locked){
+        group.appendChild(ns("line",{"class":"editing-only",x1:length/2,y1:-.45,
+          x2:length/2,y2:-1.05,stroke:"#2563eb","stroke-width":".045",
+          "pointer-events":"none"}));
+        const rotateHandle=ns("circle",{"class":"editing-only",
+          cx:length/2,cy:-1.05,r:.22,fill:"#fff",stroke:"#2563eb",
+          "stroke-width":".072","pointer-events":"all"});
+        rotateHandle.style.cursor="grab";
+        rotateHandle.addEventListener("pointerdown",e=>beginRotate(e,f,group));
+        group.appendChild(rotateHandle);
+
+        const lengthHandle=ns("circle",{"class":"editing-only",
+          cx:length,cy:0,r:.23,fill:"#2563eb",stroke:"#fff",
+          "stroke-width":".06","pointer-events":"all"});
+        lengthHandle.style.cursor="ew-resize";
+        lengthHandle.title="Tarik untuk ubah panjang jaring";
+        lengthHandle.addEventListener("pointerdown",e=>beginLength(e,f,group));
+        group.appendChild(lengthHandle);
+      }
+    }
+    return group;
+  }
+
+  function otherSelectionOff(){
+    window.__clearBinaShapeSelection?.();
+    window.BinaCourtLighting?.clear?.();
+    window.BinaCourtDoors?.clear?.();
+    window.BinaCourtPartitions?.clear?.();
+    selectedImageId=null;
+    selectedLineId=null;
+    selectedTextId=null;
+    selectedMeasurementId=null;
+    clearCourtSelection();
+    closeTextInlineEditor(false);
+    closeMeasureInlineEditor(false);
+  }
+  function selectNet(id,redraw=true){
+    if(!byId(id))return;
+    selectedNetId=id;
+    placingNet=false;drawing=null;
+    otherSelectionOff();
+    updateToolsMenuState();
+    if(redraw)render();
+    else updateNetBar();
+  }
+  function trackPointer(e,onMove,onFinish){
+    const pid=e.pointerId;
+    const move=event=>{
+      if(event.pointerId!==pid)return;
+      event.preventDefault?.();
+      onMove(event);
+    };
+    const end=event=>{
+      if(event.pointerId!==pid)return;
+      cleanup();
+      onFinish(event.type!=="pointercancel");
+    };
+    function cleanup(){
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",end);
+      window.removeEventListener("pointercancel",end);
+    }
+    window.addEventListener("pointermove",move,{passive:false});
+    window.addEventListener("pointerup",end);
+    window.addEventListener("pointercancel",end);
+  }
+  function beginMove(e,f,group){
+    if(e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectNet(f.id,false);
+    if(f.locked){render();return;}
+    const origin=stagePointFromClient(e.clientX,e.clientY);
+    const startX=f.x,startY=f.y;
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      f.x=startX+point.x-origin.x;f.y=startY+point.y-origin.y;
+      group.setAttribute("transform",getTransform(f));
+      moved=true;
+    },()=>{
+      render();
+      if(moved)commitHistory();
+    });
+  }
+  function beginRotate(e,f,group){
+    if(f.locked||e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectNet(f.id,false);
+    const rad=f.angle*Math.PI/180;
+    const center={x:f.x+f.length/2*Math.cos(rad),y:f.y+f.length/2*Math.sin(rad)};
+    const start=stagePointFromClient(e.clientX,e.clientY);
+    const baseAngle=Math.atan2(start.y-center.y,start.x-center.x)*180/Math.PI;
+    const original=f.angle;
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      let next=original+Math.atan2(point.y-center.y,point.x-center.x)*180/Math.PI-baseAngle;
+      if(event.shiftKey)next=Math.round(next/45)*45;
+      f.angle=angle(next);
+      // Keep the fence centre stationary during rotation.
+      const theta=f.angle*Math.PI/180;
+      f.x=center.x-f.length/2*Math.cos(theta);
+      f.y=center.y-f.length/2*Math.sin(theta);
+      group.setAttribute("transform",getTransform(f));
+      if($f("netAngle"))$f("netAngle").value=String(Math.round(f.angle));
+      moved=true;
+    },()=>{
+      render();if(moved)commitHistory();
+    });
+  }
+  function beginLength(e,f){
+    if(f.locked||e.button!==0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    selectNet(f.id,false);
+    let moved=false;
+    trackPointer(e,event=>{
+      const point=stagePointFromClient(event.clientX,event.clientY);
+      const dx=point.x-f.x,dy=point.y-f.y;
+      let newAngle=Math.atan2(dy,dx)*180/Math.PI;
+      if(event.shiftKey)newAngle=Math.round(newAngle/45)*45;
+      f.angle=angle(newAngle);
+      f.length=clamp(Math.hypot(dx,dy),.3,500,2);
+      // Recreate mesh/posts live to match the changing length.
+      const node=svg.querySelector('[data-net-id="'+f.id+'"]');
+      if(node)node.replaceWith(drawNet(f));
+      updateNetBar();moved=true;
+    },()=>{render();if(moved)commitHistory();});
+  }
+
+  function putNet(x,y,length,orientation){
+    normalizeNets();
+    const f=normalizeNet({id:state.nextNetId++,x,y,length,
+      angle:orientation,locked:false,hidden:false},state.netAnnotations.length);
+    state.netAnnotations.push(f);
+    normalizeArtworkLayerOrder();
+    state.artworkLayerOrder=state.artworkLayerOrder.filter(token=>token!=="net:"+f.id);
+    state.artworkLayerOrder.push("net:"+f.id);
+    selectNet(f.id);commitHistory();
+  }
+  function modifyNet(action){
+    const f=byId(selectedNetId);
+    if(!f||f.locked)return;
+    if(action==="delete"){
+      state.netAnnotations=state.netAnnotations.filter(item=>item.id!==f.id);
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(token=>token!=="net:"+f.id);
+      selectedNetId=null;render();commitHistory();return;
+    }
+    if(action==="duplicate"){
+      const theta=f.angle*Math.PI/180;
+      const copy=normalizeNet({...cloneData(f),id:state.nextNetId++,
+        x:f.x-.7*Math.sin(theta),y:f.y+.7*Math.cos(theta),
+        hidden:false,locked:false},state.netAnnotations.length);
+      state.netAnnotations.push(copy);
+      normalizeArtworkLayerOrder();
+      state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="net:"+copy.id);
+      state.artworkLayerOrder.push("net:"+copy.id);
+      selectNet(copy.id);commitHistory();return;
+    }
+    if(action==="left"||action==="right"){
+      f.angle=angle(f.angle+(action==="left"?-90:90));
+      render();commitHistory();
+    }
+  }
+  function hideNet(id){
+    const f=byId(id);if(!f)return;
+    f.hidden=!f.hidden;
+    if(f.hidden&&selectedNetId===id)selectedNetId=null;
+    render();commitHistory();
+  }
+  function lockNet(id){
+    const f=byId(id);if(!f)return;
+    f.locked=!f.locked;render();commitHistory();
+  }
+  window.BinaCourtNets={
+    draw(id){const f=byId(id);if(f&&!f.hidden)svg.appendChild(drawNet(f));},
+    select:selectNet,hide:hideNet,lock:lockNet,
+    clear(){selectedNetId=null;placingNet=false;drawing=null;updateNetBar();}
+  };
+
+  // Each net is saved with its Option / Group and remains in project JSON.
+  const oldCapture=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizeNets();
+    const data=oldCapture();
+    data.netAnnotations=cloneData(state.netAnnotations);
+    data.nextNetId=state.nextNetId;
+    return data;
+  };
+  const oldNormalize=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const data=oldNormalize(option),raw=option||{};
+    data.netAnnotations=Array.isArray(raw.netAnnotations)
+      ?raw.netAnnotations.map((f,i)=>normalizeNet(f,i)):[];
+    data.nextNetId=Math.max(1,Number(raw.nextNetId)||1,
+      ...data.netAnnotations.map(f=>f.id+1));
+    return data;
+  };
+  const oldApply=applyOptionData;
+  applyOptionData=function(option){
+    const data=normalizeOptionData(option);
+    oldApply(data);
+    state.netAnnotations=cloneData(data.netAnnotations);
+    state.nextNetId=data.nextNetId;
+    selectedNetId=null;normalizeNets();
+  };
+
+  const oldLayerInfo=layerItemInfo;
+  layerItemInfo=function(token,index,total){
+    if(token.startsWith("net:")){
+      const id=parseInt(token.slice(4),10),f=byId(id);
+      if(!f)return null;
+      return {token,type:"net",id,name:"Jaring Pagar (Chain-Link)",
+        meta:f.length.toFixed(2)+" m | Chain-Link Mesh | "+
+          (index===0?"Paling atas":index===total-1?"Paling bawah":"Layer "+(index+1)),
+        color:"#94a3b8",hidden:f.hidden,locked:f.locked,
+        active:selectedNetId===id};
+    }
+    return oldLayerInfo(token,index,total);
+  };
+  const oldSelectLayer=selectArtworkLayerToken;
+  selectArtworkLayerToken=function(token,event=null){
+    if(token.startsWith("net:")){selectNet(parseInt(token.slice(4),10));return;}
+    selectedNetId=null;return oldSelectLayer(token,event);
+  };
+  const oldUpdateList=updateCourtList;
+  updateCourtList=function(){
+    oldUpdateList();
+    $f("courtList")?.querySelectorAll('.artwork-layer-item[data-layer-token^="net:"]')
+      .forEach(row=>{
+        const id=parseInt(row.dataset.layerToken.slice(10),10);
+        row.querySelector(".layer-visibility")?.addEventListener("click",e=>{
+          e.stopPropagation();hideNet(id);
+        });
+        row.querySelector(".layer-lock")?.addEventListener("click",e=>{
+          e.stopPropagation();lockNet(id);
+        });
+      });
+  };
+  const oldRender=render;
+  render=function(options={}){
+    normalizeNets();
+    oldRender(options);
+    updateNetBar();
+  };
+
+  // UI: Tools > Jaring Pagar (Chain-Link)
+  const menu=$f("toolsDropdown");
+  if(menu&&!$f("netTool")){
+    const button=document.createElement("button");
+    button.id="netTool";button.type="button";
+    button.title="Klik dan tarik dari titik mula ke titik akhir pagar";
+    button.innerHTML='<span class="tool-icon">&#9641;</span><span>Jaring Pagar (Chain-Link)</span>';
+    menu.insertBefore(button,$f("imageTool")||null);
+    button.addEventListener("click",()=>{
+      const next=!placingNet;
+      if(next){
+        const shape=$f("shapeTool");
+        if(shape?.getAttribute("aria-pressed")==="true")shape.click();
+        for(const id of ["lampSingleTool","lampDoubleTool","doorTool","partitionTool"]){
+          const btn=$f(id);
+          if(btn?.getAttribute("aria-pressed")==="true")btn.click();
+        }
+        lineToolState.active=false;measureToolState.active=false;
+        textToolState.active=false;stageTouchPanMode=false;
+        window.BinaCourtLighting?.clear?.();
+        window.BinaCourtDoors?.clear?.();
+        window.BinaCourtPartitions?.clear?.();
+      }
+      placingNet=next;
+      selectedNetId=null;drawing=null;
+      menu.hidden=true;
+      $f("toolsMenuButton")?.setAttribute("aria-expanded","false");
+      updateToolsMenuState();render();
+    });
+  }
+
+  const toolbarBefore=$f("doorFormatToolbar")||$f("lineFormatToolbar");
+  if(toolbarBefore&&!$f("netFormatToolbar")){
+    const bar=document.createElement("div");
+    bar.id="netFormatToolbar";bar.hidden=true;
+    bar.className="image-format-toolbar";
+    bar.setAttribute("aria-label","Jaring Pagar (Chain-Link)");
+    bar.innerHTML=
+      '<span class="image-format-label">JARING PAGAR (CHAIN-LINK)</span>'+
+      '<label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:11px;font-weight:400">Panjang (m) <input id="netLength" type="number" min="0.3" max="500" step=".1" style="width:78px;height:34px;padding:5px;font-size:11px"></label>'+
+      '<button id="netRotateLeft" class="secondary" type="button" title="Rotate -90°">&#8634; 90°</button>'+
+      '<button id="netRotateRight" class="secondary" type="button" title="Rotate +90°">&#8635; 90°</button>'+
+      '<label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:11px;font-weight:400">Sudut <input id="netAngle" type="number" step="45" min="0" max="359" style="width:64px;height:34px;padding:5px;font-size:11px"></label>'+
+      '<button id="netDuplicate" class="secondary" type="button">Duplicate</button>'+
+      '<button id="netDelete" class="danger" type="button">Delete</button>';
+    toolbarBefore.insertAdjacentElement("afterend",bar);
+    bar.querySelectorAll("button").forEach(button=>{
+      button.style.width="auto";button.style.padding="5px 8px";
+      button.style.fontSize="11px";
+    });
+  }
+  function updateNetBar(){
+    const bar=$f("netFormatToolbar"),f=byId(selectedNetId);
+    if(!bar)return;
+    bar.hidden=!f;
+    if(!f)return;
+    $f("netLength").value=f.length.toFixed(2);
+    $f("netAngle").value=String(Math.round(f.angle));
+    ["netLength","netAngle","netRotateLeft","netRotateRight",
+      "netDuplicate","netDelete"].forEach(id=>{
+      if($f(id))$f(id).disabled=f.locked;
+    });
+  }
+  $f("netLength")?.addEventListener("change",e=>{
+    const f=byId(selectedNetId);if(!f||f.locked)return;
+    f.length=clamp(e.target.value,.3,500,2);
+    render();commitHistory();
+  });
+  $f("netAngle")?.addEventListener("change",e=>{
+    const f=byId(selectedNetId);if(!f||f.locked)return;
+    f.angle=angle(e.target.value);
+    render();commitHistory();
+  });
+  [["netRotateLeft","left"],["netRotateRight","right"],
+    ["netDuplicate","duplicate"],["netDelete","delete"]]
+    .forEach(([id,action])=>$f(id)?.addEventListener("click",()=>modifyNet(action)));
+
+  const oldMenuState=updateToolsMenuState;
+  updateToolsMenuState=function(){
+    oldMenuState();
+    const button=$f("netTool");if(!button)return;
+    button.classList.toggle("is-active",placingNet);
+    button.setAttribute("aria-pressed",String(placingNet));
+    if(placingNet)$f("toolsMenuButton")?.classList.add("tool-active");
+  };
+  const oldCursor=updateStageCursor;
+  updateStageCursor=function(){
+    oldCursor();
+    if(placingNet&&!stageSpaceHeld)$f("stageWrap").style.cursor="crosshair";
+  };
+
+  // Switching to other editing tools cancels partition placement.
+  ["shapeTool","lineTool","measureTool","textTool","imageTool","touchPanTool",
+    "lampSingleTool","lampDoubleTool","doorTool","partitionTool"].forEach(id=>{
+    $f(id)?.addEventListener("click",()=>{
+      if(!placingNet)return;
+      placingNet=false;
+      drawing=null;
+      svg.querySelectorAll(".net-preview").forEach(node=>node.remove());
+      updateToolsMenuState();
+    },true);
+  });
+
+  function dragNetGeometry(start,end,shiftKey=false){
+    const dx=end.x-start.x,dy=end.y-start.y;
+    const distance=Math.hypot(dx,dy);
+    let degrees=Math.atan2(dy,dx)*180/Math.PI;
+    // Holding Shift constrains the fence direction to 45-degree increments.
+    if(shiftKey)degrees=Math.round(degrees/45)*45;
+    return {length:distance<.15?2:clamp(distance,.3,500,2),
+      angle:distance<.15?0:angle(degrees)};
+  }
+  function drawPreview(){
+    svg.querySelectorAll(".net-preview").forEach(node=>node.remove());
+    if(!drawing)return;
+    const geometry=dragNetGeometry(drawing.start,drawing.end,drawing.shiftKey);
+    const value={x:drawing.start.x,y:drawing.start.y,length:geometry.length,
+      angle:geometry.angle};
+    const g=drawNet(value,{preview:true});
+    g.style.pointerEvents="none";
+    svg.appendChild(g);
+  }
+  svg.addEventListener("pointerdown",event=>{
+    if(placingNet&&!stageSpaceHeld&&!stagePanActive&&event.button===0){
+      if(event.target?.closest?.("[data-net-id]"))return;
+      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+      const p=stagePointFromClient(event.clientX,event.clientY);
+      drawing={start:{x:p.x,y:p.y},end:{x:p.x,y:p.y},shiftKey:event.shiftKey};
+      drawPreview();
+      trackPointer(event,moveEvent=>{
+        if(!drawing)return;
+        const pt=stagePointFromClient(moveEvent.clientX,moveEvent.clientY);
+        drawing.end={x:pt.x,y:pt.y};
+        drawing.shiftKey=moveEvent.shiftKey;
+        drawPreview();
+      },success=>{
+        svg.querySelectorAll(".net-preview").forEach(node=>node.remove());
+        if(!drawing)return;
+        const {start,end,shiftKey}=drawing;
+        drawing=null;
+        if(!success)return;
+        const geometry=dragNetGeometry(start,end,shiftKey);
+        putNet(start.x,start.y,geometry.length,geometry.angle);
+      });
+      return;
+    }
+    if(!event.target?.closest?.("[data-net-id]")&&selectedNetId!==null){
+      selectedNetId=null;updateNetBar();
+    }
+  },true);
+
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Shift" && drawing && !drawing.shiftKey){
+      drawing.shiftKey=true;
+      drawPreview();
+    }
+  });
+  document.addEventListener("keyup",event=>{
+    if(event.key==="Shift" && drawing){
+      drawing.shiftKey=false;
+      drawPreview();
+    }
+  });
+
+  document.addEventListener("keydown",event=>{
+    if(stageKeyTargetIsEditable(event.target))return;
+    if(event.key==="Escape"&&placingNet){
+      placingNet=false;drawing=null;
+      svg.querySelectorAll(".net-preview").forEach(node=>node.remove());
+      updateToolsMenuState();return;
+    }
+    if(selectedNetId===null)return;
+    const f=byId(selectedNetId);if(!f||f.locked)return;
+    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="d"){
+      event.preventDefault();event.stopImmediatePropagation();modifyNet("duplicate");
+    }else if(event.key==="Delete"||event.key==="Backspace"){
+      event.preventDefault();event.stopImmediatePropagation();modifyNet("delete");
+    }
+  },true);
+
+  // Reset project clears all partition objects.
+  const oldReset=window.__resetShapeToolState;
+  window.__resetShapeToolState=function(){
+    oldReset?.();
+    state.netAnnotations=[];state.nextNetId=1;
+    selectedNetId=null;placingNet=false;drawing=null;
+  };
+
+  updateToolsMenuState();
+  updateNetBar();
+})();
+</script>
