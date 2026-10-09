@@ -489,8 +489,9 @@
     -webkit-user-select:none;
     -webkit-touch-callout:none
   }
-  .status{
-    display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--muted)
+  /* Keep status data and behaviours intact, but hide the informational strip below live court. */
+  .canvas-card > .status{
+    display:none !important;
   }
   .badge{padding:6px 9px;border-radius:999px;background:#eef2f6}
   .badge.ok{background:#e8f7ee;color:var(--ok)}
