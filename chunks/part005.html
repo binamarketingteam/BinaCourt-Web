@@ -27,7 +27,8 @@ function captureCurrentOptionData(){
     lineAnnotations:cloneData(state.lineAnnotations || []),
     nextLineId:state.nextLineId,
     artworkLayerOrder:cloneData(state.artworkLayerOrder || []),
-    walkwayConstraints:cloneData(state.walkwayConstraints || {})
+    walkwayConstraints:cloneData(state.walkwayConstraints || {}),
+    walkwayDisplayUnits:cloneData(state.walkwayDisplayUnits || {})
   };
 }
 
@@ -105,6 +106,7 @@ function normalizeOptionData(option){
       ? data.artworkLayerOrder.filter(item=>typeof item==="string").slice(0,500)
       : [],
     walkwayConstraints:normalizeWalkwayConstraints(data.walkwayConstraints),
+    walkwayDisplayUnits:normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits),
     nextId:Math.max(
       parseInt(data.nextId || 1,10) || 1,
       ...((data.courts || []).map(c=>(parseInt(c.id,10) || 0)+1)),
@@ -193,6 +195,7 @@ function applyOptionData(optionData){
   state.lineAnnotations=data.lineAnnotations || [];
   state.artworkLayerOrder=cloneData(data.artworkLayerOrder || []);
   state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
+  state.walkwayDisplayUnits=normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits);
   state.nextId=data.nextId;
   state.nextMeasureId=data.nextMeasureId;
   state.nextTextId=data.nextTextId;
