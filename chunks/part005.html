@@ -89,6 +89,10 @@ function normalizeOptionData(option){
     siteSizeMode:normalizeSiteSizeMode(data.siteSizeMode ?? state.siteSizeMode),
     siteTargetArea:Math.max(25,parseFloat(data.siteTargetArea ?? state.siteTargetArea) || ((parseFloat(data.siteW)||40)*(parseFloat(data.siteH)||40))),
     siteLockedRatio:Math.max(.01,parseFloat(data.siteLockedRatio ?? state.siteLockedRatio) || ((parseFloat(data.siteW)||40)/(parseFloat(data.siteH)||40))),
+    siteDimensionUnits:{
+      w:String(data.siteDimensionUnits?.w||"m").toLowerCase()==="ft" ? "ft" : "m",
+      h:String(data.siteDimensionUnits?.h||"m").toLowerCase()==="ft" ? "ft" : "m"
+    },
     siteColor:typeof data.siteColor==="string" ? data.siteColor : state.siteColor,
     siteBrand:optionSiteBrand,
     siteShapeMode:data.siteShapeMode==="custom" ? "custom" : "rect",
@@ -174,6 +178,7 @@ function applyOptionData(optionData){
   state.siteSizeMode=normalizeSiteSizeMode(data.siteSizeMode);
   state.siteTargetArea=Math.max(25,Number(data.siteTargetArea)||data.siteW*data.siteH);
   state.siteLockedRatio=Math.max(.01,Number(data.siteLockedRatio)||data.siteW/data.siteH);
+  state.siteDimensionUnits=cloneData(data.siteDimensionUnits || {w:"m",h:"m"});
   state.siteColor=data.siteColor;
   state.siteBrand=normalizeBrand(data.siteBrand,state.brand);
   state.siteShapeMode=data.siteShapeMode;
