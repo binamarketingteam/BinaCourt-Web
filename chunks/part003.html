@@ -613,12 +613,22 @@
             </div>
 
             <div id="selCourtSizeEditor" style="display:none;margin-top:12px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
-              <div style="font-weight:700;font-size:13px;margin-bottom:6px">Saiz Court</div>
+              <div style="display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:8px">
+                <div style="font-weight:700;font-size:13px">Saiz Court</div>
+                <div style="min-width:120px">
+                  <label for="selCourtSizeUnit" style="margin-top:0;font-size:11px">Unit edit saiz</label>
+                  <select id="selCourtSizeUnit" style="height:34px;padding:5px 28px 5px 8px">
+                    <option value="m">Meter (m)</option>
+                    <option value="ft">Feet (ft)</option>
+                  </select>
+                </div>
+              </div>
               <div class="row">
-                <div><label id="selCourtWLabel" style="margin-top:0">Panjang court (m)</label><input id="selCourtW" type="number" step="0.1"></div>
-                <div><label id="selCourtHLabel" style="margin-top:0">Lebar court (m)</label><input id="selCourtH" type="number" step="0.1"></div>
+                <div><label id="selCourtWLabel" style="margin-top:0">Panjang court (m)</label><input id="selCourtW" type="number" step="0.01"></div>
+                <div><label id="selCourtHLabel" style="margin-top:0">Lebar court (m)</label><input id="selCourtH" type="number" step="0.01"></div>
               </div>
               <div id="selCourtSizeRange" class="hint" style="margin-top:6px"></div>
+              <div class="hint" style="margin-top:4px">Unit ini hanya untuk edit saiz court. Ia tidak mengubah unit paparan projek.</div>
               <div id="selCourtSizeWarning" class="warning"></div>
             </div>
 
