@@ -418,7 +418,7 @@ function syncProjectInputs(){
   if($("brandSystem")) $("brandSystem").value=normalizeBrand(state.brand);
   if($("siteBrandSystem")) $("siteBrandSystem").value=siteBrand();
   if(state.measurementUnit==="ft_round") state.measurementUnit="ft";
-  if(!["m","ft"].includes(state.measurementUnit)) state.measurementUnit="m";
+  if(!["m","ft","mix"].includes(state.measurementUnit)) state.measurementUnit="m";
   syncMeasurementUnitLabels();
   $("projectReferenceNo").value=normalizeReferenceNumber(state.projectReferenceNo);
   updateProjectReferencePreview();
