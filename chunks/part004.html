@@ -509,6 +509,14 @@ function currentLengthUnit(){
 function currentAreaUnit(){
   return isFeetUnit() ? "ft²" : "m²";
 }
+function formatLengthForUnit(meters,unit="m",decimals=2,space=true){
+  const gap=space ? " " : "";
+  const value=Number(meters)||0;
+  const feet=isFeetUnit(unit);
+  const display=feet ? value*FEET_PER_METER : value;
+  const places=feet ? smartFeetDisplayPlaces(display,decimals) : decimals;
+  return `${display.toFixed(places)}${gap}${feet?"ft":"m"}`;
+}
 function formatLength(meters,decimals=2,space=true){
   const gap=space ? " " : "";
   const displayValue=displayLengthValue(meters);
@@ -522,7 +530,8 @@ function formatLengthInput(meters){
   return displayLengthValue(meters).toFixed(displayLengthDecimals());
 }
 function syncMeasurementUnitLabels(){
-  const unit=currentLengthUnit();
+  const mixed=state.measurementUnit==="mix";
+  const unit=mixed ? "m" : currentLengthUnit();
   if($("measurementUnit")) $("measurementUnit").value=state.measurementUnit || "m";
   if($("siteWLabel")) $("siteWLabel").textContent=`Panjang (${unit})`;
   if($("siteHLabel")) $("siteHLabel").textContent=`Lebar (${unit})`;
