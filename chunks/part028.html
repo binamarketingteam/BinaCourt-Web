@@ -1,0 +1,360 @@
+<style>
+/* Layer grouping UI */
+.layer-group-toolbar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin:0 0 9px;padding:7px 8px;border:1px solid var(--border);
+  border-radius:8px;background:#f8fafc
+}
+.layer-group-toolbar button{
+  width:auto;min-height:30px;padding:5px 9px;font-size:11px
+}
+.layer-group-count{font-size:11px;color:#667085;margin-left:auto}
+.layer-group-select{
+  width:22px!important;min-width:22px!important;height:22px!important;
+  padding:0!important;margin-right:5px!important;border:1px solid #cbd5e1!important;
+  background:#fff!important;color:#475569!important;border-radius:5px!important;
+  font-size:12px!important;line-height:20px!important;vertical-align:middle
+}
+.layer-group-select.is-selected{
+  background:#2563eb!important;color:#fff!important;border-color:#2563eb!important
+}
+.artwork-layer-item.layer-group-member{
+  border-left:3px solid #64748b;
+}
+.artwork-layer-item.layer-group-member .layer-name::after{
+  content:attr(data-group-label);
+  display:inline-block;margin-left:6px;padding:1px 5px;border-radius:999px;
+  background:#eef2f6;color:#475467;font-size:9px;font-weight:800;vertical-align:1px
+}
+.layer-group-header{
+  display:flex;align-items:center;gap:6px;margin:6px 0 4px;padding:7px 8px;
+  border:1px solid #cbd5e1;border-radius:8px;background:#eef2f6;color:#344054
+}
+.layer-group-header .layer-group-toggle,
+.layer-group-header .layer-group-move{
+  width:26px;min-width:26px;height:26px;padding:0;border:1px solid #cbd5e1;
+  border-radius:6px;background:#fff;color:#475467;font-size:12px
+}
+.layer-group-header .layer-group-title{
+  flex:1;min-width:0;font-size:11px;font-weight:800;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;cursor:pointer
+}
+.layer-group-header .layer-group-meta{font-size:10px;color:#667085}
+.layer-group-header.is-selected{outline:2px solid rgba(37,99,235,.25)}
+</style>
+<script>
+(()=>{
+  const groupSelection=new Set();
+
+  function validLayerTokens(){
+    try{return new Set(normalizeArtworkLayerOrder());}
+    catch(_){return new Set(Array.isArray(state.artworkLayerOrder)?state.artworkLayerOrder:[]);}
+  }
+
+  function normalizeLayerGroups(rawGroups=state.layerGroups){
+    const valid=validLayerTokens();
+    const seen=new Set();
+    const source=Array.isArray(rawGroups)?rawGroups:[];
+    const groups=[];
+    for(const raw of source){
+      if(!raw||typeof raw!=="object")continue;
+      const tokens=Array.from(new Set((Array.isArray(raw.tokens)?raw.tokens:[])
+        .map(String).filter(t=>valid.has(t)&&!seen.has(t))));
+      if(tokens.length<2)continue;
+      tokens.forEach(t=>seen.add(t));
+      const id=Math.max(1,parseInt(raw.id,10)||groups.length+1);
+      groups.push({
+        id,
+        name:String(raw.name||("Group "+id)),
+        tokens,
+        collapsed:!!raw.collapsed
+      });
+    }
+    state.layerGroups=groups;
+    const maxId=groups.reduce((m,g)=>Math.max(m,g.id),0);
+    state.nextLayerGroupId=Math.max(parseInt(state.nextLayerGroupId,10)||1,maxId+1);
+    for(const token of Array.from(groupSelection)) if(!valid.has(token)) groupSelection.delete(token);
+    return groups;
+  }
+
+  function groupForToken(token){
+    return normalizeLayerGroups().find(g=>g.tokens.includes(token))||null;
+  }
+
+  function removeTokensFromExistingGroups(tokens){
+    const set=new Set(tokens);
+    state.layerGroups=normalizeLayerGroups().map(g=>({
+      ...g,tokens:g.tokens.filter(t=>!set.has(t))
+    })).filter(g=>g.tokens.length>=2);
+  }
+
+  function makeSelectedContiguous(tokens){
+    const order=normalizeArtworkLayerOrder().slice();
+    const wanted=new Set(tokens);
+    const selectedOrdered=order.filter(t=>wanted.has(t));
+    if(selectedOrdered.length<2)return selectedOrdered;
+    const selectedIndexes=order.map((t,i)=>wanted.has(t)?i:-1).filter(i=>i>=0);
+    const anchor=Math.max(...selectedIndexes);
+    const remaining=order.filter(t=>!wanted.has(t));
+    let insertion=0;
+    for(let i=0;i<=anchor;i++) if(!wanted.has(order[i])) insertion++;
+    remaining.splice(insertion,0,...selectedOrdered);
+    state.artworkLayerOrder=remaining;
+    try{syncArtworkTypeOrders();}catch(_){}
+    return selectedOrdered;
+  }
+
+  function createLayerGroup(){
+    const valid=validLayerTokens();
+    const tokens=normalizeArtworkLayerOrder().filter(t=>groupSelection.has(t)&&valid.has(t));
+    if(tokens.length<2)return;
+    removeTokensFromExistingGroups(tokens);
+    const contiguous=makeSelectedContiguous(tokens);
+    const id=Math.max(1,parseInt(state.nextLayerGroupId,10)||1);
+    state.nextLayerGroupId=id+1;
+    state.layerGroups=normalizeLayerGroups().concat([{
+      id,name:"Group "+id,tokens:contiguous,collapsed:false
+    }]);
+    groupSelection.clear();
+    render();
+    commitHistory();
+  }
+
+  function ungroupSelected(){
+    if(!groupSelection.size)return;
+    const selected=new Set(groupSelection);
+    const before=JSON.stringify(normalizeLayerGroups());
+    state.layerGroups=normalizeLayerGroups().map(g=>({
+      ...g,tokens:g.tokens.filter(t=>!selected.has(t))
+    })).filter(g=>g.tokens.length>=2);
+    const changed=before!==JSON.stringify(state.layerGroups);
+    groupSelection.clear();
+    if(changed){render();commitHistory();}
+    else updateLayerGroupToolbar();
+  }
+
+  function toggleGroupCollapsed(id){
+    const g=normalizeLayerGroups().find(x=>x.id===id);
+    if(!g)return;
+    g.collapsed=!g.collapsed;
+    updateCourtList();
+  }
+
+  function renameGroup(id){
+    const g=normalizeLayerGroups().find(x=>x.id===id);
+    if(!g)return;
+    const next=prompt("Nama group",g.name);
+    if(next===null)return;
+    const name=String(next).trim();
+    if(!name)return;
+    g.name=name;
+    render();
+    commitHistory();
+  }
+
+  function moveGroup(id,dir){
+    const groups=normalizeLayerGroups();
+    const g=groups.find(x=>x.id===id);
+    if(!g)return;
+    const order=normalizeArtworkLayerOrder().slice();
+    const members=order.filter(t=>g.tokens.includes(t));
+    if(members.length<2)return;
+    const set=new Set(members);
+    const min=Math.min(...members.map(t=>order.indexOf(t)));
+    const max=Math.max(...members.map(t=>order.indexOf(t)));
+    const remainder=order.filter(t=>!set.has(t));
+    if(dir>0){
+      if(max>=order.length-1)return;
+      const nextToken=order[max+1];
+      const nextIndex=remainder.indexOf(nextToken);
+      remainder.splice(nextIndex+1,0,...members);
+    }else{
+      if(min<=0)return;
+      const prevToken=order[min-1];
+      const prevIndex=remainder.indexOf(prevToken);
+      remainder.splice(prevIndex,0,...members);
+    }
+    state.artworkLayerOrder=remainder;
+    try{syncArtworkTypeOrders();}catch(_){}
+    render();
+    commitHistory();
+  }
+
+  function selectWholeGroup(id){
+    const g=normalizeLayerGroups().find(x=>x.id===id);
+    if(!g)return;
+    const allSelected=g.tokens.every(t=>groupSelection.has(t));
+    g.tokens.forEach(t=>allSelected?groupSelection.delete(t):groupSelection.add(t));
+    updateCourtList();
+  }
+
+  function updateLayerGroupToolbar(){
+    const count=document.getElementById("layerGroupSelectionCount");
+    const groupBtn=document.getElementById("layerGroupCreate");
+    const ungroupBtn=document.getElementById("layerGroupUngroup");
+    if(count)count.textContent=groupSelection.size?groupSelection.size+" dipilih":"Pilih layer";
+    if(groupBtn)groupBtn.disabled=groupSelection.size<2;
+    if(ungroupBtn){
+      const canUngroup=Array.from(groupSelection).some(t=>!!groupForToken(t));
+      ungroupBtn.disabled=!canUngroup;
+    }
+  }
+
+  function ensureToolbar(){
+    const panel=document.getElementById("panelLayers");
+    const list=document.getElementById("courtList");
+    if(!panel||!list||document.getElementById("layerGroupToolbar"))return;
+    const bar=document.createElement("div");
+    bar.id="layerGroupToolbar";
+    bar.className="layer-group-toolbar";
+    bar.innerHTML=
+      '<button id="layerGroupCreate" class="secondary" type="button" disabled>Group</button>'+
+      '<button id="layerGroupUngroup" class="secondary" type="button" disabled>Ungroup</button>'+
+      '<button id="layerGroupClear" class="secondary" type="button">Clear</button>'+
+      '<span id="layerGroupSelectionCount" class="layer-group-count">Pilih layer</span>';
+    list.parentNode.insertBefore(bar,list);
+    document.getElementById("layerGroupCreate").addEventListener("click",createLayerGroup);
+    document.getElementById("layerGroupUngroup").addEventListener("click",ungroupSelected);
+    document.getElementById("layerGroupClear").addEventListener("click",()=>{
+      groupSelection.clear();updateCourtList();
+    });
+  }
+
+  function decorateLayerRows(){
+    ensureToolbar();
+    const list=document.getElementById("courtList");
+    if(!list)return;
+    const groups=normalizeLayerGroups();
+    const rows=Array.from(list.querySelectorAll(".artwork-layer-item[data-layer-token]"));
+
+    rows.forEach(row=>{
+      const token=row.dataset.layerToken;
+      const main=row.querySelector(".layer-main");
+      if(main&&!main.querySelector(".layer-group-select")){
+        const b=document.createElement("button");
+        b.type="button";
+        b.className="layer-group-select";
+        b.title="Pilih layer ini untuk Group";
+        b.textContent=groupSelection.has(token)?"✓":"";
+        if(groupSelection.has(token))b.classList.add("is-selected");
+        b.addEventListener("click",e=>{
+          e.preventDefault();e.stopPropagation();
+          if(groupSelection.has(token))groupSelection.delete(token);
+          else groupSelection.add(token);
+          updateCourtList();
+        });
+        main.insertBefore(b,main.firstChild);
+      }
+      const g=groups.find(x=>x.tokens.includes(token));
+      row.classList.toggle("layer-group-member",!!g);
+      const name=row.querySelector(".layer-name");
+      if(name){
+        if(g)name.dataset.groupLabel=g.name;
+        else delete name.dataset.groupLabel;
+      }
+      if(g&&g.collapsed)row.style.display="none";
+    });
+
+    groups.forEach(g=>{
+      const memberRows=rows.filter(r=>g.tokens.includes(r.dataset.layerToken));
+      if(!memberRows.length)return;
+      const first=memberRows[0];
+      const header=document.createElement("div");
+      header.className="layer-group-header";
+      if(g.tokens.every(t=>groupSelection.has(t)))header.classList.add("is-selected");
+      header.dataset.layerGroupId=String(g.id);
+      header.innerHTML=
+        '<button class="layer-group-toggle" type="button" title="'+(g.collapsed?'Expand':'Collapse')+'">'+(g.collapsed?'▸':'▾')+'</button>'+
+        '<span class="layer-group-title" title="Klik untuk pilih semua. Double-click untuk rename"></span>'+
+        '<span class="layer-group-meta">'+g.tokens.length+' layer</span>'+
+        '<button class="layer-group-move move-up" type="button" title="Naikkan group">↑</button>'+
+        '<button class="layer-group-move move-down" type="button" title="Turunkan group">↓</button>';
+      header.querySelector(".layer-group-title").textContent=g.name;
+      header.querySelector(".layer-group-toggle").addEventListener("click",e=>{
+        e.stopPropagation();toggleGroupCollapsed(g.id);
+      });
+      header.querySelector(".layer-group-title").addEventListener("click",e=>{
+        e.stopPropagation();selectWholeGroup(g.id);
+      });
+      header.querySelector(".layer-group-title").addEventListener("dblclick",e=>{
+        e.preventDefault();e.stopPropagation();renameGroup(g.id);
+      });
+      header.querySelector(".move-up").addEventListener("click",e=>{
+        e.stopPropagation();moveGroup(g.id,1);
+      });
+      header.querySelector(".move-down").addEventListener("click",e=>{
+        e.stopPropagation();moveGroup(g.id,-1);
+      });
+      list.insertBefore(header,first);
+    });
+    updateLayerGroupToolbar();
+  }
+
+  state.layerGroups=Array.isArray(state.layerGroups)?state.layerGroups:[];
+  state.nextLayerGroupId=Math.max(1,parseInt(state.nextLayerGroupId,10)||1);
+
+  const oldCaptureGroup=captureCurrentOptionData;
+  captureCurrentOptionData=function(){
+    normalizeLayerGroups();
+    const data=oldCaptureGroup();
+    data.layerGroups=cloneData(state.layerGroups);
+    data.nextLayerGroupId=state.nextLayerGroupId;
+    return data;
+  };
+
+  const oldNormalizeGroup=normalizeOptionData;
+  normalizeOptionData=function(option){
+    const data=oldNormalizeGroup(option);
+    const raw=option||{};
+    const valid=new Set(Array.isArray(data.artworkLayerOrder)?data.artworkLayerOrder:[]);
+    const seen=new Set();
+    const rawGroups=Array.isArray(raw.layerGroups)?raw.layerGroups:[];
+    data.layerGroups=rawGroups.map((g,i)=>{
+      const tokens=Array.from(new Set((Array.isArray(g?.tokens)?g.tokens:[])
+        .map(String).filter(t=>valid.has(t)&&!seen.has(t))));
+      tokens.forEach(t=>seen.add(t));
+      const id=Math.max(1,parseInt(g?.id,10)||i+1);
+      return {id,name:String(g?.name||("Group "+id)),tokens,collapsed:!!g?.collapsed};
+    }).filter(g=>g.tokens.length>=2);
+    const maxId=data.layerGroups.reduce((m,g)=>Math.max(m,g.id),0);
+    data.nextLayerGroupId=Math.max(parseInt(raw.nextLayerGroupId,10)||1,maxId+1);
+    return data;
+  };
+
+  const oldApplyGroup=applyOptionData;
+  applyOptionData=function(option){
+    const data=normalizeOptionData(option);
+    oldApplyGroup(data);
+    state.layerGroups=cloneData(data.layerGroups||[]);
+    state.nextLayerGroupId=data.nextLayerGroupId||1;
+    groupSelection.clear();
+    normalizeLayerGroups();
+  };
+
+  const oldUpdateCourtListGroup=updateCourtList;
+  updateCourtList=function(){
+    oldUpdateCourtListGroup();
+    decorateLayerRows();
+  };
+
+  document.addEventListener("keydown",event=>{
+    const editable=event.target&&(
+      event.target.matches?.("input,textarea,select,[contenteditable='true']")||
+      event.target.closest?.("[contenteditable='true']")
+    );
+    if(editable)return;
+    if((event.ctrlKey||event.metaKey)&&!event.shiftKey&&event.key.toLowerCase()==="g"){
+      if(groupSelection.size>=2){
+        event.preventDefault();event.stopImmediatePropagation();createLayerGroup();
+      }
+    }else if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==="g"){
+      if(Array.from(groupSelection).some(t=>groupForToken(t))){
+        event.preventDefault();event.stopImmediatePropagation();ungroupSelected();
+      }
+    }
+  },true);
+
+  normalizeLayerGroups();
+  try{updateCourtList();}catch(_){}
+})();
+</script>
