@@ -183,8 +183,37 @@
   function selectWholeGroup(id){
     const g=normalizeLayerGroups().find(x=>x.id===id);
     if(!g)return;
-    const allSelected=g.tokens.every(t=>groupSelection.has(t));
-    g.tokens.forEach(t=>allSelected?groupSelection.delete(t):groupSelection.add(t));
+
+    // Layer-group selection for Group/Ungroup controls.
+    groupSelection.clear();
+    g.tokens.forEach(t=>groupSelection.add(t));
+
+    // When the group contains courts, clicking the group header also selects
+    // all those courts on the canvas. This makes the group a real movement
+    // group: drag any selected court and every court in this group moves too.
+    const courtIds=g.tokens
+      .filter(t=>t.startsWith("court:"))
+      .map(t=>parseInt(t.slice(6),10))
+      .filter(Number.isFinite);
+
+    if(courtIds.length){
+      try{ clearCourtSelection(); }catch(_){}
+      courtIds.forEach(id=>{
+        try{ toggleCourtSelection(id); }catch(_){}
+      });
+      if(courtIds.length){
+        state.selectedId=courtIds[courtIds.length-1];
+      }
+      try{ selectedMeasurementId=null; }catch(_){}
+      try{ closeMeasureInlineEditor(false); }catch(_){}
+      try{ updateControls(); }catch(_){}
+      try{ updateMultiSelectionPanel(); }catch(_){}
+      try{ navigator.vibrate?.(12); }catch(_){}
+      try{ window.AndroidBridge?.toast?.(courtIds.length+" court dalam group dipilih"); }catch(_){}
+      render();
+      return;
+    }
+
     updateCourtList();
   }
 
