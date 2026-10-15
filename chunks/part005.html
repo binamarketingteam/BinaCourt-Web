@@ -27,6 +27,8 @@ function captureCurrentOptionData(){
     lineAnnotations:cloneData(state.lineAnnotations || []),
     nextLineId:state.nextLineId,
     artworkLayerOrder:cloneData(state.artworkLayerOrder || []),
+    layerGroups:cloneData(state.layerGroups || []),
+    nextLayerGroupId:Math.max(1,parseInt(state.nextLayerGroupId || 1,10) || 1),
     walkwayConstraints:cloneData(state.walkwayConstraints || {}),
     walkwayDisplayUnits:cloneData(state.walkwayDisplayUnits || {})
   };
@@ -109,6 +111,15 @@ function normalizeOptionData(option){
     artworkLayerOrder:Array.isArray(data.artworkLayerOrder)
       ? data.artworkLayerOrder.filter(item=>typeof item==="string").slice(0,500)
       : [],
+    layerGroups:Array.isArray(data.layerGroups)
+      ? data.layerGroups.slice(0,100).map((group,index)=>({
+          id:Math.max(1,parseInt(group?.id,10) || (index+1)),
+          name:String(group?.name || `Group ${index+1}`).replace(/\s+/g," ").trim().slice(0,80) || `Group ${index+1}`,
+          members:Array.isArray(group?.members) ? group.members.filter(token=>typeof token==="string").slice(0,500) : [],
+          collapsed:!!group?.collapsed
+        }))
+      : [],
+    nextLayerGroupId:Math.max(1,parseInt(data.nextLayerGroupId || 1,10) || 1),
     walkwayConstraints:normalizeWalkwayConstraints(data.walkwayConstraints),
     walkwayDisplayUnits:normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits),
     nextId:Math.max(
@@ -199,6 +210,8 @@ function applyOptionData(optionData){
   state.imageAnnotations=data.imageAnnotations || [];
   state.lineAnnotations=data.lineAnnotations || [];
   state.artworkLayerOrder=cloneData(data.artworkLayerOrder || []);
+  state.layerGroups=cloneData(data.layerGroups || []);
+  state.nextLayerGroupId=Math.max(1,parseInt(data.nextLayerGroupId || 1,10) || 1);
   state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
   state.walkwayDisplayUnits=normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits);
   state.nextId=data.nextId;
