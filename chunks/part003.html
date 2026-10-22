@@ -361,7 +361,15 @@
           <option value="arrow">↔ Anak Panah</option>
           <option value="bracket">⊢ Bracket / Hujung 90°</option>
         </select>
-        <span class="image-format-hint">Arrow = anak panah · Bracket = garis dengan hujung 90° seperti contoh</span>
+        <span id="measureLabelPositionWrap" style="display:inline-flex;align-items:center;gap:6px">
+          <span class="image-format-label">ANGKA</span>
+          <select id="measureLabelSide" title="Posisi angka untuk Bracket" style="width:auto;min-width:125px;height:34px;padding:5px 28px 5px 8px;font-size:11px;font-weight:700">
+            <option value="a">Kiri / Atas</option>
+            <option value="b">Kanan / Bawah</option>
+          </select>
+          <button id="measureReflectLabel" class="secondary" type="button" title="Reflect posisi angka ke sisi bertentangan">↔ Reflect</button>
+        </span>
+        <span class="image-format-hint">Bracket: pilih kiri/kanan untuk ukuran menegak, atas/bawah untuk ukuran mendatar.</span>
       </div>
       <div id="lineFormatToolbar" class="image-format-toolbar" hidden aria-label="Line formatting">
         <span class="image-format-label">LINE</span>
