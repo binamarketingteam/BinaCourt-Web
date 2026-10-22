@@ -448,7 +448,8 @@ const measureToolState={
   pointerId:null,
   start:null,
   end:null,
-  style:"arrow"
+  style:"arrow",
+  labelSide:"a"
 };
 let selectedMeasurementId=null;
 let measurementListCollapsed=false;
@@ -468,6 +469,7 @@ function normalizeMeasurement(m,index=0){
     id:Math.max(1,parseInt(raw.id,10) || (index+1)),
     start,end,
     style:raw.style==="bracket" ? "bracket" : "arrow",
+    labelSide:raw.labelSide==="b" ? "b" : "a",
     hidden:!!raw.hidden,
     locked:!!raw.locked
   };
@@ -564,14 +566,29 @@ function updateMeasureToolButton(){ updateToolsMenuState(); }
 function updateMeasureFormatToolbar(){
   const bar=$("measureFormatToolbar");
   const select=$("measureStyle");
+  const sideSelect=$("measureLabelSide");
+  const sideWrap=$("measureLabelPositionWrap");
+  const reflectBtn=$("measureReflectLabel");
   if(!bar || !select) return;
   const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
   const show=!!measureToolState.active || !!item;
   bar.hidden=!show;
   if(!show) return;
+
   const style=item?.style==="bracket" ? "bracket" : (measureToolState.style==="bracket" ? "bracket" : "arrow");
+  const labelSide=(item?.labelSide==="b" ? "b" : (measureToolState.labelSide==="b" ? "b" : "a"));
+  const locked=!!item?.locked;
+
   select.value=style;
-  select.disabled=!!item?.locked;
+  select.disabled=locked;
+
+  const isBracket=style==="bracket";
+  if(sideWrap) sideWrap.style.display=isBracket ? "inline-flex" : "none";
+  if(sideSelect){
+    sideSelect.value=labelSide;
+    sideSelect.disabled=locked || !isBracket;
+  }
+  if(reflectBtn) reflectBtn.disabled=locked || !isBracket;
 }
 
 function setMeasurementStyle(value,{commit=true}={}){
@@ -585,6 +602,25 @@ function setMeasurementStyle(value,{commit=true}={}){
     return;
   }
   updateMeasureFormatToolbar();
+}
+
+function setMeasurementLabelSide(value,{commit=true}={}){
+  const side=value==="b" ? "b" : "a";
+  measureToolState.labelSide=side;
+  const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
+  if(item && !item.locked){
+    item.labelSide=side;
+    render();
+    if(commit) commitHistory();
+    return;
+  }
+  updateMeasureFormatToolbar();
+}
+
+function reflectMeasurementLabelSide(){
+  const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
+  const current=item?.labelSide==="b" ? "b" : (measureToolState.labelSide==="b" ? "b" : "a");
+  setMeasurementLabelSide(current==="a" ? "b" : "a",{commit:true});
 }
 
 function setMeasureToolActive(active){
