@@ -447,7 +447,8 @@ const measureToolState={
   dragging:false,
   pointerId:null,
   start:null,
-  end:null
+  end:null,
+  style:"arrow"
 };
 let selectedMeasurementId=null;
 let measurementListCollapsed=false;
@@ -466,6 +467,7 @@ function normalizeMeasurement(m,index=0){
   return {
     id:Math.max(1,parseInt(raw.id,10) || (index+1)),
     start,end,
+    style:raw.style==="bracket" ? "bracket" : "arrow",
     hidden:!!raw.hidden,
     locked:!!raw.locked
   };
@@ -559,6 +561,32 @@ function updateToolsMenuState(){
 
 function updateMeasureToolButton(){ updateToolsMenuState(); }
 
+function updateMeasureFormatToolbar(){
+  const bar=$("measureFormatToolbar");
+  const select=$("measureStyle");
+  if(!bar || !select) return;
+  const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
+  const show=!!measureToolState.active || !!item;
+  bar.hidden=!show;
+  if(!show) return;
+  const style=item?.style==="bracket" ? "bracket" : (measureToolState.style==="bracket" ? "bracket" : "arrow");
+  select.value=style;
+  select.disabled=!!item?.locked;
+}
+
+function setMeasurementStyle(value,{commit=true}={}){
+  const style=value==="bracket" ? "bracket" : "arrow";
+  measureToolState.style=style;
+  const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
+  if(item && !item.locked){
+    item.style=style;
+    render();
+    if(commit) commitHistory();
+    return;
+  }
+  updateMeasureFormatToolbar();
+}
+
 function setMeasureToolActive(active){
   if(active && typeof customSiteDrawing!=="undefined" && customSiteDrawing){
     alert("Selesaikan atau Batal Draw Site dahulu sebelum guna tool Ukur.");
@@ -575,6 +603,7 @@ function setMeasureToolActive(active){
   measureToolState.end=null;
   closeMeasureInlineEditor(false);
   updateToolsMenuState();
+  updateMeasureFormatToolbar();
   render();
 }
 
