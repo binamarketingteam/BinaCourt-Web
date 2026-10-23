@@ -61,7 +61,7 @@ var games=[
 ["m07",3,3,"b3","b1","b"],["m08",3,5,"b2","b4","b"],["m09",3,7,"a1","a2","a"],
 ["m10",4,3,"a3","a4","a"],["m11",4,5,"b3","b4","b"],["m12",4,7,"b2","b1","b"]
 ];
-var kos=[["sf1","SEMI FINAL 1","1A","2B"],["sf2","SEMI FINAL 2","2A","1B"],["final","FINAL 🏆","WINNER SF1","WINNER SF2"],["third","TEMPAT KE-3 / 4","LOSER SF1","LOSER SF2"],["g1","GAME 1 • 5–8","3A","4B"],["g2","GAME 2 • 5–8","4A","3B"],["p5","TEMPAT KE-5 / 6","WINNER GAME 1","WINNER GAME 2"],["p7","TEMPAT KE-7 / 8","LOSER GAME 1","LOSER GAME 2"]];
+var kos=[["sf1","SEMI FINAL 1","1A","2B"],["sf2","SEMI FINAL 2","2A","1B"],["final","FINAL 🏆","WINNER SF1","WINNER SF2"],["third","TEMPAT KE-3 / 4","LOSER SF1","LOSER SF2"],["g1","GAME 1 • 5–8","3A","3B"],["g2","GAME 2 • 5–8","4A","4B"],["p5","TEMPAT KE-5 / 6","WINNER GAME 1","WINNER GAME 2"],["p7","TEMPAT KE-7 / 8","LOSER GAME 1","LOSER GAME 2"]];
 function el(id){return document.getElementById(id)}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(k){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[k]})}
 
@@ -121,7 +121,7 @@ function standing(g){
 function groupDone(g){return games.filter(function(m){return m[5]===g}).every(function(m){return complete(m[0])})}
 function seeded(s){var g=s.slice(-1).toLowerCase(),n=Number(s[0]);return groupDone(g)&&n>=1&&n<=4?standing(g)[n-1].id:null}
 function outcome(id,winner){var participants=koTeams(id),s=score(id);if(!participants[0]||!participants[1]||!complete(id))return null;var first=knockoutWinner(s);return participants[winner?first:1-first]}
-function koTeams(id){switch(id){case "sf1":return [seeded("1A"),seeded("2B")];case "sf2":return [seeded("2A"),seeded("1B")];case "final":return [outcome("sf1",true),outcome("sf2",true)];case "third":return [outcome("sf1",false),outcome("sf2",false)];case "g1":return [seeded("3A"),seeded("4B")];case "g2":return [seeded("4A"),seeded("3B")];case "p5":return [outcome("g1",true),outcome("g2",true)];case "p7":return [outcome("g1",false),outcome("g2",false)]}return [null,null]}
+function koTeams(id){switch(id){case "sf1":return [seeded("1A"),seeded("2B")];case "sf2":return [seeded("2A"),seeded("1B")];case "final":return [outcome("sf1",true),outcome("sf2",true)];case "third":return [outcome("sf1",false),outcome("sf2",false)];case "g1":return [seeded("3A"),seeded("3B")];case "g2":return [seeded("4A"),seeded("4B")];case "p5":return [outcome("g1",true),outcome("g2",true)];case "p7":return [outcome("g1",false),outcome("g2",false)]}return [null,null]}
 function find(id){return games.find(function(m){return m[0]===id})||kos.find(function(m){return m[0]===id})}
 function teamsFor(m){if(m.length===6)return [names[m[3]],names[m[4]]];var t=koTeams(m[0]);return [t[0]?names[t[0]]:m[2],t[1]?names[t[1]]:m[3]]}
 
