@@ -362,6 +362,11 @@ if(adminRoute){el("adminBox").classList.add("show");var remembered="";try{rememb
 el("login").onclick=async function(){key=el("pw").value.trim();el("loginerr").textContent="";try{await post({action:"verify"});try{sessionStorage.setItem("pb_live_admin",key)}catch(e){}el("pw").value="";adminUI()}catch(e){key="";el("loginerr").textContent=e.message}};
 el("logout").onclick=function(){key="";try{sessionStorage.removeItem("pb_live_admin")}catch(e){}adminUI()};
 document.querySelectorAll(".tab").forEach(function(b){b.onclick=function(){document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on")});b.classList.add("on");document.querySelectorAll(".pane").forEach(function(p){p.classList.remove("on")});el(b.dataset.tab).classList.add("on")}});
+var preferredView=new URLSearchParams(location.search).get("view");
+if(preferredView==="bracket"){
+ var bracketButton=document.querySelector('.tab[data-tab="bracket"]');
+ if(bracketButton)bracketButton.click();
+}
 document.addEventListener("click",function(event){var b=event.target.closest("[data-edit]");if(b)openEditor(b.dataset.edit)});
 
 
@@ -442,7 +447,7 @@ el("save").onclick=async function(){
 };
 
 el("refresh").onclick=fetchScore;
-el("share").onclick=async function(){var u=location.origin+location.pathname;try{if(navigator.share){await navigator.share({title:"Pickleball League 2 — Live Score",url:u})}else if(navigator.clipboard){await navigator.clipboard.writeText(u);alert("Link penonton berjaya disalin.")}else prompt("Salin link penonton:",u)}catch(e){}};
+el("share").onclick=async function(){var selected=document.querySelector(".tab.on");var u=location.origin+location.pathname+(selected&&selected.dataset.tab==="bracket"?"?view=bracket":"");try{if(navigator.share){await navigator.share({title:"Pickleball League 2 — Live Score",url:u})}else if(navigator.clipboard){await navigator.clipboard.writeText(u);alert("Link penonton berjaya disalin.")}else prompt("Salin link penonton:",u)}catch(e){}};
 fetchScore();setInterval(function(){if(document.visibilityState==="visible"&&!el("overlay").classList.contains("show"))fetchScore()},8000);
 })();
 </script></body></html>
