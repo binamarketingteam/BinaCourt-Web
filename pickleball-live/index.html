@@ -34,6 +34,90 @@
 .setvalues.single .setscore{min-width:62px}
 .placementtag{display:inline-block;color:var(--yellow);font-size:10px;font-weight:1000;border:1px solid #b1a913;border-radius:4px;padding:3px 5px;margin-left:4px}
 @media(max-width:390px){.setvalues.single{grid-template-columns:48px;min-width:48px}.setvalues.single .setscore{min-width:46px}}
+
+/* ─── LIVE BRACKET RESULT ─── */
+.bracket-poster{position:relative;overflow:hidden;border:1px solid #586e55;border-radius:17px;background:radial-gradient(ellipse at 50% 20%,#1a373c 0%,#06121f 52%,#091e31 100%);box-shadow:0 14px 50px #0004}
+.bracket-poster:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;background:repeating-linear-gradient(135deg,transparent 0 64px,#164455 65px 67px,transparent 68px 139px)}
+.bracket-poster:after{content:"";position:absolute;pointer-events:none;width:145px;height:190px;top:-70px;left:-30px;border:4px solid #f8eb19;border-radius:50%;transform:rotate(-40deg);opacity:.15}
+.bracket-head{position:relative;text-align:center;padding:30px 12px 19px;background:radial-gradient(ellipse at 50% 100%,#1e3440,#071521 70%)}
+.bracket-overline{color:#b9e7ff;letter-spacing:3.5px;font-size:11px;font-weight:950}
+.bracket-heading{margin:6px 0 0;font-weight:1000;font-style:italic;line-height:.95;font-size:clamp(34px,7vw,67px);letter-spacing:-2px;text-shadow:0 4px 12px #0009}
+.bracket-heading span{color:var(--yellow)}
+.bracket-subheading{color:var(--yellow);font-style:italic;font-weight:1000;letter-spacing:1.3px;font-size:13px;margin-top:11px}
+.bracket-canvas{position:relative;padding:14px 23px 25px}
+.bracket-band{margin:4px auto 19px;width:fit-content;max-width:100%;padding:9px 23px;background:linear-gradient(90deg,transparent,#ffee29 15%,#ffee29 85%,transparent);color:#071522;text-align:center;font-size:clamp(14px,2.6vw,20px);font-weight:1000;font-style:italic}
+.bracket-sfs{display:grid;grid-template-columns:minmax(0,1fr) 134px minmax(0,1fr);gap:12px;align-items:center}
+.bracket-trophy{font-size:74px;filter:drop-shadow(0 0 19px #fce63966);text-align:center;line-height:1}
+.bracket-trophy small{display:block;font-size:10px;font-weight:1000;color:#ffed35;letter-spacing:1.6px;padding-top:7px}
+.bracket-lines{height:60px;max-width:840px;margin:0 auto}
+.bracket-lines svg{display:block;width:100%;height:100%}
+.bracket-finals{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr);max-width:790px;margin:0 auto;gap:16px;align-items:center}
+.bracket-divider{margin:30px 0 18px;background:linear-gradient(90deg,transparent,#0866d9 17%,#0866d9 83%,transparent);color:#fff;padding:10px 12px;font-size:clamp(14px,2.6vw,19px);font-weight:1000;text-align:center;letter-spacing:.5px;font-style:italic}
+.bracket-placements{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.bmatch{border:1px solid #f7e733;border-radius:11px;background:linear-gradient(160deg,#101d2d,#08121e);box-shadow:0 7px 25px #0004;overflow:hidden;min-width:0;position:relative}
+.bmatch.blue{border-color:#087ce0}.bmatch.red{border-color:#df3645}.bmatch.gold{border-color:#f9ee16;box-shadow:0 0 21px #f9ee1620}
+.bmatch-title{font-size:clamp(12px,1.7vw,17px);font-weight:1000;background:linear-gradient(90deg,#dcbd21,#fff45a,#dfb51c);color:#081522;text-align:center;padding:9px 7px;letter-spacing:.2px}
+.bmatch.blue .bmatch-title{background:#065cbd;color:#fff}.bmatch.red .bmatch-title{background:#b92839;color:#fff}
+.bmatch-sub{font-size:10px;letter-spacing:.4px;font-weight:850;color:#9eb3c5;text-align:center;padding:8px 6px 5px}
+.bmatch-headers,.bmatch-team{display:grid;grid-template-columns:minmax(0,1fr) minmax(50px,auto);gap:9px;align-items:center;padding:8px 11px}
+.bmatch-headers{padding-top:2px;padding-bottom:3px}
+.bmatch-headers .bmatch-mini{font-size:9px;letter-spacing:.3px;color:#97b1be;font-weight:900;white-space:nowrap}
+.bmatch-headers .bmatch-sets{display:flex;gap:5px}
+.bmatch-headers .bmatch-sets span{min-width:30px;text-align:center}
+.bmatch-team{border-top:1px solid #203b4e;min-height:49px}
+.bmatch-team.win{background:linear-gradient(90deg,#382e13,#192535 75%)}
+.bmatch-team-name{font-size:clamp(10px,1.5vw,13px);font-weight:950;min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.bmatch-team.win .bmatch-team-name{color:var(--yellow)}
+.bmatch-vs{color:#e9de3f;line-height:1;text-align:center;font-size:11px;font-weight:950;margin:0}
+.bmatch-scorebox{display:flex;gap:5px}
+.bmatch-scorebox span{display:inline-flex;align-items:center;justify-content:center;min-width:30px;min-height:29px;background:#214258;border:1px solid #4b697c;border-radius:5px;font-weight:1000;font-size:14px}
+.bmatch-scorebox span.win{color:#061826;background:var(--yellow);border-color:var(--yellow)}
+.bmatch-bottom{border-top:1px dashed #324355;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bmatch-state{font-size:10px;font-weight:1000;color:#a5b8c8}.bmatch-state.live{color:#60f2b7}.bmatch-state.done{color:#f9e51e}
+.bmatch-edit{background:#183b54;border:1px solid #168de1;color:#c5edff;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:900}
+.bracket-summary{border-top:1px solid #2c5260;margin-top:25px;padding-top:14px}
+.bracket-summary h3{color:var(--yellow);text-align:center;font-size:20px;margin:0 0 13px;letter-spacing:1px;font-weight:1000}
+.bracket-ranks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.bracket-rank{border:1px solid #2d5874;background:linear-gradient(160deg,#14374c,#0b1c2c);border-radius:8px;padding:10px 8px;min-width:0}
+.bracket-rank:first-child{border-color:#f5da2c;background:linear-gradient(150deg,#53461a,#1d2b38)}
+.bracket-rankno{font-weight:1000;color:#fff03c;font-size:18px}.bracket-rankteam{font-size:11px;font-weight:850;overflow-wrap:anywhere;color:#d6e9fa;margin-top:3px}
+.bracket-foot{text-align:center;color:#bdeaff;font-style:italic;font-weight:900;letter-spacing:1.1px;border-top:1px solid #335169;padding:15px 8px;position:relative}
+@media(max-width:760px){
+ .bracket-canvas{padding:12px 12px 22px}
+ .bracket-head{padding:23px 9px 15px}
+ .bracket-heading{font-size:clamp(33px,8vw,53px)}
+ .bracket-sfs{grid-template-columns:1fr 1fr;gap:9px}
+ .bracket-trophy{grid-column:1/-1;grid-row:1;font-size:47px;margin:2px 0 4px}
+ .bracket-sfs>div:first-child{grid-column:1;grid-row:2}
+ .bracket-sfs>div:last-child{grid-column:2;grid-row:2}
+ .bracket-lines{height:40px}
+ .bracket-finals{grid-template-columns:1fr 1fr;gap:9px}
+ .bracket-placements{gap:9px}
+ .bmatch-title{font-size:12px;padding:8px 5px}
+ .bmatch-headers,.bmatch-team{gap:4px;padding-left:7px;padding-right:7px}
+ .bmatch-headers .bmatch-mini{font-size:8px}
+ .bmatch-headers .bmatch-sets{gap:2px}
+ .bmatch-headers .bmatch-sets span{min-width:22px;font-size:8px}
+ .bmatch-team-name{font-size:10px}
+ .bmatch-scorebox{gap:2px}
+ .bmatch-scorebox span{min-width:22px;min-height:27px;font-size:12px}
+ .bmatch-sub{font-size:9px}
+ .bracket-ranks{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:410px){
+ .bracket-finals{grid-template-columns:1fr}
+ .bracket-placements{grid-template-columns:1fr}
+ .bmatch-team-name{font-size:12px}
+ .bmatch-scorebox span{min-width:32px}
+ .bmatch-headers .bmatch-sets span{min-width:32px}
+}
+@media print {
+ header,.statusbar,.tabs,.btnline,.errorbanner,#adminBox,footer{display:none!important}
+ main{max-width:none;padding:0}.pane{display:none!important}#bracket.pane{display:block!important}
+ .bracket-poster{border:0;border-radius:0;break-inside:avoid}
+ body{background:#061322}
+ .bracket-poster,.bracket-head,.bmatch,.bracket-band,.bracket-divider,.bracket-rank{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style>
 </head>
 <body>
@@ -42,12 +126,45 @@
 <div class="statusbar"><span class="live" id="online">● MEMUATKAN...</span><span class="small" id="updated">Menunggu data skor</span></div>
 <div class="errorbanner" id="networkerr">Tidak dapat membaca skor online. Tekan Refresh atau semak internet.</div>
 <div id="adminBox" class="loginbox"><b>🔐 AKSES ADMIN SAHAJA</b><div class="small">Penonton tidak boleh mengedit. Masukkan kata laluan admin.</div><div id="loginfields"><input type="password" id="pw" placeholder="Kata laluan admin" autocomplete="off"><button id="login" class="btn y">Masuk Admin</button></div><div id="adminActive" style="display:none"><span class="live">✓ Admin aktif</span> <button class="btn" id="logout">Log keluar</button></div><div class="error" id="loginerr"></div></div>
-<div class="tabs"><button class="tab on" data-tab="live">LIVE COURT</button><button class="tab" data-tab="a">GROUP A</button><button class="tab" data-tab="b">GROUP B</button><button class="tab" data-tab="schedule">JADUAL</button><button class="tab" data-tab="ko">KNOCKOUT</button></div>
+<div class="tabs"><button class="tab on" data-tab="live">LIVE COURT</button><button class="tab" data-tab="a">GROUP A</button><button class="tab" data-tab="b">GROUP B</button><button class="tab" data-tab="schedule">JADUAL</button><button class="tab" data-tab="ko">KNOCKOUT</button><button class="tab" data-tab="bracket">🏆 BRACKET RESULT</button></div>
 <div class="pane on" id="live"><h2>SCORE SEMASA</h2><div class="tiles" id="stats"></div><div class="cards" id="courts"></div><h2 style="margin-top:26px">KEDUDUKAN KUMPULAN</h2><div id="quickranks"></div></div>
 <div class="pane" id="a"><h2>GROUP A • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tablea"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixa"></div></div>
 <div class="pane" id="b"><h2>GROUP B • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tableb"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixb"></div></div>
 <div class="pane" id="schedule"><h2>MATCH SCHEDULE • COURT 3 / 5 / 7</h2><div class="hint">4 round • 12 perlawanan • 2 set setiap game</div><div id="rounds"></div></div>
 <div class="pane" id="ko"><h2>KNOCKOUT STAGE</h2><div class="hint">TOP 4: Best of 3 (Set 3 jika 1–1). TEMPAT 5/6 &amp; 7/8: terus 3A lawan 3B dan 4A lawan 4B, 1 set sahaja. Tiada game tambahan.</div><div class="knock"><div class="knockcol"><div class="knocktitle">🏆 TOP 4 — CHAMPIONSHIP</div><div id="top4"></div></div><div class="knockcol"><div class="knocktitle">🔵 TEMPAT 5/6 DAN 7/8 · 1 SET</div><div id="bottom4"></div></div></div></div>
+
+<div class="pane" id="bracket">
+<div class="bracket-poster" id="bracketPoster">
+  <div class="bracket-head">
+    <div class="bracket-overline">PICKLEBALL LEAGUE 2</div>
+    <div class="bracket-heading"><span>PICKLEBALL</span><br>TOURNAMENT</div>
+    <div class="bracket-subheading">🏆 LIVE KNOCKOUT BRACKET 🏆</div>
+  </div>
+  <div class="bracket-canvas">
+    <div class="bracket-band">CHAMPIONSHIP • TOP 4</div>
+    <div class="bracket-sfs">
+      <div id="bSF1"></div>
+      <div class="bracket-trophy">🏆<small>THE CHAMPION</small></div>
+      <div id="bSF2"></div>
+    </div>
+    <div class="bracket-lines" aria-hidden="true"><svg viewBox="0 0 1000 60" preserveAspectRatio="none"><path d="M190 0 V22 H495 V59 M810 0 V22 H505 V59" fill="none" stroke="#f6f7fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="bracket-finals">
+      <div id="bFinal"></div><div id="bThird"></div>
+    </div>
+    <div class="bracket-divider">PENENTUAN TEMPAT 5–8 • 1 SET SAHAJA</div>
+    <div class="bracket-placements">
+      <div id="bFifth"></div><div id="bSeventh"></div>
+    </div>
+    <div class="bracket-summary">
+      <h3>🏅 KEDUDUKAN AKHIR</h3>
+      <div class="bracket-ranks" id="bRanks"></div>
+    </div>
+  </div>
+  <div class="bracket-foot">PLAY · COMPETE · BE LEGEND</div>
+</div>
+<div class="small" style="margin-top:9px;text-align:center">Keputusan dikemas kini automatik setiap 8 saat. Boleh screenshot paparan ini untuk dikongsi.</div>
+</div>
+
 <div class="btnline" style="margin-top:25px"><span class="small">Refresh automatik setiap 8 saat</span><button class="btn" id="refresh">⟳ Refresh</button></div>
 </main>
 <footer><div class="footstrong">PICKLEBALL LEAGUE 2</div>Keputusan online • Penonton hanya boleh lihat</footer>
@@ -185,6 +302,50 @@ function matrix(g){
  });
  return out+"</tbody></table>";
 }
+
+function bracketMatch(id,title,variant){
+ var m=find(id),s=score(id),p=teamsFor(m),participants=koTeams(id),done=complete(id),placement=isPlacement(id);
+ var all=placement?placementSets(s):knockoutSets(s);
+ var show=placement?all:(koNeedThird(all)?all:all.slice(0,2));
+ var win=done?knockoutWinner(s,id):null;
+ var kind=placement?"1 SET SAHAJA":"BEST OF 3";
+ var head='<div class="bmatch-headers"><span class="bmatch-mini">TEAM</span><div class="bmatch-sets">'+show.map(function(_,i){return '<span>SET '+(i+1)+'</span>'}).join("")+'</div></div>';
+ var rows=p.map(function(t,i){
+    var active=done&&win===i;
+    var num=show.map(function(set){
+      var a=i?set.b:set.a,b=i?set.a:set.b;
+      var val=(s.status==="scheduled"||a===null)?"–":String(a);
+      return '<span class="'+(typeof a==="number"&&typeof b==="number"&&a>b?"win":"")+'">'+val+'</span>';
+    }).join("");
+    var rank="";
+    if(done&&placement)rank=' • '+(id==="g1"?(active?"5TH":"6TH"):(active?"7TH":"8TH"));
+    return '<div class="bmatch-team '+(active?"win":"")+'"><div class="bmatch-team-name">'+esc(t)+esc(rank)+'</div><div class="bmatch-scorebox">'+num+'</div></div>';
+ }).join('<div class="bmatch-vs">VS</div>');
+ var label=s.status==="live"?"🔴 LIVE":done?"✅ TAMAT":"BELUM MULA";
+ var edit=(adminRoute&&!!key&&participants.every(Boolean))?'<button class="bmatch-edit" data-edit="'+esc(id)+'">✎ EDIT</button>':"";
+ return '<div class="bmatch '+variant+'"><div class="bmatch-title">'+esc(title)+'</div><div class="bmatch-sub">'+kind+'</div>'+head+rows+'<div class="bmatch-bottom"><span class="bmatch-state '+(s.status==="live"?"live":done?"done":"")+'">'+label+'</span>'+edit+'</div></div>';
+}
+function bracketRankings(){
+ var matches=[["final",0],["final",1],["third",0],["third",1],["g1",0],["g1",1],["g2",0],["g2",1]];
+ return matches.map(function(info,i){
+   var id=info[0],wanted=info[1],n="?";
+   if(complete(id)){
+     var win=knockoutWinner(score(id),id),participants=koTeams(id),team=participants[wanted===0?win:1-win];
+     n=team?names[team]:"—";
+   }
+   return '<div class="bracket-rank"><div class="bracket-rankno">'+(i+1)+(i===0?" 🏆":"")+'</div><div class="bracket-rankteam">'+esc(n==="?"?"Belum ditentukan":n)+'</div></div>';
+ }).join("");
+}
+function renderBracket(){
+ el("bSF1").innerHTML=bracketMatch("sf1","SEMI FINAL 1","gold");
+ el("bSF2").innerHTML=bracketMatch("sf2","SEMI FINAL 2","gold");
+ el("bFinal").innerHTML=bracketMatch("final","🏆 FINAL","gold");
+ el("bThird").innerHTML=bracketMatch("third","TEMPAT KE-3 / 4","red");
+ el("bFifth").innerHTML=bracketMatch("g1","3A vs 3B • TEMPAT KE-5 / 6","blue");
+ el("bSeventh").innerHTML=bracketMatch("g2","4A vs 4B • TEMPAT KE-7 / 8","blue");
+ el("bRanks").innerHTML=bracketRankings();
+}
+
 function render(){if(!loaded)return;var all=games.concat(kos),finished=all.filter(function(m){return complete(m[0])}).length,live=all.filter(function(m){return score(m[0]).status==="live"}).length;
 el("online").textContent=live?"🔴 "+live+" LIVE SEKARANG":"● ONLINE · AUTO UPDATE";
 el("updated").textContent="Kemas kini: "+(state.updated_at?new Date(state.updated_at).toLocaleTimeString("ms-MY",{timeZone:"Asia/Kuala_Lumpur",hour:"2-digit",minute:"2-digit"}):"—");
@@ -192,7 +353,7 @@ el("stats").innerHTML='<div class="tile"><div class="big">'+finished+'/18</div><
 el("courts").innerHTML=[3,5,7].map(function(c){var m=games.filter(function(g){return g[2]===c}),active=m.find(function(g){return score(g[0]).status==="live"})||m.find(function(g){return !complete(g[0])});return active?card(active):'<div class="match"><div class="matchhead"><span class="court">COURT '+c+'</span></div><div class="matchbody">Semua perlawanan selesai.</div></div>'}).join("");
 el("quickranks").innerHTML=table("a")+table("b");el("tablea").innerHTML=table("a");el("tableb").innerHTML=table("b");el("matrixa").innerHTML=matrix("a");el("matrixb").innerHTML=matrix("b");
 el("rounds").innerHTML=[1,2,3,4].map(function(r){return '<div class="roundtitle">ROUND '+r+'</div><div class="cards">'+games.filter(function(g){return g[1]===r}).map(card).join("")+'</div>'}).join("");
-el("top4").innerHTML=kos.slice(0,4).map(card).join("");el("bottom4").innerHTML=kos.slice(4).map(card).join("");
+el("top4").innerHTML=kos.slice(0,4).map(card).join("");el("bottom4").innerHTML=kos.slice(4).map(card).join("");renderBracket();
 }
 async function fetchScore(){if(busy)return;busy=true;try{var r=await fetch(API,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);var d=await r.json();if(!d.ok)throw Error(d.error||"Server error");state={scores:d.scores||{},version:d.version,updated_at:d.updated_at};loaded=true;el("networkerr").classList.remove("show");render()}catch(e){el("networkerr").textContent="Gagal sambung ke scoreboard online: "+e.message;el("networkerr").classList.add("show");el("online").textContent="⚠ OFFLINE"}finally{busy=false}}
 async function post(body){var r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify(body)});var d=await r.json().catch(function(){return {error:"Respons tidak sah"}});if(!r.ok||!d.ok)throw Error(d.error||"Gagal simpan");return d}
