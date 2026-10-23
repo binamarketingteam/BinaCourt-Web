@@ -7,6 +7,21 @@
 <style>
 :root{--bg:#061322;--navy:#0c2034;--edge:#2a5067;--yellow:#f9ee16;--blue:#0ca8ff;--white:#f7fbff;--muted:#95afc2;--green:#64e8ba}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 90% 0%,#0b3451,#061322 55%);color:var(--white)}button,input,select{font:inherit}button{cursor:pointer}header{background:linear-gradient(130deg,#07121f,#0a2a42);border-bottom:2px solid #26495e;padding:22px 16px 19px}main{max-width:1080px;margin:auto;padding:0 14px 35px}.top{max-width:1080px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{font-weight:1000;font-style:italic;text-transform:uppercase;letter-spacing:-1.4px;font-stretch:condensed;font-size:clamp(28px,6vw,48px);line-height:.93}.brand span{color:var(--yellow)}.sub{font-size:11px;letter-spacing:2px;font-weight:900;color:var(--blue);margin:8px 0 0}.share{background:var(--yellow);border:0;color:#071421;padding:10px 13px;border-radius:9px;font-weight:900;white-space:nowrap}.statusbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:19px 0 13px;flex-wrap:wrap}.live{border:1px solid #206858;padding:7px 12px;background:#103e37;border-radius:30px;color:var(--green);font-size:12px;font-weight:900}.small{font-size:12px;color:var(--muted)}.tabs{display:flex;overflow:auto;gap:7px;padding:5px 0 17px}.tab{flex:0 0 auto;border:1px solid var(--edge);background:#102a42;color:#b5d3e4;border-radius:8px;padding:10px 12px;font-weight:850}.tab.on{background:var(--yellow);color:#071421;border-color:var(--yellow)}.pane{display:none}.pane.on{display:block}h2{font-size:27px;font-weight:1000;font-style:italic;letter-spacing:-1px;margin:9px 0 14px}.hint{font-size:12px;color:var(--muted);margin:-7px 0 15px}.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 20px}.tile{background:#0f293e;border:1px solid var(--edge);border-top:3px solid var(--blue);padding:14px;border-radius:10px}.tile .big{font-weight:1000;font-size:27px;color:var(--white)}.tile .meta{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.5px}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.match{background:linear-gradient(145deg,#102b42,#091a2c);border:1px solid #37566a;border-radius:12px;overflow:hidden}.matchhead{padding:10px 12px;border-bottom:1px solid #315268;display:flex;justify-content:space-between;align-items:center;gap:8px}.court{font-size:17px;color:var(--yellow);font-weight:1000}.matchround{font-size:10px;color:#99b7cb;font-weight:900}.matchbody{padding:13px}.team{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;font-size:14px;font-weight:850}.team+.team{border-top:1px solid #224159}.score{font-weight:1000;font-size:24px;min-width:27px;text-align:right}.winner{color:var(--yellow)}.matchfoot{border-top:1px dashed #32536a;padding-top:12px;margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:8px}.chip{font-size:10px;font-weight:1000;background:#223f53;color:#cfdeeb;padding:5px 9px;border-radius:40px}.chip.now{background:#12614d;color:#fff}.edit{font-size:12px;font-weight:1000;color:#b3e4ff;background:#103956;border:1px solid #118ecf;border-radius:8px;padding:7px 10px}.grouphead{margin:18px 0 0;color:#071421;background:var(--yellow);padding:10px 14px;border-radius:9px 9px 0 0;font-size:24px;font-weight:1000}.tablewrap{background:#0d2539;border:1px solid #345065;border-top:0;border-radius:0 0 10px 10px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:370px}th{font-size:11px;color:#b3cde0;text-align:center;background:#14324a;padding:10px 6px}td{border-top:1px solid #29495c;text-align:center;padding:11px 7px;font-size:12px;font-weight:700}td:first-child,th:first-child{text-align:left;padding-left:12px}td:first-child{font-weight:850}.pts{color:var(--yellow);font-weight:1000}.rank{background:var(--yellow);color:#061322;padding:2px 5px;border-radius:5px}.matrix{margin:16px 0;border-radius:10px;border:1px solid var(--edge);overflow:auto;background:#0b2033}.matrix table{min-width:540px}.matrix th,.matrix td{border:1px solid #25475f}.matrix th{font-size:11px}.matrix td{font-size:13px}.diag{color:#7892a2}.roundtitle{color:var(--yellow);font-size:22px;font-weight:1000;margin:20px 0 9px}.knock .match{margin-bottom:10px}.knock{display:grid;grid-template-columns:1fr 1fr;gap:16px}.knockcol{min-width:0}.knocktitle{font-weight:1000;color:var(--yellow);padding:10px;border:1px solid #6b5c10;border-radius:8px;background:#2b2a16;margin-bottom:10px}.btn{padding:11px 13px;background:#1b3c56;color:white;border:1px solid #3c6780;border-radius:9px;font-weight:900}.btn.y{background:var(--yellow);color:#071421;border-color:var(--yellow)}.btnline{display:flex;gap:8px;justify-content:space-between;align-items:center}.loginbox{display:none;padding:16px;border:1px solid #a79e11;border-radius:12px;margin:12px 0;background:#182b36}.loginbox.show{display:block}.loginbox input{width:100%;margin:11px 0;padding:13px;background:#e9f4fb;color:#0a2030;border:0;border-radius:7px}.error{color:#ff8888;font-size:12px;padding:8px 0}.overlay{display:none;position:fixed;inset:0;background:#010915e0;z-index:20;align-items:center;justify-content:center;padding:13px}.overlay.show{display:flex}.modal{width:min(480px,100%);max-height:93vh;overflow:auto;padding:20px;background:#0d293f;border:1px solid #6a8ba0;border-radius:14px;box-shadow:0 30px 90px #0009}.modal h3{margin:0 0 13px;font-size:24px;color:var(--yellow)}.field{display:block;margin:11px 0;font-size:12px;font-weight:850}.field input,.field select{display:block;width:100%;padding:12px 10px;border:1px solid #5a788c;background:#e6f2fc;color:#091c2b;border-radius:8px;font-size:20px;font-weight:900;margin-top:5px}.field select{font-size:16px}.modalactions{display:flex;gap:9px;justify-content:flex-end;margin-top:17px}.notice{background:#342c10;border:1px solid #7b6513;border-radius:7px;padding:9px;font-size:13px;margin:10px 0}.errorbanner{background:#4b1b26;border-radius:8px;padding:12px;margin-bottom:14px;display:none}.errorbanner.show{display:block}footer{text-align:center;border-top:1px solid #284559;padding:25px;font-size:11px;color:#729ab4}.footstrong{color:var(--yellow);font-weight:1000;font-size:18px}
 @media(max-width:750px){.cards{grid-template-columns:1fr}.knock{grid-template-columns:1fr}.tiles{gap:7px}.tile{padding:11px 9px}.tile .big{font-size:25px}.top{align-items:flex-start}.brand{font-size:31px}.brandmark{display:none}.share{font-size:12px;padding:9px}.match{margin-bottom:0}.matchhead{padding:12px 14px}.team{padding:11px 0;font-size:15px}.score{font-size:28px}} 
+
+/* Group games: two independently recorded sets */
+.setlabels{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-weight:950;letter-spacing:.5px;padding:1px 0 3px}
+.setlabels .setvalues{font-size:10px}
+.setvalues{display:grid;grid-template-columns:44px 44px;gap:7px;min-width:95px;text-align:center}
+.groupteam{gap:3px}.setscore{display:inline-flex;min-width:43px;justify-content:center;align-items:center;border:1px solid #42677c;background:#173b52;border-radius:7px;padding:6px 2px;font-size:21px;font-weight:950}
+.setscore.winner{background:#3d3b18;border-color:var(--yellow);color:var(--yellow)}
+.setlabels .setvalues span{min-width:43px}
+.seteditor{border:1px solid #45677e;border-radius:10px;margin:12px 0;padding:10px;background:#0a2034}
+.seteditor legend{color:var(--yellow);font-weight:950;padding:0 5px}
+.seteditgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seteditgrid label{margin:0;font-size:12px}.seteditgrid input{font-size:23px}
+.matrixsets{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
+.matrixsets span{border-bottom:1px solid #244960;padding:2px 0}.matrixsets span:last-child{border:0}
+@media(max-width:390px){.setvalues{grid-template-columns:38px 38px;min-width:82px;gap:5px}.setscore{min-width:37px;font-size:18px}}
 </style>
 </head>
 <body>
@@ -17,9 +32,9 @@
 <div id="adminBox" class="loginbox"><b>🔐 AKSES ADMIN SAHAJA</b><div class="small">Penonton tidak boleh mengedit. Masukkan kata laluan admin.</div><div id="loginfields"><input type="password" id="pw" placeholder="Kata laluan admin" autocomplete="off"><button id="login" class="btn y">Masuk Admin</button></div><div id="adminActive" style="display:none"><span class="live">✓ Admin aktif</span> <button class="btn" id="logout">Log keluar</button></div><div class="error" id="loginerr"></div></div>
 <div class="tabs"><button class="tab on" data-tab="live">LIVE COURT</button><button class="tab" data-tab="a">GROUP A</button><button class="tab" data-tab="b">GROUP B</button><button class="tab" data-tab="schedule">JADUAL</button><button class="tab" data-tab="ko">KNOCKOUT</button></div>
 <div class="pane on" id="live"><h2>SCORE SEMASA</h2><div class="tiles" id="stats"></div><div class="cards" id="courts"></div><h2 style="margin-top:26px">KEDUDUKAN KUMPULAN</h2><div id="quickranks"></div></div>
-<div class="pane" id="a"><h2>GROUP A • ROUND ROBIN</h2><div id="tablea"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixa"></div></div>
-<div class="pane" id="b"><h2>GROUP B • ROUND ROBIN</h2><div id="tableb"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixb"></div></div>
-<div class="pane" id="schedule"><h2>MATCH SCHEDULE • COURT 3 / 5 / 7</h2><div class="hint">4 round • 12 perlawanan</div><div id="rounds"></div></div>
+<div class="pane" id="a"><h2>GROUP A • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tablea"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixa"></div></div>
+<div class="pane" id="b"><h2>GROUP B • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tableb"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixb"></div></div>
+<div class="pane" id="schedule"><h2>MATCH SCHEDULE • COURT 3 / 5 / 7</h2><div class="hint">4 round • 12 perlawanan • 2 set setiap game</div><div id="rounds"></div></div>
 <div class="pane" id="ko"><h2>KNOCKOUT STAGE</h2><div class="hint">Pasukan knockout akan muncul selepas semua keputusan kumpulan dimuktamadkan.</div><div class="knock"><div class="knockcol"><div class="knocktitle">🏆 TOP 4 — CHAMPIONSHIP</div><div id="top4"></div></div><div class="knockcol"><div class="knocktitle">🔵 PENENTUAN TEMPAT 5–8</div><div id="bottom4"></div></div></div></div>
 <div class="btnline" style="margin-top:25px"><span class="small">Refresh automatik setiap 8 saat</span><button class="btn" id="refresh">⟳ Refresh</button></div>
 </main>
@@ -41,26 +56,91 @@ var games=[
 var kos=[["sf1","SEMI FINAL 1","1A","2B"],["sf2","SEMI FINAL 2","2A","1B"],["final","FINAL 🏆","WINNER SF1","WINNER SF2"],["third","TEMPAT KE-3 / 4","LOSER SF1","LOSER SF2"],["g1","GAME 1 • 5–8","3A","4B"],["g2","GAME 2 • 5–8","4A","3B"],["p5","TEMPAT KE-5 / 6","WINNER GAME 1","WINNER GAME 2"],["p7","TEMPAT KE-7 / 8","LOSER GAME 1","LOSER GAME 2"]];
 function el(id){return document.getElementById(id)}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(k){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[k]})}
+
 function score(id){return state.scores[id]||{a:0,b:0,status:"scheduled"}}
-function complete(id){var s=score(id);return s.status==="complete"&&s.a!==s.b}
-function standing(g){var rows=teams[g].map(function(t,i){return {id:t[0],name:t[1],seed:i,played:0,w:0,l:0,pf:0,pa:0,diff:0}});
-var idx={};rows.forEach(function(t){idx[t.id]=t});
-games.filter(function(m){return m[5]===g}).forEach(function(m){var s=score(m[0]);if(!complete(m[0]))return;var a=idx[m[3]],b=idx[m[4]];a.played++;b.played++;a.pf+=s.a;a.pa+=s.b;b.pf+=s.b;b.pa+=s.a;if(s.a>s.b){a.w++;b.l++}else{b.w++;a.l++}});
-rows.forEach(function(t){t.diff=t.pf-t.pa});rows.sort(function(a,b){return b.w-a.w||b.diff-a.diff||b.pf-a.pf||a.seed-b.seed});return rows}
+function groupSets(s){
+ if(Array.isArray(s.sets)&&s.sets.length===2)return s.sets;
+ if(typeof s.a==="number"&&typeof s.b==="number")
+   return [{a:s.a,b:s.b},{a:null,b:null}]; // legacy single-set record remains editable, not auto-completed
+ return [{a:null,b:null},{a:null,b:null}];
+}
+function groupSetComplete(set){return typeof set.a==="number"&&typeof set.b==="number"&&set.a!==set.b}
+function isGroupId(id){return /^m(0[1-9]|1[0-2])$/.test(id)}
+function complete(id){
+ var s=score(id);
+ if(s.status!=="complete")return false;
+ return isGroupId(id)?groupSets(s).every(groupSetComplete):s.a!==s.b;
+}
+function standing(g){
+ var rows=teams[g].map(function(t,i){return {id:t[0],name:t[1],seed:i,played:0,w:0,d:0,l:0,pf:0,pa:0,diff:0,sw:0,sl:0,pts:0}});
+ var idx={};rows.forEach(function(t){idx[t.id]=t});
+ games.filter(function(m){return m[5]===g}).forEach(function(m){
+   if(!complete(m[0]))return;
+   var a=idx[m[3]],b=idx[m[4]],sets=groupSets(score(m[0])),aWins=0,bWins=0;
+   a.played++;b.played++;
+   sets.forEach(function(s){
+     a.pf+=s.a;a.pa+=s.b;b.pf+=s.b;b.pa+=s.a;
+     if(s.a>s.b){aWins++;a.sw++;b.sl++}else{bWins++;b.sw++;a.sl++}
+   });
+   a.pts+=aWins;b.pts+=bWins;
+   if(aWins===2){a.w++;b.l++}else if(bWins===2){b.w++;a.l++}else{a.d++;b.d++}
+ });
+ rows.forEach(function(t){t.diff=t.pf-t.pa});
+ rows.sort(function(a,b){return b.pts-a.pts||b.diff-a.diff||b.pf-a.pf||a.seed-b.seed});
+ return rows;
+}
 function groupDone(g){return games.filter(function(m){return m[5]===g}).every(function(m){return complete(m[0])})}
 function seeded(s){var g=s.slice(-1).toLowerCase(),n=Number(s[0]);return groupDone(g)&&n>=1&&n<=4?standing(g)[n-1].id:null}
 function outcome(id,winner){var participants=koTeams(id),s=score(id);if(!participants[0]||!participants[1]||!complete(id))return null;var firstWon=s.a>s.b;return participants[winner?(firstWon?0:1):(firstWon?1:0)]}
 function koTeams(id){switch(id){case "sf1":return [seeded("1A"),seeded("2B")];case "sf2":return [seeded("2A"),seeded("1B")];case "final":return [outcome("sf1",true),outcome("sf2",true)];case "third":return [outcome("sf1",false),outcome("sf2",false)];case "g1":return [seeded("3A"),seeded("4B")];case "g2":return [seeded("4A"),seeded("3B")];case "p5":return [outcome("g1",true),outcome("g2",true)];case "p7":return [outcome("g1",false),outcome("g2",false)]}return [null,null]}
 function find(id){return games.find(function(m){return m[0]===id})||kos.find(function(m){return m[0]===id})}
 function teamsFor(m){if(m.length===6)return [names[m[3]],names[m[4]]];var t=koTeams(m[0]);return [t[0]?names[t[0]]:m[2],t[1]?names[t[1]]:m[3]]}
-function card(m){var s=score(m[0]),p=teamsFor(m),game=m.length===6,enabled=adminRoute&&!!key&&(game||koTeams(m[0]).every(Boolean));
-var title=game?"COURT "+m[2]:m[1],round=game?"ROUND "+m[1]+" · GROUP "+m[5].toUpperCase():"KNOCKOUT";
-var done=complete(m[0]);
-return '<div class="match"><div class="matchhead"><span class="court">'+esc(title)+'</span><span class="matchround">'+esc(round)+'</span></div><div class="matchbody">'+p.map(function(t,i){var val=i?s.b:s.a,win=done&&(i?s.b>s.a:s.a>s.b);return '<div class="team"><span class="'+(win?"winner":"")+'">'+esc(t)+'</span><span class="score">'+(s.status==="scheduled"?"–":val)+'</span></div>'}).join("")+'<div class="matchfoot"><span class="chip '+(s.status==="live"?"now":"")+'">'+(s.status==="live"?"🔴 LIVE":s.status==="complete"?"✅ TAMAT":"BELUM MULA")+'</span>'+(enabled?'<button class="edit" data-edit="'+esc(m[0])+'">✎ Edit Score</button>':"")+'</div></div></div>'}
-function table(g){var r=standing(g),html='<div class="grouphead">GROUP '+g.toUpperCase()+'</div><div class="tablewrap"><table><thead><tr><th>PASUKAN</th><th>P</th><th>W</th><th>L</th><th>+/-</th><th>PTS</th></tr></thead><tbody>';
-r.forEach(function(x,i){html+='<tr><td><span class="rank">'+(i+1)+'</span> '+esc(x.name)+'</td><td>'+x.played+'</td><td>'+x.w+'</td><td>'+x.l+'</td><td>'+x.diff+'</td><td class="pts">'+x.w+'</td></tr>'});return html+'</tbody></table></div>'}
-function matrix(g){var list=teams[g],out='<table><thead><tr><th>TEAM / VS</th>'+list.map(function(t){return '<th>'+esc(t[1])+'</th>'}).join("")+'</tr></thead><tbody>';
-list.forEach(function(r){out+='<tr><td>'+esc(r[1])+'</td>';list.forEach(function(c){if(r[0]===c[0])return out+='<td class="diag">✕</td>';var m=games.find(function(gm){return gm[5]===g&&((gm[3]===r[0]&&gm[4]===c[0])||(gm[3]===c[0]&&gm[4]===r[0]))});if(!m)return out+='<td>—</td>';var s=score(m[0]),a=m[3]===r[0]?s.a:s.b,b=m[3]===r[0]?s.b:s.a;out+='<td class="pts">'+(s.status==="scheduled"?"—":a+"–"+b+(s.status==="live"?" ●":""))+'</td>'});out+='</tr>'});return out+"</tbody></table>"}
+
+function card(m){
+ var s=score(m[0]),p=teamsFor(m),game=m.length===6,enabled=adminRoute&&!!key&&(game||koTeams(m[0]).every(Boolean));
+ var title=game?"COURT "+m[2]:m[1],round=game?"ROUND "+m[1]+" · GROUP "+m[5].toUpperCase():"KNOCKOUT",done=complete(m[0]);
+ var body="";
+ if(game){
+   var sets=groupSets(s),aw=sets.filter(function(x){return groupSetComplete(x)&&x.a>x.b}).length,bw=sets.filter(function(x){return groupSetComplete(x)&&x.b>x.a}).length;
+   body='<div class="setlabels"><span>PASUKAN</span><div class="setvalues"><span>SET 1</span><span>SET 2</span></div></div>';
+   body+=p.map(function(t,i){
+     var wonMatch=done&&(i?bw===2:aw===2);
+     var chips=sets.map(function(x){
+       var n=i?x.b:x.a,op=i?x.a:x.b,won=groupSetComplete(x)&&n>op;
+       return '<span class="setscore '+(won?"winner":"")+'">'+(s.status==="scheduled"||n===null?"–":n)+'</span>'
+     }).join("");
+     return '<div class="team groupteam"><span class="'+(wonMatch?"winner":"")+'">'+esc(t)+'</span><div class="setvalues">'+chips+'</div></div>';
+   }).join("");
+ }else{
+   body=p.map(function(t,i){
+     var val=i?s.b:s.a,win=done&&(i?s.b>s.a:s.a>s.b);
+     return '<div class="team"><span class="'+(win?"winner":"")+'">'+esc(t)+'</span><span class="score">'+(s.status==="scheduled"?"–":val)+'</span></div>';
+   }).join("");
+ }
+ return '<div class="match"><div class="matchhead"><span class="court">'+esc(title)+'</span><span class="matchround">'+esc(round)+'</span></div><div class="matchbody">'+body+'<div class="matchfoot"><span class="chip '+(s.status==="live"?"now":"")+'">'+(s.status==="live"?"🔴 LIVE":s.status==="complete"?"✅ TAMAT":"BELUM MULA")+'</span>'+(enabled?'<button class="edit" data-edit="'+esc(m[0])+'">✎ Edit Score</button>':"")+'</div></div></div>';
+}
+
+function table(g){
+ var r=standing(g),html='<div class="grouphead">GROUP '+g.toUpperCase()+'</div><div class="tablewrap"><table><thead><tr><th>PASUKAN</th><th>P</th><th>W</th><th>D</th><th>L</th><th>SET</th><th>+/-</th><th>PTS</th></tr></thead><tbody>';
+ r.forEach(function(x,i){html+='<tr><td><span class="rank">'+(i+1)+'</span> '+esc(x.name)+'</td><td>'+x.played+'</td><td>'+x.w+'</td><td>'+x.d+'</td><td>'+x.l+'</td><td>'+x.sw+'–'+x.sl+'</td><td>'+x.diff+'</td><td class="pts">'+x.pts+'</td></tr>'});
+ return html+'</tbody></table></div>';
+}
+
+function matrix(g){
+ var list=teams[g],out='<table><thead><tr><th>TEAM / VS</th>'+list.map(function(t){return '<th>'+esc(t[1])+'</th>'}).join("")+'</tr></thead><tbody>';
+ list.forEach(function(r){
+   out+='<tr><td>'+esc(r[1])+'</td>';
+   list.forEach(function(c){
+     if(r[0]===c[0]){out+='<td class="diag">✕</td>';return}
+     var m=games.find(function(gm){return gm[5]===g&&((gm[3]===r[0]&&gm[4]===c[0])||(gm[3]===c[0]&&gm[4]===r[0]))});
+     if(!m){out+='<td>—</td>';return}
+     var s=score(m[0]),normal=m[3]===r[0],sets=groupSets(s);
+     out+='<td><div class="matrixsets">'+sets.map(function(set,i){var a=normal?set.a:set.b,b=normal?set.b:set.a;return '<span>S'+(i+1)+': '+(s.status==="scheduled"?"—":(a===null?"–":a)+'–'+(b===null?"–":b))+'</span>'}).join("")+'</div></td>';
+   });
+   out+='</tr>'
+ });
+ return out+"</tbody></table>";
+}
 function render(){if(!loaded)return;var all=games.concat(kos),finished=all.filter(function(m){return complete(m[0])}).length,live=all.filter(function(m){return score(m[0]).status==="live"}).length;
 el("online").textContent=live?"🔴 "+live+" LIVE SEKARANG":"● ONLINE · AUTO UPDATE";
 el("updated").textContent="Kemas kini: "+(state.updated_at?new Date(state.updated_at).toLocaleTimeString("ms-MY",{timeZone:"Asia/Kuala_Lumpur",hour:"2-digit",minute:"2-digit"}):"—");
@@ -78,12 +158,55 @@ el("login").onclick=async function(){key=el("pw").value.trim();el("loginerr").te
 el("logout").onclick=function(){key="";try{sessionStorage.removeItem("pb_live_admin")}catch(e){}adminUI()};
 document.querySelectorAll(".tab").forEach(function(b){b.onclick=function(){document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on")});b.classList.add("on");document.querySelectorAll(".pane").forEach(function(p){p.classList.remove("on")});el(b.dataset.tab).classList.add("on")}});
 document.addEventListener("click",function(event){var b=event.target.closest("[data-edit]");if(b)openEditor(b.dataset.edit)});
-function openEditor(id){if(!key)return;var m=find(id);if(!m)return;var pp=teamsFor(m),s=score(id);if(!pp.every(Boolean))return;editId=id;el("editctx").textContent=(m.length===6?"ROUND "+m[1]+" • COURT "+m[2]:m[1]);el("pairs").innerHTML=pp.map(function(p,i){return '<label class="field">'+esc(p)+'<input id="score'+i+'" type="number" min="0" max="99" inputmode="numeric" value="'+(i?s.b:s.a)+'"></label>'}).join("");el("status").value=s.status;el("editerr").textContent="";el("overlay").classList.add("show")}
+
+function openEditor(id){
+ if(!key)return;
+ var m=find(id);if(!m)return;
+ var pp=teamsFor(m),s=score(id);if(!pp.every(Boolean))return;
+ editId=id;
+ el("editctx").textContent=(m.length===6?"ROUND "+m[1]+" • COURT "+m[2]+" • 2 SET":m[1]);
+ if(m.length===6){
+   var sets=groupSets(s);
+   el("pairs").innerHTML=sets.map(function(set,si){
+     return '<fieldset class="seteditor"><legend>SET '+(si+1)+'</legend><div class="seteditgrid">'+pp.map(function(p,pi){
+       var val=pi?set.b:set.a;
+       return '<label class="field">'+esc(p)+'<input id="s'+si+(pi?"b":"a")+'" type="number" min="0" max="99" inputmode="numeric" placeholder="–" value="'+(val===null?"":val)+'"></label>';
+     }).join("")+'</div></fieldset>'
+   }).join("")+'<div class="small">Isi kedua-dua skor bagi Set 1 dan Set 2. Untuk LIVE, set yang belum dimainkan boleh dibiarkan kosong.</div>';
+ }else{
+   el("pairs").innerHTML=pp.map(function(p,i){
+     return '<label class="field">'+esc(p)+'<input id="score'+i+'" type="number" min="0" max="99" inputmode="numeric" value="'+(i?s.b:s.a)+'"></label>'
+   }).join("");
+ }
+ el("status").value=s.status;el("editerr").textContent="";el("overlay").classList.add("show");
+}
 el("cancel").onclick=function(){el("overlay").classList.remove("show")};
-el("save").onclick=async function(){var a=Number(el("score0").value),b=Number(el("score1").value),status=el("status").value,btn=el("save");
-if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0||a>99||b>99){el("editerr").textContent="Masukkan mata antara 0 hingga 99.";return}
-if(status==="complete"&&a===b){el("editerr").textContent="Perlawanan tamat mesti ada pemenang (tiada seri).";return}
-btn.disabled=true;btn.textContent="Menyimpan...";try{var d=await post({action:"save",matchId:editId,scoreA:a,scoreB:b,status:status,version:state.version});state={scores:d.scores,version:d.version,updated_at:d.updated_at};el("overlay").classList.remove("show");render()}catch(e){el("editerr").textContent=e.message}finally{btn.disabled=false;btn.textContent="Simpan Skor"}};
+el("save").onclick=async function(){
+ var status=el("status").value,btn=el("save"),payload={action:"save",matchId:editId,status:status,version:state.version};
+ if(isGroupId(editId)){
+   var getNum=function(id){var raw=el(id).value.trim();return raw===""?null:Number(raw)};
+   payload.sets=[0,1].map(function(i){return {a:getNum("s"+i+"a"),b:getNum("s"+i+"b")}});
+   for(var si=0;si<2;si++){
+     var set=payload.sets[si];
+     if((set.a===null)!==(set.b===null)){el("editerr").textContent="Isi mata kedua-dua pasukan untuk Set "+(si+1)+".";return}
+     for(var v of [set.a,set.b])if(v!==null&&(!Number.isInteger(v)||v<0||v>99)){el("editerr").textContent="Mata mesti nombor bulat 0 hingga 99.";return}
+     if(status==="complete"&&(set.a===null||set.b===null||set.a===set.b)){el("editerr").textContent="Set "+(si+1)+" mesti lengkap dan ada pemenang.";return}
+   }
+ }else{
+   var a=Number(el("score0").value),b=Number(el("score1").value);
+   if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0||a>99||b>99){el("editerr").textContent="Masukkan mata 0–99.";return}
+   if(status==="complete"&&a===b){el("editerr").textContent="Perlawanan tamat mesti ada pemenang.";return}
+   payload.scoreA=a;payload.scoreB=b;
+ }
+ btn.disabled=true;btn.textContent="Menyimpan...";
+ try{
+   var d=await post(payload);
+   state={scores:d.scores,version:d.version,updated_at:d.updated_at};
+   el("overlay").classList.remove("show");render();
+ }catch(e){el("editerr").textContent=e.message}
+ finally{btn.disabled=false;btn.textContent="Simpan Skor"}
+};
+
 el("refresh").onclick=fetchScore;
 el("share").onclick=async function(){var u=location.origin+location.pathname;try{if(navigator.share){await navigator.share({title:"Pickleball League 2 — Live Score",url:u})}else if(navigator.clipboard){await navigator.clipboard.writeText(u);alert("Link penonton berjaya disalin.")}else prompt("Salin link penonton:",u)}catch(e){}};
 fetchScore();setInterval(function(){if(document.visibilityState==="visible"&&!el("overlay").classList.contains("show"))fetchScore()},8000);
