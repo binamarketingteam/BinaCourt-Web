@@ -43,7 +43,7 @@
 <div class="pane" id="a"><h2>GROUP A • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tablea"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixa"></div></div>
 <div class="pane" id="b"><h2>GROUP B • ROUND ROBIN</h2><div class="hint">2 set setiap game • 2 mata jika menang 2–0, 1 mata jika seri 1–1, 0 mata jika kalah 0–2. Seri kedudukan ditentukan oleh beza mata permainan.</div><div id="tableb"></div><h2 style="margin-top:20px">REKOD PERLAWANAN</h2><div class="matrix" id="matrixb"></div></div>
 <div class="pane" id="schedule"><h2>MATCH SCHEDULE • COURT 3 / 5 / 7</h2><div class="hint">4 round • 12 perlawanan • 2 set setiap game</div><div id="rounds"></div></div>
-<div class="pane" id="ko"><h2>KNOCKOUT STAGE</h2><div class="hint">TOP 4: Best of 3 (set ketiga jika 1–1). TEMPAT 5–8: hanya 1 set. Keputusan Set 1 yang sudah disimpan akan digunakan.</div><div class="knock"><div class="knockcol"><div class="knocktitle">🏆 TOP 4 — BEST OF 3</div><div id="top4"></div></div><div class="knockcol"><div class="knocktitle">🔵 TEMPAT 5–8 — 1 SET SAHAJA</div><div id="bottom4"></div></div></div></div>
+<div class="pane" id="ko"><h2>KNOCKOUT STAGE</h2><div class="hint">Best of 3: menang 2–0 terus tamat. Jika 1–1 selepas dua set, Set 3 dibuka sebagai penentuan. Pasukan knockout muncul selepas semua keputusan kumpulan dimuktamadkan.</div><div class="knock"><div class="knockcol"><div class="knocktitle">🏆 TOP 4 — CHAMPIONSHIP</div><div id="top4"></div></div><div class="knockcol"><div class="knocktitle">🔵 PENENTUAN TEMPAT 5–8</div><div id="bottom4"></div></div></div></div>
 <div class="btnline" style="margin-top:25px"><span class="small">Refresh automatik setiap 8 saat</span><button class="btn" id="refresh">⟳ Refresh</button></div>
 </main>
 <footer><div class="footstrong">PICKLEBALL LEAGUE 2</div>Keputusan online • Penonton hanya boleh lihat</footer>
@@ -74,12 +74,6 @@ function groupSets(s){
 }
 function groupSetComplete(set){return typeof set.a==="number"&&typeof set.b==="number"&&set.a!==set.b}
 function isGroupId(id){return /^m(0[1-9]|1[0-2])$/.test(id)}
-function isPlacement(id){return ["g1","g2","p5","p7"].includes(id)}
-function placementSets(s){
- if(Array.isArray(s.sets)&&s.sets.length)return [s.sets[0]];
- if(typeof s.a==="number"&&typeof s.b==="number")return [{a:s.a,b:s.b}];
- return [{a:null,b:null}];
-}
 
 function knockoutSets(s){
  if(Array.isArray(s.sets)&&s.sets.length===3)return s.sets;
@@ -91,11 +85,7 @@ function koNeedThird(sets){
  return groupSetComplete(sets[0])&&groupSetComplete(sets[1])
     &&(sets[0].a>sets[0].b)!==(sets[1].a>sets[1].b);
 }
-function knockoutWinner(s,id){
- if(isPlacement(id)){
-   var first=placementSets(s)[0];
-   return groupSetComplete(first)?(first.a>first.b?0:1):null;
- }
+function knockoutWinner(s){
  var sets=knockoutSets(s);
  if(!groupSetComplete(sets[0])||!groupSetComplete(sets[1]))return null;
  var winsA=sets.slice(0,2).filter(function(v){return v.a>v.b}).length;
@@ -107,7 +97,7 @@ function knockoutWinner(s,id){
 function complete(id){
  var s=score(id);
  if(s.status!=="complete")return false;
- return isGroupId(id)?groupSets(s).every(groupSetComplete):knockoutWinner(s,id)!==null;
+ return isGroupId(id)?groupSets(s).every(groupSetComplete):knockoutWinner(s)!==null;
 }
 
 function standing(g){
@@ -130,7 +120,7 @@ function standing(g){
 }
 function groupDone(g){return games.filter(function(m){return m[5]===g}).every(function(m){return complete(m[0])})}
 function seeded(s){var g=s.slice(-1).toLowerCase(),n=Number(s[0]);return groupDone(g)&&n>=1&&n<=4?standing(g)[n-1].id:null}
-function outcome(id,winner){var participants=koTeams(id),s=score(id);if(!participants[0]||!participants[1]||!complete(id))return null;var first=knockoutWinner(s,id);return participants[winner?first:1-first]}
+function outcome(id,winner){var participants=koTeams(id),s=score(id);if(!participants[0]||!participants[1]||!complete(id))return null;var first=knockoutWinner(s);return participants[winner?first:1-first]}
 function koTeams(id){switch(id){case "sf1":return [seeded("1A"),seeded("2B")];case "sf2":return [seeded("2A"),seeded("1B")];case "final":return [outcome("sf1",true),outcome("sf2",true)];case "third":return [outcome("sf1",false),outcome("sf2",false)];case "g1":return [seeded("3A"),seeded("3B")];case "g2":return [seeded("4A"),seeded("4B")];case "p5":return [outcome("g1",true),outcome("g2",true)];case "p7":return [outcome("g1",false),outcome("g2",false)]}return [null,null]}
 function find(id){return games.find(function(m){return m[0]===id})||kos.find(function(m){return m[0]===id})}
 function teamsFor(m){if(m.length===6)return [names[m[3]],names[m[4]]];var t=koTeams(m[0]);return [t[0]?names[t[0]]:m[2],t[1]?names[t[1]]:m[3]]}
@@ -140,16 +130,15 @@ function card(m){
  var s=score(m[0]),p=teamsFor(m),game=m.length===6,enabled=adminRoute&&!!key&&(game||koTeams(m[0]).every(Boolean));
  var title=game?"COURT "+m[2]:m[1],round=game?"ROUND "+m[1]+" · GROUP "+m[5].toUpperCase():"KNOCKOUT",done=complete(m[0]);
  var body="";
- var placement=isPlacement(m[0]);
- var sets=game?groupSets(s):(placement?placementSets(s):knockoutSets(s));
- var need3=!game&&!placement&&koNeedThird(sets);
- var shown=(game||placement)?sets:(need3?sets:sets.slice(0,2));
+ var sets=game?groupSets(s):knockoutSets(s);
+ var need3=!game&&koNeedThird(sets);
+ var shown=game?sets:(need3?sets:sets.slice(0,2));
  var cls=need3?"setvalues triple":"setvalues";
  var aw=sets.filter(function(x){return groupSetComplete(x)&&x.a>x.b}).length;
  var bw=sets.filter(function(x){return groupSetComplete(x)&&x.b>x.a}).length;
- body='<div class="setlabels"><span>PASUKAN</span><div class="'+cls+'"><span>SET 1</span>'+(placement?"":'<span>SET 2</span>')+(need3?'<span>SET 3</span>':"")+'</div></div>';
+ body='<div class="setlabels"><span>PASUKAN</span><div class="'+cls+'"><span>SET 1</span><span>SET 2</span>'+(need3?'<span>SET 3</span>':"")+'</div></div>';
  body+=p.map(function(t,i){
-   var wonMatch=done&&((game?(i?bw===2:aw===2):(knockoutWinner(s,m[0])===i)));
+   var wonMatch=done&&((game?(i?bw===2:aw===2):(knockoutWinner(s)===i)));
    var chips=shown.map(function(x){
      var n=i?x.b:x.a,op=i?x.a:x.b,won=groupSetComplete(x)&&n>op;
      return '<span class="setscore '+(won?"winner":"")+'">'+(s.status==="scheduled"||n===null?"–":n)+'</span>';
@@ -206,7 +195,7 @@ function inputScore(id){
 function readSets(n){
  return Array.from({length:n},function(_,i){return {a:inputScore("s"+i+"a"),b:inputScore("s"+i+"b")}});
 }
-function validateSets(sets,status,isGroup,placement){
+function validateSets(sets,status,isGroup){
  for(var si=0;si<sets.length;si++){
    var set=sets[si];
    if((set.a===null)!==(set.b===null))return "Isi mata kedua-dua pasukan untuk Set "+(si+1)+".";
@@ -215,11 +204,6 @@ function validateSets(sets,status,isGroup,placement){
    }
    if(isGroup&&status==="complete"&&!groupSetComplete(set))
      return "Set "+(si+1)+" mesti lengkap dan ada pemenang.";
- }
- if(placement){
-   if(status==="complete"&&!groupSetComplete(sets[0]))
-     return "Isi Set 1 dengan keputusan lengkap dan ada pemenang sebelum TAMAT.";
-   return "";
  }
  if(!isGroup){
    if(sets[1].a!==null&&!groupSetComplete(sets[0]))return "Selesaikan Set 1 dahulu.";
@@ -245,16 +229,16 @@ function openEditor(id){
  var m=find(id);if(!m)return;
  var pp=teamsFor(m),s=score(id);if(!pp.every(Boolean))return;
  editId=id;
- var group=m.length===6,placement=isPlacement(id),sets=group?groupSets(s):(placement?placementSets(s):knockoutSets(s));
- el("editctx").textContent=group?"ROUND "+m[1]+" • COURT "+m[2]+" • 2 SET":(placement?m[1]+" • 1 SET SAHAJA":m[1]+" • BEST OF 3");
+ var group=m.length===6,sets=group?groupSets(s):knockoutSets(s);
+ el("editctx").textContent=group?"ROUND "+m[1]+" • COURT "+m[2]+" • 2 SET":m[1]+" • BEST OF 3";
  el("pairs").innerHTML=sets.map(function(set,si){
    var fields=pp.map(function(p,pi){
      var val=pi?set.b:set.a;
      return '<label class="field">'+esc(p)+'<input id="s'+si+(pi?"b":"a")+'" type="number" min="0" max="99" inputmode="numeric" placeholder="–" value="'+(val===null?"":val)+'"></label>';
    }).join("");
-   return '<fieldset class="seteditor" '+(!group&&!placement&&si===2?'id="thirdfield" style="display:none"':"")+'><legend>SET '+(si+1)+'</legend><div class="seteditgrid">'+fields+'</div></fieldset>';
- }).join("")+(group?'<div class="small">Isi skor untuk Set 1 dan Set 2.</div>':(placement?'<div class="ko-warning">Hanya Set 1 dikira. Jika ada keputusan lama, skor Set 1 dikekalkan.</div>':'<div class="ko-warning" id="thirdinfo">Set 3 hanya jika 1–1 selepas Set 2.</div>'));
- if(!group&&!placement){
+   return '<fieldset class="seteditor" '+(!group&&si===2?'id="thirdfield" style="display:none"':"")+'><legend>SET '+(si+1)+'</legend><div class="seteditgrid">'+fields+'</div></fieldset>';
+ }).join("")+(group?'<div class="small">Isi skor untuk Set 1 dan Set 2.</div>':'<div class="ko-warning" id="thirdinfo">Set 3 hanya jika 1–1 selepas Set 2.</div>');
+ if(!group){
    [0,1].forEach(function(i){["a","b"].forEach(function(t){el("s"+i+t).addEventListener("input",syncKoThird)})});
    syncKoThird();
  }
@@ -262,10 +246,10 @@ function openEditor(id){
 }
 el("cancel").onclick=function(){el("overlay").classList.remove("show")};
 el("save").onclick=async function(){
- var status=el("status").value,btn=el("save"),group=isGroupId(editId),placement=isPlacement(editId);
+ var status=el("status").value,btn=el("save"),group=isGroupId(editId);
  var payload={action:"save",matchId:editId,status:status,version:state.version};
- payload.sets=readSets(group?2:(placement?1:3));
- var error=validateSets(payload.sets,status,group,placement);
+ payload.sets=readSets(group?2:3);
+ var error=validateSets(payload.sets,status,group);
  if(error){el("editerr").textContent=error;return}
  btn.disabled=true;btn.textContent="Menyimpan...";
  try{
