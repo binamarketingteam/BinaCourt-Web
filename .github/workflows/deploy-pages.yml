@@ -9,6 +9,7 @@ on:
       - 'latest-version.json'
       - 'latest-apk-source.txt'
       - '.github/workflows/deploy-pages.yml'
+      - 'pickleball-live/**'
 
 permissions:
   contents: read
@@ -45,6 +46,9 @@ jobs:
           grep -q "Bina Court Designer" "$OUT"
 
           cp latest-version.json _site/latest-version.json
+          # Independent tournament scoreboard; does not alter the Court Designer build.
+          mkdir -p _site/pickleball-live
+          cp pickleball-live/index.html _site/pickleball-live/index.html
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
