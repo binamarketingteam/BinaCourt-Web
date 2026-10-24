@@ -333,10 +333,17 @@ function scoreModal(id){
  modal("QUICK SCORE", "", "");draw();
 }
 function validateLocalScore(s,stage,count){
- if(stage==="group")return s.sets.every(decided);
+ if(stage==="group")return s.sets.length===count&&s.sets.every(decided);
  const wins=[0,0],need=Math.floor(count/2)+1;
- for(const z of s.sets){if(decided(z)){wins[z.a>z.b?0:1]++;if(Math.max(...wins)===need)return true}else if(z.a!==null||z.b!==null)return false}
- return false;
+ for(const z of s.sets){
+   if(Math.max(...wins)>=need){
+     if(z.a!==null||z.b!==null)return false;
+   }else{
+     if(!decided(z))return false;
+     wins[z.a>z.b?0:1]++;
+   }
+ }
+ return Math.max(...wins)===need;
 }
 function exportCSV(){
  if(!t)return;const rows=[["Match","Stage","Round","Court","Team A","Team B","Status","Scores A","Scores B"]];
@@ -413,7 +420,7 @@ function changeSetting(name,value){
 function changeSlot(matchId,part,value){
  (async()=>{try{
   adminOnly();const d=structuredClone(t.data),m=d.matches.find(x=>x.id===matchId);if(!m)return;
-  if(m.score.status!=="scheduled"&&!confirm("Perubahan pairing selepas skor dimasukkan akan reset keputusan. Teruskan?"))return;
+  if(m.score.status!=="scheduled")throw Error("Pairing match yang telah bermula tidak boleh diubah. Duplicate kejohanan untuk jadual baharu.");
   m["slot"+part]=value;if(m.score.status!=="scheduled")m.score=emptyScore(setCount(m));
   await save(d,"Bracket pairing updated");
  }catch(e){notify(e.message,true);render()}})();
