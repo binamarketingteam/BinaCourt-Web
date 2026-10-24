@@ -189,13 +189,13 @@ function renderScores(){
  $("scoresContent").innerHTML=t.data.matches.length?'<div class="cols3">'+t.data.matches.map(matchCard).join("")+'</div>':'<div class="empty">Tiada perlawanan. Jana Jadual dahulu.</div>';
 }
 function bracketCard(id,variant){
- const m=t.data.matches.find(m=>m.id===id);
+ const m=t.data.matches.find(m=>m.id===(id==="place56"&&t.data.source==="league2"?"g1":id==="place78"&&t.data.source==="league2"?"g2":id));
  if(!m)return '<div class="empty">Belum dibina</div>';
  const ids=matchup(m),w=winner(m);
  return '<div class="bracketbox '+variant+'"><header>'+esc(matchName(m))+'</header>'+ids.map((id,i)=>'<div class="bracketrow"><span>'+(w===i?"<strong>🏆 ":"")+esc(id?teamName(id):i===0?m.slotA:m.slotB)+(w===i?"</strong>":"")+'</span><em>'+m.score.sets.map(set=>set.a===null?"–":i===0?set.a:set.b).join(" / ")+'</em></div>').join("")+'</div>';
 }
 function ranks(){
- const get=(key,wantWinner)=>{const m=t.data.matches.find(x=>x.id===key);if(!m)return null;const w=winner(m);return w===null?null:matchup(m)[wantWinner?w:1-w]};
+ const get=(key,wantWinner)=>{const m=t.data.matches.find(x=>x.id===(key==="place56"&&t.data.source==="league2"?"g1":key==="place78"&&t.data.source==="league2"?"g2":key));if(!m)return null;const w=winner(m);return w===null?null:matchup(m)[wantWinner?w:1-w]};
  return [get("final",true),get("final",false),get("third",true),get("third",false),get("place56",true),get("place56",false),get("place78",true),get("place78",false)];
 }
 function renderBracket(){
@@ -243,7 +243,7 @@ function selectTab(next){
  active=next;document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.dataset.tab===next));
  document.querySelectorAll(".pane").forEach(e=>e.classList.toggle("on",e.id===next));
  if(next==="history")renderHistory();
- const url=new URL(location.href);url.searchParams.set("tab",next);history.replaceState(null,"",url);
+ const url=new URL(location.href);url.searchParams.set("tab",next);window.window.history.replaceState(null,"",url);
 }
 async function loadList(preferred){
  const res=await request();lists=res.tournaments||[];
