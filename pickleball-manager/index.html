@@ -308,15 +308,22 @@ function scoreModal(id){
  '<label class="field">STATUS<select class="status-select" id="editStatus"><option value="scheduled" '+(edit.status==="scheduled"?"selected":"")+'>BELUM MULA</option><option value="live" '+(edit.status==="live"?"selected":"")+'>🔴 LIVE</option><option value="complete" '+(edit.status==="complete"?"selected":"")+'>✅ TAMAT</option></select></label><div class="note">'+(edit.locked?"🔒 Match dikunci. Unlock dahulu untuk edit.":"Tip: + / − untuk mata. Undo memulihkan skor sebelum simpan terakhir.")+'</div>';
  $("modalFooter").innerHTML='<button id="undoScore" '+(edit.locked?"disabled":"")+'>↶ Undo</button><button id="toggleLock" class="'+(edit.locked?"primary":"")+'">'+(edit.locked?"🔓 Unlock":"🔒 Lock")+'</button><button id="saveScore" class="primary" '+(edit.locked?"disabled":"")+'>💾 Simpan</button>';
  document.querySelectorAll("[data-adjust]").forEach(btn=>btn.onclick=()=>{
-   const [set,who,delta]=btn.dataset.adjust.split(":").map(Number),s=edit.sets[set],col=who?"b":"a";s[col]=Math.max(0,(s[col]??0)+delta);draw();
+   const [set,who,delta]=btn.dataset.adjust.split(":").map(Number),s=edit.sets[set],col=who?"b":"a";s[col]=Math.max(0,(s[col]??0)+delta);if(s[who?"a":"b"]===null)s[who?"a":"b"]=0;if(edit.status==="scheduled")edit.status="live";draw();
  });
  document.querySelectorAll("[data-setinput]").forEach(inp=>inp.onchange=()=>{
    const [set,who]=inp.dataset.setinput.split(":").map(Number),col=who?"b":"a",raw=inp.value;
-   edit.sets[set][col]=raw===""?null:Number(raw);draw();
+   edit.sets[set][col]=raw===""?null:Number(raw);if(raw!==""&&edit.sets[set][who?"a":"b"]===null)edit.sets[set][who?"a":"b"]=0;if(raw!==""&&edit.status==="scheduled")edit.status="live";draw();
  });
  $("editStatus").onchange=e=>{edit.status=e.target.value};
  $("saveScore").onclick=async()=>{
    edit.status=$("editStatus").value;
+   if(m.stage!=="group"){
+     const target=Math.floor(count/2)+1,wins=[0,0];
+     for(const one of edit.sets){
+       if(Math.max(...wins)>=target){one.a=null;one.b=null}
+       else if(decided(one))wins[one.a>one.b?0:1]++;
+     }
+   }
    if(edit.status==="complete"&&!validateLocalScore(edit,m.stage,count)){notify("Keputusan belum lengkap atau masih seri. Semak semua set.",true);return}
    try{await action({action:"score",matchId:id,score:edit},"Skor disimpan");close()}catch(e){notify(e.message,true)}
  };
@@ -396,7 +403,7 @@ function changeSetting(name,value){
    if(name.endsWith("Sets")){
      const stage=name==="groupSets"?"group":name==="placeSets"?"placement":"knockout";
      const affected=d.matches.filter(m=>stage==="knockout"?["sf","final","third"].includes(m.stage):m.stage===stage);
-     if(affected.some(m=>m.score.status!=="scheduled")&&!confirm("Tukar format set akan melaraskan rekod skor untuk stage berkenaan. Teruskan?"))return;
+     if(affected.some(m=>m.score.status!=="scheduled"))throw Error("Format set hanya boleh ditukar sebelum perlawanan bermula. Duplicate kejohanan untuk format baharu.");
      for(const m of affected){m.score.sets=Array.from({length:newVal},(_,i)=>m.score.sets[i]||blankSet());if(m.score.status==="complete")m.score.status="live"}
    }
    d.settings[name]=newVal;await save(d,"Format "+name+" dikemas kini");
@@ -406,7 +413,7 @@ function changeSetting(name,value){
 function changeSlot(matchId,part,value){
  (async()=>{try{
   adminOnly();const d=structuredClone(t.data),m=d.matches.find(x=>x.id===matchId);if(!m)return;
-  if(m.score.status!=="scheduled"&&!confirm("Perubahan pairing selepas skor dimasukkan boleh menjejaskan result. Teruskan?"))return;
+  if(m.score.status!=="scheduled"&&!confirm("Perubahan pairing selepas skor dimasukkan akan reset keputusan. Teruskan?"))return;
   m["slot"+part]=value;if(m.score.status!=="scheduled")m.score=emptyScore(setCount(m));
   await save(d,"Bracket pairing updated");
  }catch(e){notify(e.message,true);render()}})();
