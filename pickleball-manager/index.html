@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071524">
+<title>Pickleball Tournament Manager V2</title>
+<style>
+:root{--bg:#071524;--panel:#0d273e;--panel2:#14354d;--edge:#315670;--text:#eff9ff;--muted:#a0b6ca;--yellow:#fbed27;--blue:#32b7ff;--good:#7decbe;--bad:#ff9c98}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#0d3450 0%,#071524 56%);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer;touch-action:manipulation}
+header{background:linear-gradient(135deg,#102e45,#071723);border-bottom:1px solid var(--edge);padding:18px 15px}
+.wrap{max-width:1080px;margin:auto}header .wrap{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.logo{font-size:clamp(22px,4vw,35px);font-weight:1000;font-style:italic;line-height:1.05;letter-spacing:-.8px}.logo strong{color:var(--yellow)}.logo small{font-size:11px;display:block;color:var(--blue);font-style:normal;letter-spacing:2.2px;margin-bottom:5px}
+main{max-width:1080px;margin:auto;padding:16px 13px 35px}
+button{border:1px solid #456a80;background:#173b55;color:var(--text);font-weight:800;border-radius:9px;padding:10px 13px}
+button.primary{background:var(--yellow);color:#071522;border-color:var(--yellow)}button.danger{color:#ffc2c0;border-color:#773c46;background:#3a1d2b}button.soft{border-color:var(--edge);background:#122d43}button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus,select:focus{outline:2px solid var(--yellow);outline-offset:1px}
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.space{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.panel{background:linear-gradient(155deg,#13324b,#0b2337);border:1px solid var(--edge);border-radius:13px;padding:16px;margin:12px 0;min-width:0}
+.panel h3{margin:0 0 10px;font-size:18px;color:var(--yellow)}h1,h2{font-weight:1000;letter-spacing:-.5px}h2{margin:11px 0;font-size:25px}
+.muted{color:var(--muted);font-size:12px}.accent{color:var(--yellow)}.good{color:var(--good)}.bad{color:var(--bad)}.center{text-align:center}
+.pill{border-radius:60px;padding:5px 10px;border:1px solid #547082;background:#183b52;font-size:11px;font-weight:900}.pill.live{color:var(--good);border-color:#2c9e77}.pill.archived{color:var(--yellow)}.pill.draft{color:var(--muted)}
+.field{display:block;margin:11px 0;font-weight:800;font-size:12px;color:#c6d8e8}.field input,.field select{display:block;width:100%;border:1px solid #5e7d91;border-radius:8px;padding:11px;background:#e9f3fc;color:#0a2032;font-weight:700;margin-top:4px;min-width:0}
+select{max-width:100%}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{min-width:0}
+.tournav{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end;margin-bottom:11px}.tournav .field{margin:0}.tournav select{padding:12px}
+.tabs{display:flex;overflow:auto;gap:7px;padding:8px 0 13px;scrollbar-width:thin}.tab{flex:0 0 auto;white-space:nowrap;padding:9px 12px}.tab.on{color:#071522;background:var(--yellow);border-color:var(--yellow)}
+.pane{display:none}.pane.on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.kpi{border:1px solid var(--edge);border-top:3px solid var(--blue);border-radius:10px;background:var(--panel);padding:13px}.kpi b{display:block;font-size:27px;color:#fff}.kpi span{font-size:10px;color:#a7c8d7;font-weight:900;letter-spacing:.4px}
+.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.teamrow{border-top:1px solid #30536a;display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px 0}.teamrow>span{font-weight:800}
+table{border-collapse:collapse;width:100%;min-width:390px}th,td{padding:10px 7px;border-bottom:1px solid #29495c;text-align:center;font-size:12px}th{color:#96cee8;background:#143850}td:first-child,th:first-child{text-align:left;font-weight:800}.tablewrap{overflow:auto;border-radius:8px}
+.match{border:1px solid #385d75;background:#102c43;border-radius:10px;margin:9px 0;overflow:hidden}.match-head{background:#183f58;padding:10px 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}.match-head b{color:var(--yellow)}.match-body{padding:10px}.match-team{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #25485c;gap:10px;padding:7px 0;font-weight:800}.match-team:last-child{border:0}.match-team>span:first-child{overflow-wrap:anywhere}.setnums{display:flex;gap:4px;flex-shrink:0}.setnums span{min-width:30px;border:1px solid #4b7488;background:#1b4761;border-radius:5px;padding:4px 6px;font-size:14px;font-weight:900;text-align:center}.setnums span.win{background:var(--yellow);color:#092033}
+.match-foot{display:flex;gap:7px;justify-content:space-between;align-items:center;padding:10px 12px;border-top:1px dashed #31576b}
+.smallbtn{font-size:11px;padding:6px 9px;border-radius:7px}.mini{font-size:11px;color:var(--muted)}.locked{border-left:3px solid #ffad4b}
+.standtitle{font-size:17px;color:var(--yellow);font-weight:1000;padding:8px 0}
+.empty{padding:25px 14px;text-align:center;color:var(--muted);border:1px dashed #416279;border-radius:10px}
+.note{background:#17374a;border:1px solid #4a6c85;padding:10px 12px;border-radius:8px;color:#b8e1f8;font-size:12px}
+.message{display:none;position:sticky;top:5px;z-index:8;background:#163f39;color:#c4ffe6;padding:11px 13px;border-radius:9px;border:1px solid #39c897;margin:9px 0;font-weight:800}.message.error{background:#54272c;border-color:#d36d6d;color:#fff4ef}.message.on{display:block}
+.loginpanel{max-width:530px;margin:30px auto}.hidden{display:none!important}
+.modalwrap{position:fixed;inset:0;background:#03101dde;display:none;align-items:center;justify-content:center;padding:11px;z-index:50}.modalwrap.on{display:flex}
+.modal{width:min(520px,100%);max-height:94dvh;overflow:auto;background:#0f2d44;border:1px solid #668397;box-shadow:0 20px 90px #0009;border-radius:14px;padding:16px}
+.modal h2{margin:0 0 8px;font-size:23px}.scorelines{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}
+.scoreteam{font-size:11px;font-weight:900;min-width:0;overflow-wrap:anywhere}.scorenum{font-size:38px;font-weight:1000;padding:3px 0}
+.scorebuttons{display:flex;gap:5px;justify-content:center}.scorebuttons button{min-width:45px;padding:9px 7px;font-size:19px}
+.setpanel{background:#0a2034;border:1px solid #4b6b81;border-radius:10px;padding:9px;margin:10px 0}.setpanel .space{font-size:12px}.setpanel .space span{font-weight:1000;color:var(--yellow)}
+.status-select{font-size:16px;width:100%;padding:9px;border-radius:7px;margin:5px 0;color:#0d263c;background:#e9f3fc}
+.bracket{background:radial-gradient(ellipse at center top,#21424e,#071323 75%);border:1px solid #68815d;border-radius:15px;padding:15px;margin:8px 0}.bracket h2{text-align:center;font-weight:1000;font-style:italic;color:var(--yellow);font-size:clamp(27px,5vw,48px);margin:12px 0 3px}.bracket small{display:block;text-align:center;color:#c6e2f2;letter-spacing:2px;font-weight:800}
+.bracket-band{background:var(--yellow);color:#081522;font-size:17px;font-weight:1000;text-align:center;margin:19px 0 10px;padding:8px}
+.bracket-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bracketbox{border:1px solid var(--yellow);border-radius:9px;overflow:hidden}.bracketbox.blue{border-color:var(--blue)}.bracketbox.red{border-color:#e85566}
+.bracketbox header{background:#d2bd24;text-align:center;color:#061522;font-weight:950;padding:7px;border:0;font-size:12px}.bracketbox.blue header{background:#0b72b7;color:white}.bracketbox.red header{background:#bc354a;color:white}
+.bracketrow{padding:10px;background:#10273c;border-top:1px solid #315167;display:flex;justify-content:space-between;gap:7px;align-items:center;font-size:12px;font-weight:900}
+.bracketrow strong{color:var(--yellow)}.bracketrow em{font-style:normal;font-size:11px;color:#cde1ee}
+.bracketline{font-size:27px;color:var(--yellow);text-align:center;line-height:1.2}
+.rankgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.ranktile{border:1px solid #3a6379;background:#123650;padding:9px;border-radius:8px;min-width:0;font-size:12px;overflow-wrap:anywhere}.ranktile b{font-size:22px;color:var(--yellow);display:block}
+.controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.controls select{flex:1;min-width:100px;background:#eaf4fc;color:#092235;border-radius:7px;padding:7px;border:0}
+.scoreedit{border-top:1px solid #32566b;padding-top:9px;margin-top:9px}
+#report{display:none}
+@media(max-width:650px){.split,.cols3{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.bracket-pair{grid-template-columns:1fr 1fr}.rankgrid{grid-template-columns:repeat(2,1fr)}.tournav{grid-template-columns:minmax(0,1fr) auto}.scorebuttons button{min-width:43px}.bracketrow{font-size:11px}}
+@media print{
+ body{background:white;color:black;font:11pt Arial}header,.tabs,.tournav,.message,.modalwrap,.screenonly,.actions,#authArea,#adminbar,button{display:none!important}
+ main{max-width:none}.pane{display:none!important}#report{display:block!important}
+ .panel,.match{background:white;color:black;border:1px solid #aaa;break-inside:avoid}.panel h3{color:black}
+ table{min-width:0}th,td{color:black!important;border:1px solid #999}.bracket,.bracketbox{color:black;background:white}
+ #report h1,#report h2{color:black!important}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="logo"><small>🏓 TOURNAMENT MANAGER V2</small><strong>PICKLEBALL</strong> LEAGUE<br>CONTROL CENTER</div><div class="flex" id="authArea"><button id="authButton" class="primary">🔒 Admin Login</button></div></div></header>
+<main>
+<div id="message" class="message"></div>
+<div class="tournav">
+ <label class="field">PILIH KEJOHANAN<select id="tournamentSelect"><option>Memuatkan...</option></select></label>
+ <button class="primary hidden" id="createBtn">+ Baru</button>
+</div>
+<div class="space"><div><span id="statusBadge" class="pill">MEMUATKAN...</span> <span class="muted" id="updatedAt"></span></div><div class="flex"><button class="smallbtn" id="shareBtn">↗ Kongsi</button><button class="smallbtn" id="reloadBtn">⟳ Refresh</button></div></div>
+<div id="adminbar" class="panel hidden"><div class="space"><b>🛡️ ADMIN MODE</b><div class="flex"><button id="cloneBtn" class="smallbtn">Duplicate</button><button id="archiveBtn" class="smallbtn">Arkib / Status</button><button id="passwordBtn" class="smallbtn">Tukar Password</button></div></div></div>
+<div class="tabs">
+ <button class="tab on" data-tab="overview">DASHBOARD</button>
+ <button class="tab" data-tab="teams">PASUKAN</button>
+ <button class="tab" data-tab="schedule">JADUAL</button>
+ <button class="tab" data-tab="scores">SCORE</button>
+ <button class="tab" data-tab="bracket">🏆 BRACKET</button>
+ <button class="tab" data-tab="settings">TETAPAN</button>
+ <button class="tab" data-tab="history">LOG</button>
+</div>
+<div class="pane on" id="overview"><div id="overviewContent"></div></div>
+<div class="pane" id="teams"><div class="space"><h2>PASUKAN & GROUP</h2><button class="primary adminAction hidden" id="addGroup">+ Group</button></div><div id="teamsContent"></div></div>
+<div class="pane" id="schedule"><div class="space"><h2>JADUAL & COURT</h2><button class="primary adminAction hidden" id="generateBtn">⚡ Auto Generate</button></div><div class="note">Jana perlawanan Round Robin ikut jumlah pasukan. Boleh ubah court, round dan turutan. Jadual akan dikekalkan apabila skor diisi.</div><div id="scheduleContent"></div></div>
+<div class="pane" id="scores"><h2>LIVE SCORE CONTROL</h2><div class="muted">Tekan Edit pada match untuk Quick Score. Penonton cuma nampak keputusan.</div><div id="scoresContent"></div></div>
+<div class="pane" id="bracket"><h2>🏆 KNOCKOUT BRACKET</h2><div id="bracketContent"></div></div>
+<div class="pane" id="settings"><h2>PERATURAN & FORMAT</h2><div class="panel"><h3>Tetapan Kejohanan</h3><div id="settingsContent"></div></div></div>
+<div class="pane" id="history"><h2>REKOD PERUBAHAN</h2><div id="historyContent"></div></div>
+<section id="report"></section>
+<div class="space screenonly" style="margin-top:18px"><span class="muted">Skor dikemas kini setiap 10 saat · V2</span><button id="exportBtn">🖨️ Export PDF / Print</button></div>
+</main>
+<div class="modalwrap" id="modalWrap"><div class="modal"><div class="space"><h2 id="modalTitle">Edit</h2><button id="modalClose">✕</button></div><div id="modalBody"></div><div id="modalFooter" class="flex" style="justify-content:flex-end;margin-top:14px"></div></div></div>
+<script>
+(function(){
+"use strict";
+const API="https://thvpxsqrkusxbmeaojiv.supabase.co/functions/v1/pickleball-manager";
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let lists=[],t=null,secret="",admin=false,active="overview",editing=false,history=[],timerBusy=false;
+let seq=0;
+const query=new URLSearchParams(location.search);
+const idgen=()=>Date.now().toString(36)+(++seq).toString(36);
+const blankSet=()=>({a:null,b:null});
+const num=n=>Number(n)||0;
+const emptyScore=n=>({status:"scheduled",locked:false,sets:Array.from({length:n},blankSet)});
+const setCount=m=>m.stage==="group"?num(t.data.settings.groupSets):m.stage==="placement"?num(t.data.settings.placeSets):num(t.data.settings.knockoutSets);
+const other=(s,i)=>i===0?s.b:s.a,own=(s,i)=>i===0?s.a:s.b;
+const decided=s=>s&&Number.isInteger(s.a)&&Number.isInteger(s.b)&&s.a!==s.b;
+function winner(m){const s=m.score;if(s.status!=="complete")return null;let w=[0,0];for(const x of s.sets)if(decided(x))w[x.a>x.b?0:1]++;if(m.stage==="group")return w[0]===w[1]?null:w[0]>w[1]?0:1;return w[0]===w[1]?null:w[0]>w[1]?0:1}
+function notify(message,error=false){const e=$("message");e.textContent=message;e.classList.add("on");e.classList.toggle("error",error);setTimeout(()=>e.classList.remove("on"),6000)}
+function modal(title,body,footer=""){editing=true;$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modalFooter").innerHTML=footer;$("modalWrap").classList.add("on")}
+function close(){editing=false;$("modalWrap").classList.remove("on")}
+async function request(action={},post=false){
+ const opts=post?{method:"POST",headers:{"content-type":"application/json","x-admin-key":secret},body:JSON.stringify(action)}:{cache:"no-store"};
+ const url=post?API:API+(action.slug?"?slug="+encodeURIComponent(action.slug):"");
+ const res=await fetch(url,opts);const data=await res.json().catch(()=>({error:"Server response invalid"}));
+ if(!res.ok||!data.ok)throw Error(data.error||"Server error");
+ return data;
+}
+function adminOnly(){if(!admin)throw Error("Login Admin dahulu");if(!t||t.status==="archived"||t.data.source==="league2")throw Error("Arkib hanya untuk dilihat. Duplicate kejohanan untuk edit.")}
+async function save(data,desc){adminOnly();const result=await request({action:"save",slug:t.slug,version:t.version,data,description:desc},true);t=result.tournament;render();notify("✓ "+desc)}
+async function action(body,success){adminOnly();const res=await request({...body,slug:t.slug,version:t.version},true);if(res.tournament)t=res.tournament;render();if(success)notify(success);return res}
+function teams(){return t?.data.groups.flatMap(g=>g.teams.map(x=>({...x,group:g.id})))||[]}
+function teamName(id){return teams().find(x=>x.id===id)?.name||"—"}
+function resultStand(g){const rows=g.teams.map((x,i)=>({...x,seed:i,p:0,w:0,d:0,l:0,sw:0,sl:0,pf:0,pa:0,pts:0}));const ids=Object.fromEntries(rows.map(x=>[x.id,x]));
+ for(const m of t.data.matches.filter(x=>x.stage==="group"&&x.groupId===g.id)){
+  if(m.score.status!=="complete")continue;
+  const a=ids[m.teamA],b=ids[m.teamB];if(!a||!b)continue;
+  a.p++;b.p++;let aw=0,bw=0;
+  for(const s of m.score.sets){if(!decided(s))continue;a.pf+=s.a;a.pa+=s.b;b.pf+=s.b;b.pa+=s.a;if(s.a>s.b){aw++;a.sw++;b.sl++}else{bw++;b.sw++;a.sl++}}
+  a.pts+=aw;b.pts+=bw;
+  if(aw>bw){a.w++;b.l++}else if(bw>aw){b.w++;a.l++}else{a.d++;b.d++}
+ }
+ rows.sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa)||b.pf-a.pf||a.seed-b.seed);
+ return rows;
+}
+function completeGroup(g){const ms=t.data.matches.filter(x=>x.stage==="group"&&x.groupId===g.id);return ms.length>0&&g.teams.length>=2&&ms.every(m=>m.score.status==="complete")}
+function bracketTeam(slot,trace=[]){
+ if(!slot)return null;
+ if(slot.startsWith("T:"))return slot.slice(2);
+ if(slot.startsWith("R:")){
+  const [,g,n]=slot.split(":");const group=t.data.groups.find(x=>x.id===g);
+  return group&&completeGroup(group)?resultStand(group)[Number(n)-1]?.id:null;
+ }
+ if(slot.startsWith("W:")||slot.startsWith("L:")){
+  const [,key]=slot.split(":");if(trace.includes(key))return null;
+  const m=t.data.matches.find(x=>x.id===key);
+  if(!m||m.score.status!=="complete")return null;
+  const w=winner(m);if(w===null)return null;
+  return bracketTeam((slot[0]==="W"?(w===0?m.slotA:m.slotB):(w===0?m.slotB:m.slotA)),[...trace,key]);
+ }
+ return null;
+}
+function matchup(m){return m.stage==="group"?[m.teamA,m.teamB]:[bracketTeam(m.slotA,[m.id]),bracketTeam(m.slotB,[m.id])]}
+function matchName(m){return m.stage==="group"?"ROUND "+m.round+" · "+m.groupId+" · "+(m.court||"Court"):m.label||m.stage.toUpperCase()}
+function statHTML(g){const rows=resultStand(g);return '<div class="panel"><div class="space"><h3>'+esc(g.name)+'</h3><span class="pill">'+g.teams.length+' pasukan</span></div><div class="tablewrap"><table><thead><tr><th>PASUKAN</th><th>P</th><th>W</th><th>D</th><th>SET</th><th>+/-</th><th>PTS</th></tr></thead><tbody>'+rows.map((x,i)=>'<tr><td><span class="accent">#'+(i+1)+'</span> '+esc(x.name)+'</td><td>'+x.p+'</td><td>'+x.w+'</td><td>'+x.d+'</td><td>'+x.sw+'–'+x.sl+'</td><td>'+(x.pf-x.pa)+'</td><td><strong>'+x.pts+'</strong></td></tr>').join("")+'</tbody></table></div></div>'}
+function matchCard(m,small=false){const both=matchup(m),count=m.score.sets.length,w=winner(m),go=admin&&t.status!=="archived"&&t.data.source!=="league2";const state=m.score.status;return '<div class="match '+(m.score.locked?"locked":"")+'"><div class="match-head"><b>'+esc(matchName(m))+'</b><span class="pill '+(state==="live"?"live":"")+'">'+esc(state==="live"?"🔴 LIVE":state==="complete"?"✓ TAMAT":"BELUM MULA")+'</span></div><div class="match-body">'+both.map((id,i)=>'<div class="match-team"><span class="'+(w===i?"accent":"")+'">'+esc(id?teamName(id):m.stage==="group"?"—":(i===0?m.slotA:m.slotB)||"TBD")+'</span><div class="setnums">'+m.score.sets.map(set=>'<span class="'+(decided(set)&&own(set,i)>other(set,i)?"win":"")+'">'+(state==="scheduled"||own(set,i)===null?"–":own(set,i))+'</span>').join("")+'</div></div>').join("")+'</div><div class="match-foot"><span class="mini">'+(m.score.locked?"🔒 Locked · ":"")+(m.stage==="placement"?"1-SET PLACEMENT":count+" SET")+'</span>'+(go?'<div class="flex"><button class="smallbtn" data-score="'+esc(m.id)+'">+ Quick Score</button></div>':"")+'</div></div>'}
+function renderOverview(){
+ if(!t){$("overviewContent").innerHTML='<div class="empty">Pilih kejohanan.</div>';return}
+ const ms=t.data.matches;const completed=ms.filter(m=>m.score.status==="complete").length,live=ms.filter(m=>m.score.status==="live").length;
+ const html='<div class="kpis"><div class="kpi"><b>'+teams().length+'</b><span>PASUKAN</span></div><div class="kpi"><b>'+t.data.groups.length+'</b><span>GROUP</span></div><div class="kpi"><b>'+completed+'/'+ms.length+'</b><span>MATCH TAMAT</span></div><div class="kpi"><b>'+live+'</b><span>LIVE</span></div></div>'+
+ '<div class="space"><h2>'+esc(t.name)+'</h2><button class="screenonly" id="printQuick">🖨️ Result PDF</button></div>'+
+ '<div class="note">'+(t.status==="archived"?"🔒 Arkib League 2 — keputusan asal dilindungi. Duplicate kejohanan untuk digunakan semula.":"Tip: isi pasukan → Auto Generate Jadual → Quick Score → Bracket auto update.")+'</div>'+
+ '<h2>LIVE / MATCH TERKINI</h2><div class="cols3">'+(ms.filter(m=>m.score.status==="live").concat(ms.filter(m=>m.score.status==="scheduled")).concat(ms.filter(m=>m.score.status==="complete").reverse()).slice(0,3).map(matchCard).join("")||'<div class="empty">Belum ada jadual. Jana dalam tab Jadual.</div>')+'</div>'+
+ '<h2>GROUP STANDINGS</h2>'+t.data.groups.map(statHTML).join("");
+ $("overviewContent").innerHTML=html;
+ const b=$("printQuick");if(b)b.onclick=printReport;
+}
+function renderTeams(){
+ if(!t)return;
+ const mod=admin&&t.status!=="archived";$("addGroup").classList.toggle("hidden",!mod);
+ $("teamsContent").innerHTML=t.data.groups.map(g=>'<div class="panel"><div class="space"><h3>'+esc(g.name)+' ('+g.teams.length+')</h3><div class="flex">'+(mod?'<button class="smallbtn" data-addteam="'+esc(g.id)+'">+ Pasukan</button><button class="smallbtn" data-groupedit="'+esc(g.id)+'">✎</button><button class="smallbtn danger" data-groupdel="'+esc(g.id)+'">✕</button>':"")+'</div></div>'+
+ (g.teams.map(x=>'<div class="teamrow"><span>'+esc(x.name)+'</span>'+(mod?'<div class="flex"><button class="smallbtn" data-teamedit="'+esc(x.id)+'">✎</button><button class="smallbtn danger" data-teamdel="'+esc(x.id)+'">✕</button><select aria-label="Move team" data-teammove="'+esc(x.id)+'">'+t.data.groups.map(gg=>'<option value="'+esc(gg.id)+'" '+(gg.id===g.id?"selected":"")+'>'+esc(gg.name)+'</option>').join("")+'</select></div>':"")+'</div>').join("")||'<p class="muted">Belum ada pasukan.</p>')+'</div>').join("")||'<div class="empty">Tambah kumpulan dalam Admin.</div>';
+}
+function renderSchedule(){
+ if(!t)return;const ms=t.data.matches.filter(x=>x.stage==="group").slice().sort((a,b)=>a.round-b.round||a.order-b.order);
+ let out='<div class="panel"><div class="space"><div><b>COURTS</b><div class="muted">'+esc(t.data.courts.join(" · "))+'</div></div>'+(admin&&t.status!=="archived"?'<button data-courts="1">✎ Courts</button>':"")+'</div></div>';
+ const rounds=[...new Set(ms.map(m=>m.round))].sort((a,b)=>a-b);
+ for(const r of rounds){out+='<h2>ROUND '+r+'</h2><div class="cols3">'+ms.filter(m=>m.round===r).map(m=>'<div>'+matchCard(m)+((admin&&t.status!=="archived")?'<div class="controls"><select aria-label="Change court" data-court="'+esc(m.id)+'">'+t.data.courts.map(c=>'<option '+(m.court===c?"selected":"")+'>'+esc(c)+'</option>').join("")+'</select><button class="smallbtn" data-order="'+esc(m.id)+':-1">↑</button><button class="smallbtn" data-order="'+esc(m.id)+':1">↓</button><button class="smallbtn" data-round="'+esc(m.id)+'">Round</button></div>':"")+'</div>').join("")+'</div>'}
+ $("scheduleContent").innerHTML=out+(ms.length?"":'<div class="empty">Tiada jadual lagi.</div>');
+ $("generateBtn").classList.toggle("hidden",!admin||t.status==="archived");
+}
+function renderScores(){
+ if(!t)return;
+ $("scoresContent").innerHTML=t.data.matches.length?'<div class="cols3">'+t.data.matches.map(matchCard).join("")+'</div>':'<div class="empty">Tiada perlawanan. Jana Jadual dahulu.</div>';
+}
+function bracketCard(id,variant){
+ const m=t.data.matches.find(m=>m.id===id);
+ if(!m)return '<div class="empty">Belum dibina</div>';
+ const ids=matchup(m),w=winner(m);
+ return '<div class="bracketbox '+variant+'"><header>'+esc(matchName(m))+'</header>'+ids.map((id,i)=>'<div class="bracketrow"><span>'+(w===i?"<strong>🏆 ":"")+esc(id?teamName(id):i===0?m.slotA:m.slotB)+(w===i?"</strong>":"")+'</span><em>'+m.score.sets.map(set=>set.a===null?"–":i===0?set.a:set.b).join(" / ")+'</em></div>').join("")+'</div>';
+}
+function ranks(){
+ const get=(key,wantWinner)=>{const m=t.data.matches.find(x=>x.id===key);if(!m)return null;const w=winner(m);return w===null?null:matchup(m)[wantWinner?w:1-w]};
+ return [get("final",true),get("final",false),get("third",true),get("third",false),get("place56",true),get("place56",false),get("place78",true),get("place78",false)];
+}
+function renderBracket(){
+ if(!t)return;
+ const ms=t.data.matches.filter(m=>m.stage!=="group");
+ $("bracketContent").innerHTML='<div class="bracket"><small>PICKLEBALL TOURNAMENT</small><h2>🏆 KNOCKOUT RESULTS</h2><small>PLAY · COMPETE · BE LEGEND</small><div class="bracket-band">CHAMPIONSHIP · TOP 4</div><div class="bracket-pair">'+bracketCard("sf1","gold")+bracketCard("sf2","gold")+'</div><div class="bracketline">↘ &nbsp; 🏆 &nbsp; ↙</div><div class="bracket-pair">'+bracketCard("final","gold")+bracketCard("third","red")+'</div><div class="bracket-band" style="background:#168bdb;color:white">PENENTUAN 5–8 · DIRECT MATCH</div><div class="bracket-pair">'+bracketCard("place56","blue")+bracketCard("place78","blue")+'</div><h2 style="font-size:24px">KEDUDUKAN AKHIR</h2><div class="rankgrid">'+ranks().map((id,i)=>'<div class="ranktile"><b>'+(i+1)+'</b>'+esc(id?teamName(id):"Belum ditentukan")+'</div>').join("")+'</div></div>'+
+ (admin&&t.status!=="archived"?'<div class="panel"><div class="space"><h3>⚙️ Bracket Builder</h3><button id="makeBracket" class="primary">⚡ Jana Bracket</button></div><div class="note">Pilih matchup secara manual. Slot pemenang/kalah SF bergerak automatik ke final dan tempat ke-3.</div>'+ms.map(m=>'<div class="scoreedit"><b>'+esc(matchName(m))+'</b><div class="controls"><select data-slot="'+esc(m.id)+':A">'+slotOptions(m,m.slotA)+'</select><span>VS</span><select data-slot="'+esc(m.id)+':B">'+slotOptions(m,m.slotB)+'</select></div></div>').join("")+'</div>':"");
+}
+function slotOptions(m,value){
+ const opts=[];
+ for(const g of t.data.groups)for(let i=1;i<=g.teams.length;i++)opts.push(["R:"+g.id+":"+i,i+g.id]);
+ for(const x of teams())opts.push(["T:"+x.id,x.name]);
+ if(["final","third"].includes(m.stage))for(const id of ["sf1","sf2"]){opts.push(["W:"+id,"Winner "+id]);opts.push(["L:"+id,"Loser "+id])}
+ return opts.map(([key,label])=>'<option value="'+esc(key)+'" '+(key===value?"selected":"")+'>'+esc(label)+'</option>').join("");
+}
+function renderSettings(){
+ if(!t)return;
+ const s=t.data.settings,mod=admin&&t.status!=="archived";
+ $("settingsContent").innerHTML='<div class="split">'+[
+ ["groupSets","Grouping: Bilangan Set",[1,2,3]],["groupPoints","Grouping: Target Mata",[11,15,21]],["knockoutSets","Knockout: Best Of",[1,3,5]],["knockoutPoints","Knockout: Target Mata",[11,15,21]],["placeSets","Penentuan 5–8: Bilangan Set",[1,3]],["placePoints","Penentuan 5–8: Target Mata",[11,15,21]]
+ ].map(([key,label,options])=>'<label class="field">'+label+'<select data-setting="'+key+'" '+(mod?"":"disabled")+'>'+options.map(x=>'<option value="'+x+'" '+(num(s[key])===x?"selected":"")+'>'+x+'</option>').join("")+'</select></label>').join("")+'</div>'+
+ '<p class="note">Jika bilangan set diubah selepas ada skor, sistem akan menyesuaikan ruang skor dan meminta pengesahan. Mata target ialah panduan pengadil; skor sebenar boleh dimasukkan mengikut keputusan.</p>'+
+ (mod?'<div class="flex"><button id="downloadCSV">⬇ Export CSV</button><button id="savePDF">🖨️ Export PDF</button><button id="setStatus">Status Kejohanan</button><button id="deleteDraft" class="danger">Padam Draft</button></div>':'<button id="savePDF">🖨️ Simpan PDF</button>');
+ const pdf=$("savePDF");if(pdf)pdf.onclick=printReport;
+ const csv=$("downloadCSV");if(csv)csv.onclick=exportCSV;
+}
+async function renderHistory(){
+ if(!t)return;
+ if(!admin){$("historyContent").innerHTML='<div class="empty">Log perubahan hanya boleh dilihat oleh admin.</div>';return}
+ $("historyContent").innerHTML='<div class="muted">Memuatkan log...</div>';
+ try{const res=await request({action:"audit",slug:t.slug},true);history=res.audit||[];$("historyContent").innerHTML='<div class="panel">'+(history.map(e=>'<div class="teamrow"><span><b>'+esc(e.event.toUpperCase())+'</b> · '+esc(e.match_id||"Sistem")+'<div class="muted">'+esc(e.detail?.description||"")+'</div></span><span class="muted">'+new Date(e.created_at).toLocaleString("ms-MY")+'</span></div>').join("")||'<div class="empty">Belum ada rekod.</div>')+'</div>'}catch(e){notify(e.message,true)}
+}
+function render(){
+ if(!t)return;
+ $("statusBadge").className="pill "+(t.status==="archived"?"archived":t.status==="active"?"live":"draft");
+ $("statusBadge").textContent=t.status==="active"?"● LIVE":t.status==="archived"?"🔒 ARKIB":"DRAFT";
+ $("updatedAt").textContent="Update: "+new Date(t.updated_at).toLocaleString("ms-MY");
+ $("adminbar").classList.toggle("hidden",!admin);
+ $("createBtn").classList.toggle("hidden",!admin);
+ document.querySelectorAll(".adminAction").forEach(e=>e.classList.toggle("hidden",!admin));
+ renderOverview();renderTeams();renderSchedule();renderScores();renderBracket();renderSettings();buildReport();
+ if(active==="history")renderHistory();
+}
+function selectTab(next){
+ active=next;document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.dataset.tab===next));
+ document.querySelectorAll(".pane").forEach(e=>e.classList.toggle("on",e.id===next));
+ if(next==="history")renderHistory();
+ const url=new URL(location.href);url.searchParams.set("tab",next);history.replaceState(null,"",url);
+}
+async function loadList(preferred){
+ const res=await request();lists=res.tournaments||[];
+ $("tournamentSelect").innerHTML=lists.map(x=>'<option value="'+esc(x.slug)+'">'+esc(x.name)+' · '+(x.status==="archived"?"Arkib":x.status)+"</option>").join("")||'<option value="">Tiada kejohanan</option>';
+ const wanted=preferred||query.get("t");
+ const chosen=lists.find(x=>x.slug===wanted)?.slug||lists.find(x=>x.status!=="archived")?.slug||lists[0]?.slug;
+ if(chosen)await loadTournament(chosen);
+ else {t=null;$("overviewContent").innerHTML='<div class="empty">Tiada kejohanan baharu. Admin boleh cipta kejohanan.</div>';notify("Login admin untuk cipta kejohanan");}
+}
+async function loadTournament(slug){
+ const res=await request({slug});t=res.tournament;$("tournamentSelect").value=slug;render();
+ const url=new URL(location.href);url.searchParams.set("t",slug);history.replaceState(null,"",url);
+}
+function blankTournament(name="New Tournament"){
+ return {name,groups:[{id:"A",name:"GROUP A",teams:[]},{id:"B",name:"GROUP B",teams:[]}],courts:["Court 3","Court 5","Court 7"],settings:{groupSets:2,groupPoints:21,knockoutSets:3,knockoutPoints:11,placeSets:1,placePoints:21},matches:[]};
+}
+function makeSchedule(){
+ const d=structuredClone(t.data),ms=[];
+ let idx=0;for(const group of d.groups){
+  const ids=group.teams.map(x=>x.id);if(ids.length<2)continue;
+  const current=ids.length%2===1?[...ids,null]:ids.slice(),length=current.length;
+  for(let r=0;r<length-1;r++){
+    for(let i=0;i<length/2;i++){
+      const a=current[i],b=current[length-1-i];if(!a||!b)continue;
+      const local=(r*(length/2)+i),court=d.courts[idx++%d.courts.length]||"Court";
+      ms.push({id:"g-"+group.id+"-"+r+"-"+i,stage:"group",groupId:group.id,round:r+1,order:idx,court,teamA:a,teamB:b,score:emptyScore(d.settings.groupSets)});
+    }
+    current.splice(1,0,current.pop());
+  }
+ }
+ d.matches=ms.concat(t.data.matches.filter(m=>m.stage!=="group"));
+ return d;
+}
+function makeKnockout(){
+ const d=structuredClone(t.data),g=d.groups;
+ if(g.length<2||g[0].teams.length<2||g[1].teams.length<2)throw Error("Perlu dua kumpulan dan sekurang-kurangnya dua pasukan setiap kumpulan.");
+ const slots=[
+ ["sf1","sf","SEMI FINAL 1","R:"+g[0].id+":1","R:"+g[1].id+":2"],
+ ["sf2","sf","SEMI FINAL 2","R:"+g[0].id+":2","R:"+g[1].id+":1"],
+ ["final","final","FINAL 🏆","W:sf1","W:sf2"],
+ ["third","third","TEMPAT 3 / 4","L:sf1","L:sf2"]
+ ];
+ if(g[0].teams.length>=3&&g[1].teams.length>=3)slots.push(["place56","placement","TEMPAT 5 / 6","R:"+g[0].id+":3","R:"+g[1].id+":3"]);
+ if(g[0].teams.length>=4&&g[1].teams.length>=4)slots.push(["place78","placement","TEMPAT 7 / 8","R:"+g[0].id+":4","R:"+g[1].id+":4"]);
+ const old=Object.fromEntries(d.matches.filter(m=>m.stage!=="group").map(m=>[m.id,m]));
+ const bracket=slots.map(([id,stage,label,slotA,slotB])=>{
+   const e=old[id],unchanged=e&&e.slotA===slotA&&e.slotB===slotB;
+   return {id,stage,label,round:99,court:d.courts[0]||"Court",slotA,slotB,score:unchanged?e.score:emptyScore(stage==="placement"?d.settings.placeSets:d.settings.knockoutSets)};
+ });
+ d.matches=d.matches.filter(m=>m.stage==="group").concat(bracket);
+ return d;
+}
+function scoreModal(id){
+ if(!admin||t.status==="archived")return;
+ const m=t.data.matches.find(x=>x.id===id);if(!m)return;
+ const participants=matchup(m);if(m.stage!=="group"&&!participants.every(Boolean)){notify("Pasukan knockout belum ditentukan.",true);return}
+ const edit=structuredClone(m.score),count=setCount(m),target=m.stage==="group"?t.data.settings.groupPoints:m.stage==="placement"?t.data.settings.placePoints:t.data.settings.knockoutPoints;
+ if(!Array.isArray(edit.sets)||edit.sets.length!==count)edit.sets=Array.from({length:count},blankSet);
+ function draw(){
+ const allowed=(i)=>m.stage==="group"||i===0||edit.sets.slice(0,i).every(decided)&&Math.max(...[0,1].map(x=>edit.sets.slice(0,i).filter(s=>decided(s)&&(s.a>s.b?0:1)===x).length))<Math.floor(count/2)+1;
+ $("modalBody").innerHTML='<p class="muted">'+esc(matchName(m))+' · Target '+target+' mata · '+count+' set</p>'+edit.sets.map((s,i)=>'<div class="setpanel '+(!allowed(i)?"hidden":"")+'"><div class="space"><span>SET '+(i+1)+'</span><span>🎾</span></div><div class="scorelines">'+participants.map((id,j)=>'<div class="center"><div class="scoreteam">'+esc(teamName(id))+'</div><div class="scorenum">'+(own(s,j)===null?"–":own(s,j))+'</div><div class="scorebuttons"><button data-adjust="'+i+':'+j+':-1">−</button><button data-adjust="'+i+':'+j+':1" class="primary">+</button></div><label class="field">Mata<input type="number" min="0" max="99" inputmode="numeric" data-setinput="'+i+':'+j+'" value="'+(own(s,j)===null?"":own(s,j))+'"></label></div>').join("")+'</div></div>').join("")+
+ '<label class="field">STATUS<select class="status-select" id="editStatus"><option value="scheduled" '+(edit.status==="scheduled"?"selected":"")+'>BELUM MULA</option><option value="live" '+(edit.status==="live"?"selected":"")+'>🔴 LIVE</option><option value="complete" '+(edit.status==="complete"?"selected":"")+'>✅ TAMAT</option></select></label><div class="note">'+(edit.locked?"🔒 Match dikunci. Unlock dahulu untuk edit.":"Tip: + / − untuk mata. Undo memulihkan skor sebelum simpan terakhir.")+'</div>';
+ $("modalFooter").innerHTML='<button id="undoScore" '+(edit.locked?"disabled":"")+'>↶ Undo</button><button id="toggleLock" class="'+(edit.locked?"primary":"")+'">'+(edit.locked?"🔓 Unlock":"🔒 Lock")+'</button><button id="saveScore" class="primary" '+(edit.locked?"disabled":"")+'>💾 Simpan</button>';
+ document.querySelectorAll("[data-adjust]").forEach(btn=>btn.onclick=()=>{
+   const [set,who,delta]=btn.dataset.adjust.split(":").map(Number),s=edit.sets[set],col=who?"b":"a";s[col]=Math.max(0,(s[col]??0)+delta);draw();
+ });
+ document.querySelectorAll("[data-setinput]").forEach(inp=>inp.onchange=()=>{
+   const [set,who]=inp.dataset.setinput.split(":").map(Number),col=who?"b":"a",raw=inp.value;
+   edit.sets[set][col]=raw===""?null:Number(raw);draw();
+ });
+ $("editStatus").onchange=e=>{edit.status=e.target.value};
+ $("saveScore").onclick=async()=>{
+   edit.status=$("editStatus").value;
+   if(edit.status==="complete"&&!validateLocalScore(edit,m.stage,count)){notify("Keputusan belum lengkap atau masih seri. Semak semua set.",true);return}
+   try{await action({action:"score",matchId:id,score:edit},"Skor disimpan");close()}catch(e){notify(e.message,true)}
+ };
+ $("toggleLock").onclick=async()=>{try{await action({action:"lock",matchId:id,locked:!edit.locked},edit.locked?"Match dibuka":"Match dikunci");close()}catch(e){notify(e.message,true)}};
+ $("undoScore").onclick=async()=>{if(!confirm("Undo perubahan skor terakhir untuk match ini?"))return;try{await action({action:"undo",matchId:id},"Skor di-undo");close()}catch(e){notify(e.message,true)}};
+ }
+ modal("QUICK SCORE", "", "");draw();
+}
+function validateLocalScore(s,stage,count){
+ if(stage==="group")return s.sets.every(decided);
+ const wins=[0,0],need=Math.floor(count/2)+1;
+ for(const z of s.sets){if(decided(z)){wins[z.a>z.b?0:1]++;if(Math.max(...wins)===need)return true}else if(z.a!==null||z.b!==null)return false}
+ return false;
+}
+function exportCSV(){
+ if(!t)return;const rows=[["Match","Stage","Round","Court","Team A","Team B","Status","Scores A","Scores B"]];
+ for(const m of t.data.matches){const ids=matchup(m);rows.push([m.label||m.id,m.stage,m.round,m.court,teamName(ids[0]),teamName(ids[1]),m.score.status,m.score.sets.map(s=>s.a??"").join("/"),m.score.sets.map(s=>s.b??"").join("/")])}
+ const csv="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const a=document.createElement("a"),url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.href=url;a.download=(t.slug||"pickleball")+"-results.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+function buildReport(){
+ if(!t)return;
+ $("report").innerHTML='<h1>'+esc(t.name)+' — Official Tournament Result</h1><p>Generated '+new Date().toLocaleString("ms-MY")+' · Status: '+esc(t.status)+'</p><h2>Standings</h2>'+t.data.groups.map(statHTML).join("")+'<h2>All Match Results</h2>'+t.data.matches.map(m=>'<div class="panel"><b>'+esc(matchName(m))+'</b><p>'+matchup(m).map((id,i)=>esc(teamName(id))+' : '+m.score.sets.map(s=>own(s,i)??"—").join(", ")).join("  VS  ")+' ('+esc(m.score.status)+')</p></div>').join("")+'<h2>Final Ranking</h2>'+ranks().map((id,i)=>'<p>'+(i+1)+'. '+esc(teamName(id))+'</p>').join("");
+}
+function printReport(){buildReport();window.print()}
+function goCreate(duplicate=false){
+ if(!admin){notify("Login admin dahulu",true);return}
+ const suggested=duplicate&&t?t.name+" - Next League":"Pickleball League 3";
+ modal(duplicate?"DUPLICATE KEJOHANAN":"KEJOHANAN BAHARU",'<label class="field">NAMA KEJOHANAN<input id="newName" value="'+esc(suggested)+'"></label><div class="note">'+(duplicate?"Salin pasukan, jadual dan format. Skor akan direset kosong.":"Cipta kejohanan baharu dengan dua group kosong dan tiga court. Keputusan League 2 kekal sebagai arkib.")+'</div>','<button class="primary" id="createConfirm">✓ Cipta</button>');
+ $("createConfirm").onclick=async()=>{try{
+  const name=$("newName").value.trim(),body={action:"create",name};
+  if(duplicate&&t)body.template=t.slug;else body.data=blankTournament(name);
+  const result=await request(body,true);close();await loadList(result.tournament.slug);notify("Kejohanan baru berjaya dicipta");
+ }catch(e){notify(e.message,true)}};
+}
+function handleTeamAction(type,id){
+ (async()=>{
+  try{adminOnly();
+   const data=structuredClone(t.data);
+   const getGroup=key=>data.groups.find(g=>g.id===key);
+   const locate=key=>data.groups.flatMap(g=>g.teams.map(x=>({g,x}))).find(z=>z.x.id===key);
+   if(type==="addGroup"){
+    const label=prompt("Nama Group (contoh GROUP C):","GROUP "+String.fromCharCode(65+data.groups.length));
+    if(!label)return;const id=String.fromCharCode(65+data.groups.length)+idgen().slice(-2);
+    data.groups.push({id,name:label.trim(),teams:[]});
+   }else if(type==="groupedit"){
+    const g=getGroup(id),n=prompt("Nama Group:",g.name);if(!n)return;g.name=n.trim();
+   }else if(type==="groupdel"){
+    const g=getGroup(id);if(!confirm("Padam "+g.name+" beserta pasukannya? Match berkaitan turut dibuang."))return;
+    const drop=new Set(g.teams.map(t=>t.id));
+    data.matches=data.matches.filter(m=>m.stage!=="group"||(!drop.has(m.teamA)&&!drop.has(m.teamB)));
+    data.groups=data.groups.filter(x=>x.id!==id);
+   }else if(type==="addteam"){
+    const name=prompt("Nama pasukan / pasangan:");if(!name)return;getGroup(id).teams.push({id:"t"+idgen(),name:name.trim()});
+   }else if(type==="teamedit"){
+    const z=locate(id),name=prompt("Tukar nama pasukan:",z.x.name);if(!name)return;z.x.name=name.trim();
+   }else if(type==="teamdel"){
+    const z=locate(id);if(!confirm("Padam pasukan "+z.x.name+" dan match kumpulan berkaitan?"))return;
+    z.g.teams=z.g.teams.filter(x=>x.id!==id);data.matches=data.matches.filter(m=>m.stage!=="group"||(m.teamA!==id&&m.teamB!==id));
+   }else return;
+   await save(data,"Pasukan / group dikemas kini");
+  }catch(e){notify(e.message,true)}
+ })();
+}
+async function editSchedule(type,id,value){
+ try{adminOnly();const d=structuredClone(t.data);
+   const m=d.matches.find(x=>x.id===id);
+   if(type==="court")m.court=value;
+   else if(type==="order"){const stage=d.matches.filter(x=>x.stage==="group"&&x.round===m.round).sort((a,b)=>a.order-b.order);const i=stage.findIndex(x=>x.id===id),other=stage[i+Number(value)];if(!other)return;const temp=m.order;m.order=other.order;other.order=temp}
+   else if(type==="round"){const r=prompt("Round baharu:",m.round);if(!r)return;m.round=Math.max(1,Math.min(99,Number(r)||1))}
+   await save(d,"Jadual / court dikemas kini");
+ }catch(e){notify(e.message,true)}
+}
+function changeSetting(name,value){
+ (async()=>{
+  try{adminOnly();const d=structuredClone(t.data),newVal=Number(value),old=d.settings[name];if(old===newVal)return;
+   if(name.endsWith("Sets")){
+     const stage=name==="groupSets"?"group":name==="placeSets"?"placement":"knockout";
+     const affected=d.matches.filter(m=>stage==="knockout"?["sf","final","third"].includes(m.stage):m.stage===stage);
+     if(affected.some(m=>m.score.status!=="scheduled")&&!confirm("Tukar format set akan melaraskan rekod skor untuk stage berkenaan. Teruskan?"))return;
+     for(const m of affected){m.score.sets=Array.from({length:newVal},(_,i)=>m.score.sets[i]||blankSet());if(m.score.status==="complete")m.score.status="live"}
+   }
+   d.settings[name]=newVal;await save(d,"Format "+name+" dikemas kini");
+  }catch(e){notify(e.message,true);render()}
+ })();
+}
+function changeSlot(matchId,part,value){
+ (async()=>{try{
+  adminOnly();const d=structuredClone(t.data),m=d.matches.find(x=>x.id===matchId);if(!m)return;
+  if(m.score.status!=="scheduled"&&!confirm("Perubahan pairing selepas skor dimasukkan boleh menjejaskan result. Teruskan?"))return;
+  m["slot"+part]=value;if(m.score.status!=="scheduled")m.score=emptyScore(setCount(m));
+  await save(d,"Bracket pairing updated");
+ }catch(e){notify(e.message,true);render()}})();
+}
+function updateUIAuth(){
+ $("authButton").textContent=admin?"🔓 Admin Logout":"🔒 Admin Login";
+ $("adminbar").classList.toggle("hidden",!admin);$("createBtn").classList.toggle("hidden",!admin);
+ if(t)render();
+}
+function showLogin(){
+ modal("🔒 ADMIN LOGIN",'<p class="muted">Guna password admin asal League 2. Ia boleh ditukar selepas login.</p><label class="field">PASSWORD<input type="password" id="passwordInput" autocomplete="current-password" placeholder="Kata laluan admin"></label>','<button class="primary" id="submitLogin">Masuk Admin</button>');
+ $("submitLogin").onclick=async()=>{
+  const pw=$("passwordInput").value;
+  if(!pw){notify("Masukkan password",true);return}
+  try{const old=secret;secret=pw;await request({action:"verify"},true);admin=true;try{sessionStorage.setItem("pbmanager-auth",pw)}catch(e){}close();updateUIAuth();notify("Admin berjaya login")}catch(e){secret="";notify(e.message,true)}
+ };
+ $("passwordInput").onkeydown=e=>{if(e.key==="Enter")$("submitLogin").click()};
+}
+function changePassword(){
+ modal("TUKAR PASSWORD ADMIN",'<p class="note">Password minimum 12 aksara, campuran huruf dan nombor. Password lama V2 akan dibatalkan.</p><label class="field">PASSWORD BAHARU<input id="pw1" type="password"></label><label class="field">ULANG PASSWORD<input id="pw2" type="password"></label>','<button class="primary" id="savePw">Tukar Password</button>');
+ $("savePw").onclick=async()=>{const a=$("pw1").value,b=$("pw2").value;if(a!==b){notify("Password tidak sama",true);return}try{await request({action:"password",password:a},true);secret=a;try{sessionStorage.setItem("pbmanager-auth",a)}catch(e){}close();notify("Password V2 berjaya ditukar")}catch(e){notify(e.message,true)}};
+}
+function changeStatus(){
+ if(!t||!admin)return;
+ modal("STATUS KEJOHANAN",'<div class="note">Arkib akan dikunci read-only. Duplicate jika mahu mulakan kejohanan baharu.</div><label class="field">Status<select id="newStatus" class="status-select"><option value="draft">DRAFT</option><option value="active">ACTIVE / LIVE</option><option value="archived">ARCHIVED (KUNCI)</option></select></label>','<button class="primary" id="statusSave">Simpan</button>');
+ $("newStatus").value=t.status;
+ $("statusSave").onclick=async()=>{const s=$("newStatus").value;if(s==="archived"&&!confirm("Kunci sebagai arkib? Ia tidak boleh diedit lagi."))return;try{await action({action:"status",status:s},"Status dikemas kini");close()}catch(e){notify(e.message,true)}};
+}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
+$("modalClose").onclick=close;$("modalWrap").onclick=e=>{if(e.target===$("modalWrap"))close()};
+$("tournamentSelect").onchange=e=>{loadTournament(e.target.value).catch(x=>notify(x.message,true))};
+$("reloadBtn").onclick=()=>{if(t)loadTournament(t.slug).then(()=>notify("Data refreshed")).catch(e=>notify(e.message,true))};
+$("shareBtn").onclick=async()=>{const u=location.origin+location.pathname+"?t="+encodeURIComponent(t.slug)+"&tab="+active;try{if(navigator.share)await navigator.share({title:t.name,url:u});else{await navigator.clipboard.writeText(u);notify("Link penonton disalin")}}catch(e){prompt("Salin link:",u)}};
+$("authButton").onclick=()=>{if(admin){admin=false;secret="";try{sessionStorage.removeItem("pbmanager-auth")}catch(e){}updateUIAuth();notify("Log keluar")}else showLogin()};
+$("createBtn").onclick=()=>goCreate(false);
+$("cloneBtn").onclick=()=>goCreate(true);
+$("passwordBtn").onclick=changePassword;
+$("archiveBtn").onclick=changeStatus;
+$("exportBtn").onclick=printReport;
+$("addGroup").onclick=()=>handleTeamAction("addGroup");
+$("generateBtn").onclick=async()=>{try{adminOnly();if(t.data.matches.some(m=>m.stage==="group"&&m.score.status!=="scheduled")){if(!confirm("Jadual lama mengandungi skor. Jana semula boleh menghilangkan match berkaitan. Teruskan?"))return}await save(makeSchedule(),"Jadual Round Robin dijana")}catch(e){notify(e.message,true)}};
+document.addEventListener("click",e=>{
+ const b=e.target.closest("[data-score],[data-addteam],[data-teamedit],[data-teamdel],[data-groupedit],[data-groupdel],[data-courts],[data-order],[data-round]");if(!b)return;
+ if(b.dataset.score)return scoreModal(b.dataset.score);
+ for(const key of ["addteam","teamedit","teamdel","groupedit","groupdel"])if(b.dataset[key])return handleTeamAction(key,b.dataset[key]);
+ if(b.dataset.courts){
+   const input=prompt("Senarai court (pisahkan dengan koma):",t.data.courts.join(", "));if(!input)return;
+   const courts=input.split(",").map(s=>s.trim()).filter(Boolean);
+   if(!courts.length)return notify("Mesti ada sekurang-kurangnya satu court",true);
+   const d=structuredClone(t.data);d.courts=courts;d.matches.forEach((m,i)=>{if(!courts.includes(m.court))m.court=courts[i%courts.length]});save(d,"Court updated").catch(err=>notify(err.message,true));return;
+ }
+ if(b.dataset.order){const [id,x]=b.dataset.order.split(":");return editSchedule("order",id,x)}
+ if(b.dataset.round)return editSchedule("round",b.dataset.round);
+});
+document.addEventListener("change",e=>{
+ const b=e.target;
+ if(b.dataset.teammove){(async()=>{try{adminOnly();const d=structuredClone(t.data),from=d.groups.find(g=>g.teams.some(x=>x.id===b.dataset.teammove)),to=d.groups.find(g=>g.id===b.value);if(!from||!to||from===to)return;const x=from.teams.find(x=>x.id===b.dataset.teammove);from.teams=from.teams.filter(y=>y.id!==x.id);to.teams.push(x);d.matches=d.matches.filter(m=>m.stage!=="group"&&m.stage!=="other");await save(d,"Pasukan dipindah kumpulan; jana jadual baharu")}catch(err){notify(err.message,true)}})();return}
+ if(b.dataset.court)return editSchedule("court",b.dataset.court,b.value);
+ if(b.dataset.setting)return changeSetting(b.dataset.setting,b.value);
+ if(b.dataset.slot){const [id,part]=b.dataset.slot.split(":");return changeSlot(id,part,b.value)}
+});
+document.addEventListener("click",e=>{
+ const b=e.target.closest("#makeBracket,#downloadCSV,#setStatus,#deleteDraft");if(!b)return;
+ if(b.id==="makeBracket"){try{adminOnly();const d=makeKnockout();save(d,"Bracket knockout dijana").catch(err=>notify(err.message,true))}catch(err){notify(err.message,true)}}
+ if(b.id==="deleteDraft"){if(!confirm("Padam draft kosong?"))return;request({action:"delete",slug:t.slug,version:t.version},true).then(()=>loadList()).then(()=>notify("Draft dipadam")).catch(err=>notify(err.message,true))}
+ if(b.id==="setStatus")changeStatus();
+});
+(async()=>{
+ try{const saved=sessionStorage.getItem("pbmanager-auth");if(saved){secret=saved;await request({action:"verify"},true);admin=true}}catch(e){secret="";admin=false;try{sessionStorage.removeItem("pbmanager-auth")}catch(x){}}
+ updateUIAuth();
+ try{await loadList()}catch(e){notify("Gagal memuatkan database: "+e.message,true)}
+ selectTab(["overview","teams","schedule","scores","bracket","settings","history"].includes(query.get("tab"))?query.get("tab"):"overview");
+ setInterval(async()=>{if(editing||timerBusy||document.visibilityState!=="visible"||!t)return;timerBusy=true;try{const r=await request({slug:t.slug});if(r.tournament.version!==t.version){t=r.tournament;render()}}catch(e){}finally{timerBusy=false}},10000);
+})();
+})();
+</script>
+</body>
+</html>
