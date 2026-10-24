@@ -10,6 +10,7 @@ on:
       - 'latest-apk-source.txt'
       - '.github/workflows/deploy-pages.yml'
       - 'pickleball-live/**'
+      - 'pickleball-manager/**'
 
 permissions:
   contents: read
@@ -49,6 +50,9 @@ jobs:
           # Independent tournament scoreboard; does not alter the Court Designer build.
           mkdir -p _site/pickleball-live
           cp pickleball-live/index.html _site/pickleball-live/index.html
+          # V2 manager isolated from the original League 2 and court designer
+          mkdir -p _site/pickleball-manager
+          cp pickleball-manager/index.html _site/pickleball-manager/index.html
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
