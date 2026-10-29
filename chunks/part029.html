@@ -451,7 +451,11 @@
       }
 
       const structure=await ensureSaleStructure(sale,currentCloud.year||null);
-      const jobName=`${reference} - ${cleanFolderName(title)}`;
+      const storageTitle=typeof window.BinaCourtProjectTitleForFile==="function"
+        ? window.BinaCourtProjectTitleForFile(title)
+        : title;
+      const safeStorageTitle=cleanFolderName(storageTitle);
+      const jobName=`${reference} - ${safeStorageTitle}`;
       let jobFolderId=currentCloud.jobFolderId||"";
       let fileId=currentCloud.fileId||"";
 
@@ -477,7 +481,7 @@
         rootFolderId:root?.id||"",year:structure.year,saleName:sale,referenceNo:reference,
         yearFolderId:structure.yearFolder.id,saleFolderId:structure.saleFolder.id,jobFolderId,fileId
       };
-      const fileName=`${reference}.binacourt`;
+      const fileName=`${reference} - ${safeStorageTitle}.binacourt`;
 
       if(fileId){
         await renameDriveFile(fileId,fileName);
