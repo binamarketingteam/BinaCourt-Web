@@ -1,0 +1,663 @@
+<style>
+  #driveCloudMenu{position:relative}
+  #driveCloudMenu>summary{
+    list-style:none;cursor:pointer;display:flex;align-items:center;gap:5px;
+    min-height:34px;padding:7px 10px;border:1px solid #b7cdf7;border-radius:8px;
+    background:#eef4ff;color:#175cd3;font-size:11px;font-weight:800;white-space:nowrap
+  }
+  #driveCloudMenu>summary::-webkit-details-marker{display:none}
+  #driveCloudMenu[open]>summary{background:#dbeafe;border-color:#84adff}
+  .drive-cloud-menu{
+    position:absolute;right:0;top:calc(100% + 6px);z-index:10020;width:285px;
+    padding:11px;border:1px solid #d0d5dd;border-radius:12px;background:#fff;
+    box-shadow:0 16px 36px rgba(15,23,42,.18)
+  }
+  .drive-cloud-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:9px}
+  .drive-cloud-head strong{display:block;font-size:12px;color:#101828}
+  .drive-cloud-head span{display:block;margin-top:2px;font-size:9.5px;color:#667085;line-height:1.35}
+  .drive-cloud-dot{width:8px;height:8px;border-radius:50%;background:#98a2b3;flex:0 0 8px;margin-top:4px}
+  .drive-cloud-dot.connected{background:#12b76a}
+  .drive-cloud-folder{
+    margin:8px 0;padding:8px 9px;border:1px solid #e4e7ec;border-radius:8px;
+    background:#f8fafc;font-size:10px;color:#475467;line-height:1.35;word-break:break-word
+  }
+  .drive-cloud-folder b{display:block;color:#344054;margin-bottom:2px;font-size:10px}
+  .drive-cloud-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .drive-cloud-grid button{width:100%;min-height:35px;padding:6px 7px;font-size:10px}
+  #driveCloudSave{background:#175cd3!important;color:#fff!important;border-color:#175cd3!important}
+  #driveCloudNew{grid-column:1/-1;background:#ecfdf3!important;color:#027a48!important;border-color:#abefc6!important}
+  .drive-cloud-status{min-height:16px;margin-top:8px;font-size:9.5px;line-height:1.35;color:#475467}
+  .drive-cloud-status.error{color:#b42318}
+  .drive-cloud-status.success{color:#027a48}
+  @media(max-width:700px){
+    .drive-cloud-menu{position:fixed;left:12px;right:12px;top:auto;bottom:12px;width:auto;z-index:10080}
+  }
+</style>
+<script>
+(function setupBinaCourtGoogleDrive(){
+  "use strict";
+
+  const CLIENT_ID="161594330454-b0q5c8jud2l4lc1o448ejdhp9mmmjc9n.apps.googleusercontent.com";
+  const API_KEY="AIzaSyAEVh0ufLbPOurUwN5yE6IefOYNx7JHnkY";
+  const APP_ID="161594330454";
+  const SCOPE="https://www.googleapis.com/auth/drive.file";
+  const ROOT_KEY="binaCourtDriveRootV1";
+  const AUTH_KEY="binaCourtDriveAuthorizedV1";
+  const FOLDER_MIME="application/vnd.google-apps.folder";
+  const DRIVE_BASE="https://www.googleapis.com/drive/v3";
+  const DRIVE_UPLOAD="https://www.googleapis.com/upload/drive/v3";
+
+  let accessToken="";
+  let tokenExpiry=0;
+  let tokenClient=null;
+  let librariesPromise=null;
+  let currentCloud={};
+  let newCloudPending=false;
+  let busy=false;
+
+  function byId(id){ return document.getElementById(id); }
+
+  function loadRoot(){
+    try{
+      const value=JSON.parse(localStorage.getItem(ROOT_KEY)||"null");
+      return value && value.id ? value : null;
+    }catch(_){ return null; }
+  }
+
+  function saveRoot(folder){
+    try{
+      if(folder?.id) localStorage.setItem(ROOT_KEY,JSON.stringify({id:folder.id,name:folder.name||"BINA COURT PROJECTS"}));
+      else localStorage.removeItem(ROOT_KEY);
+    }catch(_){ }
+    renderDriveUi();
+  }
+
+  function setStatus(message,type=""){
+    const el=byId("driveCloudStatus");
+    if(!el) return;
+    el.textContent=message||"";
+    el.className="drive-cloud-status"+(type?" "+type:"");
+  }
+
+  function isTokenValid(){
+    return !!accessToken && Date.now()<tokenExpiry-60000;
+  }
+
+  function renderDriveUi(){
+    const root=loadRoot();
+    const connected=isTokenValid();
+    const dot=byId("driveCloudDot");
+    const subtitle=byId("driveCloudSubtitle");
+    const folder=byId("driveCloudFolder");
+    const connect=byId("driveCloudConnect");
+    if(dot) dot.classList.toggle("connected",connected);
+    if(subtitle) subtitle.textContent=connected?"Google Drive connected":"Belum connected untuk sesi ini";
+    if(connect) connect.textContent=connected?"↻ Refresh Login":"🔗 Connect";
+    if(folder){
+      folder.innerHTML=root
+        ? '<b>Project Folder</b>📁 '+escapeHtml(root.name||"BINA COURT PROJECTS")
+        : '<b>Project Folder</b>Belum pilih BINA COURT PROJECTS';
+    }
+  }
+
+  function escapeHtml(value){
+    return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+  }
+
+  function setBusy(value,label=""){
+    busy=!!value;
+    ["driveCloudConnect","driveCloudSelectRoot","driveCloudNew","driveCloudSave","driveCloudOpen"].forEach(id=>{
+      const el=byId(id); if(el) el.disabled=busy;
+    });
+    if(value && label) setStatus(label);
+  }
+
+  function loadScript(id,src,test){
+    return new Promise((resolve,reject)=>{
+      if(test()) return resolve();
+      const existing=byId(id);
+      if(existing){
+        const started=Date.now();
+        const timer=setInterval(()=>{
+          if(test()){clearInterval(timer);resolve();}
+          else if(Date.now()-started>12000){clearInterval(timer);reject(new Error("Google library timeout"));}
+        },80);
+        return;
+      }
+      const script=document.createElement("script");
+      script.id=id;script.src=src;script.async=true;script.defer=true;
+      script.onload=()=>resolve();
+      script.onerror=()=>reject(new Error("Gagal load Google library"));
+      document.head.appendChild(script);
+    });
+  }
+
+  function initLibraries(){
+    if(librariesPromise) return librariesPromise;
+    librariesPromise=(async()=>{
+      await Promise.all([
+        loadScript("binaGoogleApiScript","https://apis.google.com/js/api.js",()=>!!window.gapi),
+        loadScript("binaGoogleGisScript","https://accounts.google.com/gsi/client",()=>!!window.google?.accounts?.oauth2)
+      ]);
+      await new Promise((resolve,reject)=>{
+        try{
+          window.gapi.load("picker",{callback:resolve,onerror:()=>reject(new Error("Google Picker gagal dimuatkan"))});
+        }catch(error){ reject(error); }
+      });
+      tokenClient=window.google.accounts.oauth2.initTokenClient({
+        client_id:CLIENT_ID,
+        scope:SCOPE,
+        callback:()=>{}
+      });
+      return true;
+    })();
+    return librariesPromise;
+  }
+
+  async function ensureAuth({forceConsent=false}={}){
+    await initLibraries();
+    if(isTokenValid() && !forceConsent) return accessToken;
+    const known=(()=>{try{return localStorage.getItem(AUTH_KEY)==="1";}catch(_){return false;}})();
+    return await new Promise((resolve,reject)=>{
+      let settled=false;
+      tokenClient.callback=response=>{
+        if(settled) return;
+        if(response?.error){settled=true;reject(new Error(response.error_description||response.error));return;}
+        if(!response?.access_token){settled=true;reject(new Error("Google tidak pulangkan access token"));return;}
+        settled=true;
+        accessToken=response.access_token;
+        tokenExpiry=Date.now()+(Number(response.expires_in)||3600)*1000;
+        try{localStorage.setItem(AUTH_KEY,"1");}catch(_){ }
+        renderDriveUi();
+        resolve(accessToken);
+      };
+      try{
+        tokenClient.requestAccessToken({prompt:forceConsent||!known?"consent":""});
+      }catch(error){settled=true;reject(error);}
+    });
+  }
+
+  function clearToken(){
+    accessToken="";tokenExpiry=0;renderDriveUi();
+  }
+
+  async function driveRequest(url,options={},retry=true){
+    const token=await ensureAuth();
+    const headers=new Headers(options.headers||{});
+    headers.set("Authorization","Bearer "+token);
+    const response=await fetch(url,{...options,headers});
+    if(response.status===401 && retry){
+      clearToken();
+      return await driveRequest(url,options,false);
+    }
+    if(!response.ok){
+      const body=await response.text().catch(()=>"");
+      let message=`Google Drive error ${response.status}`;
+      try{message=JSON.parse(body)?.error?.message||message;}catch(_){ }
+      throw new Error(message);
+    }
+    if(response.status===204) return null;
+    const type=response.headers.get("content-type")||"";
+    if(type.includes("application/json")) return await response.json();
+    return await response.text();
+  }
+
+  function qEscape(value){
+    return String(value??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  }
+
+  async function listChildren(parentId,{foldersOnly=false,name=""}={}){
+    const parts=[`'${qEscape(parentId)}' in parents`,`trashed = false`];
+    if(foldersOnly) parts.push(`mimeType = '${FOLDER_MIME}'`);
+    if(name) parts.push(`name = '${qEscape(name)}'`);
+    const all=[];
+    let pageToken="";
+    do{
+      const params=new URLSearchParams({
+        q:parts.join(" and "),
+        pageSize:"1000",
+        fields:"nextPageToken,files(id,name,mimeType,parents,modifiedTime,size)"
+      });
+      if(pageToken) params.set("pageToken",pageToken);
+      const data=await driveRequest(`${DRIVE_BASE}/files?${params.toString()}`);
+      all.push(...(data?.files||[]));
+      pageToken=data?.nextPageToken||"";
+    }while(pageToken);
+    return all;
+  }
+
+  async function createFolder(name,parentId){
+    return await driveRequest(`${DRIVE_BASE}/files?fields=id,name,parents`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name,mimeType:FOLDER_MIME,parents:[parentId]})
+    });
+  }
+
+  async function getOrCreateFolder(name,parentId){
+    const existing=await listChildren(parentId,{foldersOnly:true,name});
+    if(existing.length) return existing[0];
+    return await createFolder(name,parentId);
+  }
+
+  function cleanFolderName(value){
+    return String(value||"")
+      .replace(/[\\/]+/g," - ")
+      .replace(/[\u0000-\u001f\u007f]/g,"")
+      .replace(/\s+/g," ")
+      .trim()
+      .slice(0,120)||"Untitled Project";
+  }
+
+  function normalizeRef(value){
+    const clean=String(value||"").replace(/[^0-9A-Za-z_-]/g,"").trim();
+    return clean||"001";
+  }
+
+  async function ensureSaleStructure(saleName,yearValue=null){
+    const root=loadRoot();
+    if(!root?.id) throw new Error("Pilih folder BINA COURT PROJECTS dahulu.");
+    const year=String(yearValue||new Date().getFullYear());
+    const yearFolder=await getOrCreateFolder(year,root.id);
+    const saleFolder=await getOrCreateFolder(cleanFolderName(saleName),yearFolder.id);
+    return {root,year,yearFolder,saleFolder};
+  }
+
+  async function nextReferenceForSale(saleName,yearValue=null){
+    const structure=await ensureSaleStructure(saleName,yearValue);
+    const folders=await listChildren(structure.saleFolder.id,{foldersOnly:true});
+    let max=0;
+    folders.forEach(item=>{
+      const match=String(item.name||"").match(/^\s*(\d{1,8})(?:\s*(?:-|–|—)|\s|$)/);
+      if(!match) return;
+      const value=parseInt(match[1],10);
+      if(Number.isFinite(value)) max=Math.max(max,value);
+    });
+    const next=max+1;
+    return {...structure,referenceNo:String(next).padStart(3,"0")};
+  }
+
+  function setReference(value){
+    state.projectReferenceNo=normalizeRef(value);
+    const input=byId("projectReferenceNo");
+    if(input) input.value=state.projectReferenceNo;
+    if(typeof updateProjectReferencePreview==="function") updateProjectReferencePreview();
+    try{ if(typeof commitHistory==="function") commitHistory(); }catch(_){ }
+  }
+
+  function pickerBuilder(token,view,callback){
+    let builder=new window.google.picker.PickerBuilder()
+      .addView(view)
+      .setOAuthToken(token)
+      .setDeveloperKey(API_KEY)
+      .setAppId(APP_ID)
+      .setCallback(callback);
+    try{builder=builder.setOrigin(window.location.origin);}catch(_){ }
+    return builder;
+  }
+
+  async function chooseRootFolder(){
+    await initLibraries();
+    const token=await ensureAuth();
+    return await new Promise((resolve,reject)=>{
+      try{
+        const view=new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(true);
+        if(window.google.picker.DocsViewMode?.LIST) view.setMode(window.google.picker.DocsViewMode.LIST);
+        const picker=pickerBuilder(token,view,data=>{
+          const action=data?.[window.google.picker.Response.ACTION]||data?.action;
+          if(action===window.google.picker.Action.PICKED){
+            const doc=(data?.[window.google.picker.Response.DOCUMENTS]||data?.docs||[])[0];
+            const id=doc?.[window.google.picker.Document.ID]||doc?.id;
+            const name=doc?.[window.google.picker.Document.NAME]||doc?.name||"BINA COURT PROJECTS";
+            if(!id){reject(new Error("Folder tidak dapat dibaca."));return;}
+            if(String(name).toUpperCase()!=="BINA COURT PROJECTS"){
+              const ok=confirm(`Folder dipilih ialah "${name}". Guna folder ini sebagai root Bina Court Projects?`);
+              if(!ok){resolve(null);return;}
+            }
+            const folder={id,name};saveRoot(folder);resolve(folder);
+          }else if(action===window.google.picker.Action.CANCEL){resolve(null);}
+        }).build();
+        picker.setVisible(true);
+      }catch(error){reject(error);}
+    });
+  }
+
+  async function ensureRootFolder(){
+    const existing=loadRoot();
+    if(existing?.id) return existing;
+    const selected=await chooseRootFolder();
+    if(!selected) throw new Error("Folder project belum dipilih.");
+    return selected;
+  }
+
+  async function openCloudPicker(){
+    await ensureRootFolder();
+    await initLibraries();
+    const token=await ensureAuth();
+    const root=loadRoot();
+    return await new Promise((resolve,reject)=>{
+      try{
+        const view=new window.google.picker.DocsView(window.google.picker.ViewId.DOCS).setIncludeFolders(true);
+        if(root?.id) view.setParent(root.id);
+        if(window.google.picker.DocsViewMode?.LIST) view.setMode(window.google.picker.DocsViewMode.LIST);
+        const picker=pickerBuilder(token,view,data=>{
+          const action=data?.[window.google.picker.Response.ACTION]||data?.action;
+          if(action===window.google.picker.Action.PICKED){
+            const doc=(data?.[window.google.picker.Response.DOCUMENTS]||data?.docs||[])[0];
+            const id=doc?.[window.google.picker.Document.ID]||doc?.id;
+            const name=doc?.[window.google.picker.Document.NAME]||doc?.name||"";
+            if(!id){reject(new Error("Fail tidak dapat dibaca."));return;}
+            if(!/\.(binacourt|json)$/i.test(name)){
+              alert("Pilih fail .binacourt atau .json untuk Court Designer.");
+              resolve(null);return;
+            }
+            resolve({id,name});
+          }else if(action===window.google.picker.Action.CANCEL){resolve(null);}
+        }).build();
+        picker.setVisible(true);
+      }catch(error){reject(error);}
+    });
+  }
+
+  function syncProjectFieldsFromUi(){
+    const title=String(byId("projectTitle")?.value||state.projectTitle||"").replace(/\s+/g," ").trim();
+    const sale=String(byId("projectSalesName")?.value||state.projectSalesName||"").replace(/\s+/g," ").trim();
+    const ref=String(byId("projectReferenceNo")?.value||state.projectReferenceNo||"").trim();
+    state.projectTitle=title;
+    state.projectSalesName=sale;
+    state.projectReferenceNo=ref;
+    if(state.siteShapeMode==="custom"){
+      try{
+        const area=typeof activeSiteArea==="function"?activeSiteArea():null;
+        const input=byId("customSiteAreaName");
+        if(area&&input){area.name=input.value.replace(/\s+/g," ").trim()||area.name;}
+        if(typeof syncActiveSiteAreaFromLegacy==="function") syncActiveSiteAreaFromLegacy();
+      }catch(_){ }
+    }
+    try{ if(typeof commitCurrentSiteAreasDirectlyToOptionStore==="function") commitCurrentSiteAreasDirectlyToOptionStore(); }catch(_){ }
+    if(typeof saveCurrentGroupToStore==="function") saveCurrentGroupToStore();
+  }
+
+  function cloudPayload(meta){
+    const data=typeof cloneData==="function"?cloneData(state):JSON.parse(JSON.stringify(state));
+    data._binaCloud={
+      format:"binacourt",
+      version:1,
+      savedAt:new Date().toISOString(),
+      rootFolderId:meta.rootFolderId||"",
+      year:String(meta.year||new Date().getFullYear()),
+      saleName:meta.saleName||data.projectSalesName||"",
+      referenceNo:meta.referenceNo||data.projectReferenceNo||"",
+      yearFolderId:meta.yearFolderId||"",
+      saleFolderId:meta.saleFolderId||"",
+      jobFolderId:meta.jobFolderId||"",
+      fileId:meta.fileId||""
+    };
+    return JSON.stringify(data,null,2);
+  }
+
+  async function updateFileContent(fileId,jsonText){
+    await driveRequest(`${DRIVE_UPLOAD}/files/${encodeURIComponent(fileId)}?uploadType=media`,{
+      method:"PATCH",
+      headers:{"Content-Type":"application/json; charset=UTF-8"},
+      body:jsonText
+    });
+  }
+
+  async function createProjectFile(jobFolderId,fileName,jsonText){
+    const created=await driveRequest(`${DRIVE_BASE}/files?fields=id,name,parents`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:fileName,mimeType:"application/json",parents:[jobFolderId]})
+    });
+    await updateFileContent(created.id,jsonText);
+    return created;
+  }
+
+  async function renameDriveFile(fileId,name){
+    if(!fileId) return;
+    await driveRequest(`${DRIVE_BASE}/files/${encodeURIComponent(fileId)}?fields=id,name`,{
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name})
+    });
+  }
+
+  async function saveCloudProject(){
+    if(busy) return;
+    setBusy(true,"Menyimpan project ke Google Drive...");
+    try{
+      await ensureRootFolder();
+      await ensureAuth();
+      syncProjectFieldsFromUi();
+      const title=(state.projectTitle||"").trim();
+      const sale=(state.projectSalesName||"").trim();
+      if(!sale) throw new Error("Pilih Nama Sale dahulu.");
+      if(!title) throw new Error("Masukkan nama Project dahulu.");
+
+      let reference=normalizeRef(state.projectReferenceNo);
+      if(!/^\d+$/.test(reference) || reference.toUpperCase()==="AUTO"){
+        const next=await nextReferenceForSale(sale,currentCloud.year||null);
+        reference=next.referenceNo;
+        setReference(reference);
+      }
+
+      if(currentCloud.fileId && (currentCloud.saleName&&currentCloud.saleName!==sale || currentCloud.referenceNo&&currentCloud.referenceNo!==reference)){
+        const makeNew=confirm("Nama Sale atau No. Rujukan berubah daripada fail cloud asal. Simpan sebagai job cloud baru?");
+        if(!makeNew){setStatus("Save dibatalkan.");return;}
+        currentCloud={};
+      }
+
+      const structure=await ensureSaleStructure(sale,currentCloud.year||null);
+      const jobName=`${reference} - ${cleanFolderName(title)}`;
+      let jobFolderId=currentCloud.jobFolderId||"";
+      let fileId=currentCloud.fileId||"";
+
+      if(!jobFolderId){
+        const saleFolders=await listChildren(structure.saleFolder.id,{foldersOnly:true});
+        const sameRef=saleFolders.find(item=>new RegExp(`^\\s*${reference}(?:\\s*(?:-|–|—)|\\s|$)`).test(String(item.name||"")));
+        if(sameRef){
+          jobFolderId=sameRef.id;
+          const projectFiles=(await listChildren(jobFolderId)).filter(item=>/\.(binacourt|json)$/i.test(item.name||""));
+          if(projectFiles.length){
+            const overwrite=confirm(`No. Rujukan ${reference} sudah ada dalam Google Drive. Update project yang sedia ada?`);
+            if(!overwrite) throw new Error("No. Rujukan itu sudah digunakan. Gunakan Auto No. untuk nombor baru.");
+            fileId=projectFiles[0].id;
+          }
+        }else{
+          jobFolderId=(await createFolder(jobName,structure.saleFolder.id)).id;
+        }
+      }
+
+      await renameDriveFile(jobFolderId,jobName);
+      const root=loadRoot();
+      let meta={
+        rootFolderId:root?.id||"",year:structure.year,saleName:sale,referenceNo:reference,
+        yearFolderId:structure.yearFolder.id,saleFolderId:structure.saleFolder.id,jobFolderId,fileId
+      };
+      const fileName=`${reference}.binacourt`;
+
+      if(fileId){
+        await renameDriveFile(fileId,fileName);
+        await updateFileContent(fileId,cloudPayload(meta));
+      }else{
+        const created=await createProjectFile(jobFolderId,fileName,cloudPayload(meta));
+        fileId=created.id;
+        meta.fileId=fileId;
+        await updateFileContent(fileId,cloudPayload(meta));
+      }
+
+      currentCloud={...meta,fileId};
+      newCloudPending=false;
+      state._binaCloud={...JSON.parse(cloudPayload(meta))._binaCloud};
+      const now=new Date();
+      setStatus(`✓ Saved: ${structure.year} / ${sale} / ${jobName} · ${now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`,"success");
+    }catch(error){
+      console.error("Google Drive save:",error);
+      setStatus(error?.message||"Gagal simpan ke Google Drive.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  async function loadCloudProject(){
+    if(busy) return;
+    setBusy(true,"Membuka Google Drive...");
+    try{
+      const picked=await openCloudPicker();
+      if(!picked) return;
+      setStatus("Membaca project dari Google Drive...");
+      const meta=await driveRequest(`${DRIVE_BASE}/files/${encodeURIComponent(picked.id)}?fields=id,name,parents,modifiedTime,mimeType`);
+      const data=await driveRequest(`${DRIVE_BASE}/files/${encodeURIComponent(picked.id)}?alt=media`);
+      if(!data || typeof data!=="object") throw new Error("Fail project tidak sah atau kosong.");
+      const project=data.project&&typeof data.project==="object"?data.project:data;
+      if(typeof restoreProjectSnapshot!=="function") throw new Error("Project loader tidak tersedia.");
+      restoreProjectSnapshot(JSON.stringify(project));
+      if(typeof initializeHistory==="function") initializeHistory();
+      const cloud=project._binaCloud||data._binaCloud||data.cloud||{};
+      currentCloud={
+        rootFolderId:cloud.rootFolderId||loadRoot()?.id||"",
+        year:String(cloud.year||new Date().getFullYear()),
+        saleName:cloud.saleName||project.projectSalesName||"",
+        referenceNo:cloud.referenceNo||project.projectReferenceNo||"",
+        yearFolderId:cloud.yearFolderId||"",
+        saleFolderId:cloud.saleFolderId||"",
+        jobFolderId:cloud.jobFolderId||meta?.parents?.[0]||"",
+        fileId:picked.id
+      };
+      newCloudPending=false;
+      setStatus(`✓ Opened: ${picked.name}`,"success");
+    }catch(error){
+      console.error("Google Drive open:",error);
+      setStatus(error?.message||"Gagal buka project dari Google Drive.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  async function newCloudProject(){
+    if(busy) return;
+    setBusy(true,"Sediakan project cloud baru...");
+    try{
+      await ensureRootFolder();
+      await ensureAuth();
+      const beforeTitle=String(state.projectTitle||"");
+      const beforeCourts=Array.isArray(state.courts)?state.courts.length:0;
+      if(typeof resetProject!=="function") throw new Error("Reset project tidak tersedia.");
+      resetProject();
+      const resetWorked=String(state.projectTitle||"")==="" && String(state.projectSalesName||"")==="" && (!Array.isArray(state.courts)||state.courts.length===0);
+      if(!resetWorked && (beforeTitle||beforeCourts)){
+        setStatus("New Cloud Project dibatalkan.");
+        return;
+      }
+      currentCloud={};
+      newCloudPending=true;
+      state.projectReferenceNo="AUTO";
+      if(byId("projectReferenceNo")) byId("projectReferenceNo").value="AUTO";
+      if(typeof updateProjectReferencePreview==="function") updateProjectReferencePreview();
+      setStatus("Project baru: pilih Nama Sale. Sistem akan cari nombor folder seterusnya.","success");
+      byId("projectSalesName")?.focus();
+    }catch(error){
+      console.error("Google Drive new project:",error);
+      setStatus(error?.message||"Gagal sediakan project baru.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  async function handleSaleForNewProject(){
+    if(!newCloudPending || busy) return;
+    const sale=String(state.projectSalesName||byId("projectSalesName")?.value||"").trim();
+    if(!sale){state.projectReferenceNo="AUTO";return;}
+    setBusy(true,`Semak nombor terakhir untuk ${sale}...`);
+    try{
+      const next=await nextReferenceForSale(sale);
+      setReference(next.referenceNo);
+      setStatus(`✓ ${next.year} / ${sale}: No. Rujukan seterusnya ialah ${next.referenceNo}`,"success");
+    }catch(error){
+      console.error("Auto reference:",error);
+      setStatus(error?.message||"Gagal semak nombor rujukan.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  async function connectDrive(){
+    if(busy) return;
+    setBusy(true,"Connect ke Google Drive...");
+    try{
+      await ensureAuth({forceConsent:false});
+      setStatus("✓ Google Drive connected untuk sesi ini.","success");
+    }catch(error){
+      console.error("Google Drive auth:",error);
+      setStatus(error?.message||"Google Drive login gagal.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  async function selectRoot(){
+    if(busy) return;
+    setBusy(true,"Pilih folder BINA COURT PROJECTS...");
+    try{
+      const folder=await chooseRootFolder();
+      if(folder) setStatus(`✓ Folder linked: ${folder.name}`,"success");
+      else setStatus("Pemilihan folder dibatalkan.");
+    }catch(error){
+      console.error("Google Drive folder:",error);
+      setStatus(error?.message||"Gagal pilih folder.","error");
+    }finally{setBusy(false);renderDriveUi();}
+  }
+
+  function injectUi(){
+    if(byId("driveCloudMenu")) return;
+    const actions=document.querySelector("#projectBar .project-bar-actions");
+    if(!actions) return;
+    const details=document.createElement("details");
+    details.id="driveCloudMenu";
+    details.innerHTML=`
+      <summary title="Google Drive Cloud Project">☁ Drive <span style="font-size:8px">▼</span></summary>
+      <div class="drive-cloud-menu">
+        <div class="drive-cloud-head">
+          <div><strong>Google Drive Project</strong><span id="driveCloudSubtitle">Belum connected untuk sesi ini</span></div>
+          <span id="driveCloudDot" class="drive-cloud-dot" aria-hidden="true"></span>
+        </div>
+        <div id="driveCloudFolder" class="drive-cloud-folder"></div>
+        <div class="drive-cloud-grid">
+          <button id="driveCloudConnect" class="secondary" type="button">🔗 Connect</button>
+          <button id="driveCloudSelectRoot" class="secondary" type="button">📁 Select Folder</button>
+          <button id="driveCloudNew" class="secondary" type="button">＋ New Cloud Project</button>
+          <button id="driveCloudSave" type="button">☁ Save to Drive</button>
+          <button id="driveCloudOpen" class="secondary" type="button">📂 Open from Drive</button>
+        </div>
+        <div id="driveCloudStatus" class="drive-cloud-status">Folder root hanya perlu dipilih sekali pada device ini.</div>
+      </div>`;
+    const exportMenu=byId("topExportMenu");
+    if(exportMenu) actions.insertBefore(details,exportMenu);
+    else actions.appendChild(details);
+
+    byId("driveCloudConnect")?.addEventListener("click",event=>{event.preventDefault();connectDrive();});
+    byId("driveCloudSelectRoot")?.addEventListener("click",event=>{event.preventDefault();selectRoot();});
+    byId("driveCloudNew")?.addEventListener("click",event=>{event.preventDefault();newCloudProject();});
+    byId("driveCloudSave")?.addEventListener("click",event=>{event.preventDefault();saveCloudProject();});
+    byId("driveCloudOpen")?.addEventListener("click",event=>{event.preventDefault();loadCloudProject();});
+    byId("projectSalesName")?.addEventListener("change",()=>handleSaleForNewProject());
+
+    const fileInput=byId("fileInput");
+    if(fileInput){
+      const current=fileInput.getAttribute("accept")||"";
+      if(!current.includes(".binacourt")) fileInput.setAttribute("accept",[current,".binacourt",".json","application/json"].filter(Boolean).join(","));
+    }
+
+    document.addEventListener("pointerdown",event=>{
+      if(details.open && !details.contains(event.target)) details.open=false;
+    });
+    renderDriveUi();
+  }
+
+  window.BinaCourtDrive={
+    connect:connectDrive,
+    selectRoot,
+    save:saveCloudProject,
+    open:loadCloudProject,
+    newProject:newCloudProject,
+    get root(){return loadRoot();},
+    get current(){return {...currentCloud};}
+  };
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",injectUi,{once:true});
+  else injectUi();
+})();
+</script>
