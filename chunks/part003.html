@@ -100,8 +100,8 @@
         <option value="mix">Mix (m + ft)</option>
       </select>
       <div class="row" style="margin-top:8px">
-        <div><label id="siteWLabel">Panjang (m)</label><input id="siteW" type="number" step="0.1" value="40"></div>
-        <div><label id="siteHLabel">Lebar (m)</label><input id="siteH" type="number" step="0.1" value="40"></div>
+        <div><label id="siteWLabel">Panjang (m)</label><input id="siteW" type="number" step="0.001" value="40"></div>
+        <div><label id="siteHLabel">Lebar (m)</label><input id="siteH" type="number" step="0.001" value="40"></div>
       </div>
 
       <label for="siteSizeMode" style="margin-top:10px">Size Mode</label>
@@ -113,7 +113,7 @@
 
       <div id="siteLockAreaBox" style="display:none;margin-top:8px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
         <label id="siteTargetAreaLabel" for="siteTargetArea" style="margin-top:0">Keluasan sasaran (m²)</label>
-        <input id="siteTargetArea" type="number" min="25" step="0.01" value="1600">
+        <input id="siteTargetArea" type="number" min="25" step="0.001" value="1600">
         <div id="siteAreaLiveStatus" class="hint" style="margin-top:7px;font-weight:700"></div>
         <div class="hint" style="margin-top:5px">Tarik handle biru pada kanan, bawah atau bucu tapak. Panjang × lebar akan berubah tetapi keluasan sasaran kekal.</div>
       </div>
@@ -162,11 +162,11 @@
       <div id="customSizeBox" class="row" style="display:none">
         <div>
           <label id="courtWLabel">Panjang court (m)</label>
-          <input id="courtW" type="number" step="0.1">
+          <input id="courtW" type="number" step="0.001">
         </div>
         <div>
           <label id="courtHLabel">Lebar court (m)</label>
-          <input id="courtH" type="number" step="0.1">
+          <input id="courtH" type="number" step="0.001">
         </div>
       </div>
 
@@ -490,7 +490,7 @@
 
         <div class="court-gap-wrap" title="Jarak tepat antara tepi court">
           <span class="align-caption">GAP</span>
-          <input id="courtAlignGap" type="number" min="0" step="0.1" value="1.0">
+          <input id="courtAlignGap" type="number" min="0" step="0.001" value="1.0">
           <span id="courtAlignGapUnit" class="court-gap-unit">m</span>
         </div>
         <button id="courtDistributeHGap" class="secondary court-align-icon" type="button" title="Horizontal Spacing — guna nilai GAP">
@@ -627,8 +627,8 @@
             </div>
 
             <div class="row3">
-              <div><label id="selXLabel">X (m)</label><input id="selX" type="number" step="0.1"></div>
-              <div><label id="selYLabel">Y (m)</label><input id="selY" type="number" step="0.1"></div>
+              <div><label id="selXLabel">X (m)</label><input id="selX" type="number" step="0.001"></div>
+              <div><label id="selYLabel">Y (m)</label><input id="selY" type="number" step="0.001"></div>
               <div><label>Sudut</label><input id="selAngle" type="number" step="1"></div>
             </div>
 
@@ -644,8 +644,8 @@
                 </div>
               </div>
               <div class="row">
-                <div><label id="selCourtWLabel" style="margin-top:0">Panjang court (m)</label><input id="selCourtW" type="number" step="0.01"></div>
-                <div><label id="selCourtHLabel" style="margin-top:0">Lebar court (m)</label><input id="selCourtH" type="number" step="0.01"></div>
+                <div><label id="selCourtWLabel" style="margin-top:0">Panjang court (m)</label><input id="selCourtW" type="number" step="0.001"></div>
+                <div><label id="selCourtHLabel" style="margin-top:0">Lebar court (m)</label><input id="selCourtH" type="number" step="0.001"></div>
               </div>
               <div id="selCourtSizeRange" class="hint" style="margin-top:6px"></div>
               <div class="hint" style="margin-top:4px">Unit ini hanya untuk edit saiz court. Ia tidak mengubah unit paparan projek.</div>
