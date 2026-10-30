@@ -449,7 +449,8 @@ const measureToolState={
   start:null,
   end:null,
   style:"arrow",
-  labelSide:"a"
+  labelSide:"a",
+  roundLabel:false
 };
 let selectedMeasurementId=null;
 let measurementListCollapsed=false;
@@ -470,6 +471,7 @@ function normalizeMeasurement(m,index=0){
     start,end,
     style:raw.style==="bracket" ? "bracket" : "arrow",
     labelSide:raw.labelSide==="b" ? "b" : "a",
+    roundLabel:raw.roundLabel===true,
     hidden:!!raw.hidden,
     locked:!!raw.locked
   };
@@ -569,6 +571,7 @@ function updateMeasureFormatToolbar(){
   const sideSelect=$("measureLabelSide");
   const sideWrap=$("measureLabelPositionWrap");
   const reflectBtn=$("measureReflectLabel");
+  const roundSelect=$("measureRoundLabel");
   if(!bar || !select) return;
   const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
   const show=!!measureToolState.active || !!item;
@@ -577,10 +580,15 @@ function updateMeasureFormatToolbar(){
 
   const style=item?.style==="bracket" ? "bracket" : (measureToolState.style==="bracket" ? "bracket" : "arrow");
   const labelSide=(item?.labelSide==="b" ? "b" : (measureToolState.labelSide==="b" ? "b" : "a"));
+  const roundLabel=item ? item.roundLabel===true : measureToolState.roundLabel===true;
   const locked=!!item?.locked;
 
   select.value=style;
   select.disabled=locked;
+  if(roundSelect){
+    roundSelect.value=roundLabel ? "round" : "exact";
+    roundSelect.disabled=locked;
+  }
 
   const isBracket=style==="bracket";
   if(sideWrap) sideWrap.style.display=isBracket ? "inline-flex" : "none";
@@ -610,6 +618,19 @@ function setMeasurementLabelSide(value,{commit=true}={}){
   const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
   if(item && !item.locked){
     item.labelSide=side;
+    render();
+    if(commit) commitHistory();
+    return;
+  }
+  updateMeasureFormatToolbar();
+}
+
+function setMeasurementRoundLabel(value,{commit=true}={}){
+  const round=value==="round";
+  measureToolState.roundLabel=round;
+  const item=selectedMeasurementId!==null ? selectedMeasurement() : null;
+  if(item && !item.locked){
+    item.roundLabel=round;
     render();
     if(commit) commitHistory();
     return;
