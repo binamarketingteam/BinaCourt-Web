@@ -482,9 +482,17 @@ function isFeetUnit(unit=state.measurementUnit){
   return unit==="ft" || unit==="ft_round"; // ft_round kept only for old saved-project compatibility
 }
 function displayLengthDecimals(){
-  return 2;
+  return 3;
 }
-function smartFeetDisplayPlaces(feet,defaultPlaces=2){
+function formatSpatialNumber(value,maxDecimals=3){
+  const n=Number(value);
+  if(!Number.isFinite(n)) return "0";
+  const places=Math.max(0,Math.min(3,parseInt(maxDecimals,10)||0));
+  const factor=10**places;
+  const rounded=Math.round((n+Number.EPSILON)*factor)/factor;
+  return String(Number(rounded.toFixed(places)));
+}
+function smartFeetDisplayPlaces(feet,defaultPlaces=3){
   if(!isFeetUnit()) return defaultPlaces;
   const oneDecimal=Math.round(feet*10)/10;
   return Math.abs(feet-oneDecimal)<0.0005 ? 1 : defaultPlaces;
@@ -513,25 +521,25 @@ function currentLengthUnit(){
 function currentAreaUnit(){
   return isFeetUnit() ? "ft²" : "m²";
 }
-function formatLengthForUnit(meters,unit="m",decimals=2,space=true){
+function formatLengthForUnit(meters,unit="m",decimals=3,space=true){
   const gap=space ? " " : "";
   const value=Number(meters)||0;
   const feet=isFeetUnit(unit);
   const display=feet ? value*FEET_PER_METER : value;
   const places=feet ? smartFeetDisplayPlaces(display,decimals) : decimals;
-  return `${display.toFixed(places)}${gap}${feet?"ft":"m"}`;
+  return `${formatSpatialNumber(display,places)}${gap}${feet?"ft":"m"}`;
 }
-function formatLength(meters,decimals=2,space=true){
+function formatLength(meters,decimals=3,space=true){
   const gap=space ? " " : "";
   const displayValue=displayLengthValue(meters);
   const places=isFeetUnit() ? smartFeetDisplayPlaces(displayValue,decimals) : decimals;
-  return `${displayValue.toFixed(places)}${gap}${currentLengthUnit()}`;
+  return `${formatSpatialNumber(displayValue,places)}${gap}${currentLengthUnit()}`;
 }
-function formatArea(squareMeters,decimals=2){
-  return `${displayAreaValue(squareMeters).toFixed(decimals)} ${currentAreaUnit()}`;
+function formatArea(squareMeters,decimals=3){
+  return `${formatSpatialNumber(displayAreaValue(squareMeters),decimals)} ${currentAreaUnit()}`;
 }
 function formatLengthInput(meters){
-  return displayLengthValue(meters).toFixed(displayLengthDecimals());
+  return formatSpatialNumber(displayLengthValue(meters),displayLengthDecimals());
 }
 function syncMeasurementUnitLabels(){
   const mixed=state.measurementUnit==="mix";
