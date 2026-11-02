@@ -73,6 +73,12 @@ label{display:block;font-size:13px;font-weight:750;margin:0 0 6px}.req{color:#dc
           <button type="button" class="btn add-court" id="addCourtBtn">+ Tambah Court</button>
           <div class="hint">Contoh: 1× Pickleball + 1× Badminton + 1× Futsal</div>
         </div>
+
+        <div style="margin-top:12px">
+          <label>Catatan Court</label>
+          <textarea id="courtNotes" maxlength="1200" placeholder="Contoh: Pickleball sebelah kiri, badminton tengah, futsal sebelah kanan. / Semua court dalam satu kawasan."></textarea>
+          <div class="hint">Optional. Tulis susunan court atau arahan khas berkaitan court.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -212,6 +218,7 @@ function buildSummary(data){
     "Tajuk: "+data.project_title,
     "Lokasi: "+data.project_location,
     "Jenis Court: "+data.court_type,
+    data.court_notes?"Catatan Court: "+data.court_notes:null,
     "Saiz/Keluasan: "+size,
     "",
     "🎨 Warna:",
@@ -256,6 +263,7 @@ $("requestForm").addEventListener("submit",async e=>{
     project_title:$("projectTitle").value.trim(),
     project_location:$("projectLocation").value.trim(),
     court_type:courtTypeValue,
+    court_notes:$("courtNotes").value.trim()||null,
     size_mode:sizeMode,
     length_m:length,width_m:width,area_m2:area,
     color_request:$("colorRequest").value.trim(),
