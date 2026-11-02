@@ -11,6 +11,7 @@ on:
       - '.github/workflows/deploy-pages.yml'
       - 'pickleball-live/**'
       - 'pickleball-manager/**'
+      - 'request/**'
 
 permissions:
   contents: read
@@ -53,6 +54,10 @@ jobs:
           # V2 manager isolated from the original League 2 and court designer
           mkdir -p _site/pickleball-manager
           cp pickleball-manager/index.html _site/pickleball-manager/index.html
+          # Mobile court drawing request form + admin inbox
+          mkdir -p _site/request
+          cp request/index.html _site/request/index.html
+          cp request/admin.html _site/request/admin.html
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
