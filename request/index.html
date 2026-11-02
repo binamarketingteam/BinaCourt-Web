@@ -106,7 +106,6 @@ label{display:block;font-size:13px;font-weight:750;margin:0 0 6px}.req{color:#dc
     <div class="grid">
       <div><label>Warna Diminta <span class="req">*</span></label><textarea id="colorRequest" required maxlength="1500" placeholder="Contoh: Main court biru, key merah, line putih. Kalau ada code warna, tulis sekali."></textarea><div class="hint">Boleh tulis code AP / hex / nama warna atau arahan umum.</div></div>
       <div><label>Tarikh Perlu Siap</label><input id="dueDate" type="date"></div>
-      <div><label>Link Reference</label><input id="referenceLink" type="url" maxlength="1000" placeholder="Google Drive / gambar / drawing / pin lokasi"><div class="hint">Jika ada gambar tapak atau drawing, letak link Google Drive di sini.</div></div>
       <div><label>Catatan Tambahan</label><textarea id="notes" maxlength="2000" placeholder="Contoh: Client nak 2 option warna, court existing, line lama perlu kekal…"></textarea></div>
     </div>
   </div>
@@ -226,7 +225,6 @@ function buildSummary(data){
     data.due_date?"":""
   ].filter(v=>v!==null);
   if(data.due_date) lines.push("Tarikh perlu siap: "+data.due_date);
-  if(data.reference_link) lines.push("Reference: "+data.reference_link);
   if(data.notes) lines.push("Catatan: "+data.notes);
   return lines.join("\n");
 }
@@ -268,7 +266,6 @@ $("requestForm").addEventListener("submit",async e=>{
     length_m:length,width_m:width,area_m2:area,
     color_request:$("colorRequest").value.trim(),
     due_date:$("dueDate").value||null,
-    reference_link:$("referenceLink").value.trim()||null,
     notes:$("notes").value.trim()||null
   };
   btn.disabled=true; btn.textContent="Menghantar…";
