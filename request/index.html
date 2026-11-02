@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Court Drawing Request · Bina Paint</title>
+<style>
+:root{--navy:#0f172a;--navy2:#172033;--blue:#2563eb;--yellow:#f5c542;--bg:#f3f6fb;--card:#fff;--text:#172033;--muted:#64748b;--line:#dbe3ef;--danger:#b42318;--ok:#067647}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+.header{background:linear-gradient(135deg,var(--navy),#1e293b);color:white;padding:22px 18px 26px;border-radius:0 0 24px 24px;box-shadow:0 10px 30px #0f172a22}
+.header-inner{max-width:720px;margin:auto}.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.02em}.dot{width:11px;height:11px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 4px #f5c54222}
+h1{font-size:25px;line-height:1.12;margin:18px 0 6px}.sub{margin:0;color:#cbd5e1;font-size:14px;line-height:1.5}
+.wrap{max-width:720px;margin:-8px auto 100px;padding:0 14px}.card{background:var(--card);border:1px solid #e7edf5;border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 8px 22px #0f172a0d}
+.section-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin:2px 0 14px}.grid{display:grid;grid-template-columns:1fr;gap:13px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:13px;font-weight:750;margin:0 0 6px}.req{color:#dc2626}input,select,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:13px;padding:13px 12px;font:inherit;font-size:15px;outline:none;transition:.15s}input:focus,select:focus,textarea:focus{border-color:#6b8afd;box-shadow:0 0 0 3px #2563eb14}textarea{min-height:96px;resize:vertical}.hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4}
+.segment{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;background:#eef2f7;padding:5px;border-radius:14px}.segment button{border:0;background:transparent;padding:10px 7px;border-radius:10px;font-size:12px;font-weight:800;color:#64748b}.segment button.active{background:#fff;color:#0f172a;box-shadow:0 2px 8px #0f172a14}
+.area-box{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border:1px dashed #cbd5e1;padding:11px 12px;border-radius:13px}.area-value{font-size:18px;font-weight:900}.area-label{font-size:11px;color:var(--muted)}
+.sticky{position:fixed;left:0;right:0;bottom:0;background:#ffffffef;backdrop-filter:blur(14px);border-top:1px solid #e2e8f0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:20}.sticky-inner{max-width:720px;margin:auto;display:flex;gap:9px}.btn{border:0;border-radius:14px;padding:14px 16px;font:inherit;font-weight:850;cursor:pointer}.btn-primary{flex:1;background:var(--navy);color:#fff;box-shadow:0 8px 22px #0f172a2b}.btn-primary:disabled{opacity:.55}.btn-light{background:#eef2f7;color:#334155}.error{display:none;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;padding:11px 12px;border-radius:12px;font-size:13px;margin-bottom:10px}.error.show{display:block}
+.success{display:none}.success.show{display:block}.success-hero{text-align:center;padding:10px 0 2px}.success-icon{width:58px;height:58px;border-radius:50%;margin:auto;background:#ecfdf3;color:var(--ok);display:grid;place-items:center;font-size:28px;font-weight:900}.code{font-size:22px;font-weight:950;letter-spacing:.03em;margin-top:8px}.summary{white-space:pre-wrap;background:#0f172a;color:#e5e7eb;padding:14px;border-radius:14px;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions .btn{padding:12px}.admin-link{text-align:center;margin:20px 0;font-size:12px}.admin-link a{color:#64748b;text-decoration:none}
+.hidden{display:none!important}
+@media(min-width:620px){.grid.two{grid-template-columns:1fr 1fr}.wrap{padding:0 18px}.card{padding:20px}h1{font-size:29px}}
+</style>
+</head>
+<body>
+<header class="header"><div class="header-inner">
+  <div class="brand"><span class="dot"></span>BINA PAINT · COURT REQUEST</div>
+  <h1>Request Drawing Court</h1>
+  <p class="sub">Isi sekali dengan lengkap. Designer terus dapat tajuk projek, lokasi, saiz dan warna tanpa perlu tanya semula.</p>
+</div></header>
+
+<main class="wrap">
+<form id="requestForm">
+  <div class="card">
+    <div class="section-title">01 · Maklumat Request</div>
+    <div class="grid two">
+      <div><label>Nama Sale <span class="req">*</span></label><select id="salesName" required><option value="">Loading nama sale…</option></select></div>
+      <div><label>Nama Customer / Company</label><input id="customerName" maxlength="150" placeholder="Optional"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">02 · Maklumat Projek</div>
+    <div class="grid">
+      <div><label>Tajuk Projek <span class="req">*</span></label><input id="projectTitle" required maxlength="250" placeholder="Contoh: Cadangan Skema Warna Gelanggang Sukan Futsal UKM Bangi"></div>
+      <div><label>Lokasi Projek <span class="req">*</span></label><textarea id="projectLocation" required maxlength="500" placeholder="Nama tempat / sekolah / taman / alamat ringkas"></textarea></div>
+      <div><label>Jenis Court <span class="req">*</span></label>
+        <select id="courtType" required>
+          <option value="">Pilih jenis court</option>
+          <option>Badminton</option><option>Basketball</option><option>Futsal</option><option>Pickleball</option>
+          <option>Sepak Takraw</option><option>Tennis</option><option>Netball</option><option>Volleyball</option>
+          <option>Handball</option><option>Multipurpose / Multi-court</option><option>Lain-lain</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">03 · Saiz / Keluasan</div>
+    <div class="segment" id="sizeMode">
+      <button type="button" data-mode="dimension" class="active">P × L</button>
+      <button type="button" data-mode="area">Keluasan</button>
+      <button type="button" data-mode="unknown">Tak pasti</button>
+    </div>
+    <div id="dimensionFields" style="margin-top:13px">
+      <div class="row2">
+        <div><label>Panjang (m) <span class="req">*</span></label><input id="lengthM" type="number" inputmode="decimal" min="0.001" step="0.001" placeholder="Contoh 28"></div>
+        <div><label>Lebar (m) <span class="req">*</span></label><input id="widthM" type="number" inputmode="decimal" min="0.001" step="0.001" placeholder="Contoh 15"></div>
+      </div>
+      <div class="area-box" style="margin-top:10px"><div><div class="area-label">Keluasan dikira automatik</div><div class="area-value" id="calcArea">— m²</div></div><span>📐</span></div>
+    </div>
+    <div id="areaFields" class="hidden" style="margin-top:13px"><label>Keluasan (m²) <span class="req">*</span></label><input id="areaM2" type="number" inputmode="decimal" min="0.001" step="0.001" placeholder="Contoh 420"></div>
+    <div id="unknownFields" class="hidden" style="margin-top:13px"><div class="area-box"><div><strong>Saiz belum diketahui</strong><div class="area-label">Designer akan rujuk drawing / maklumat tambahan.</div></div><span>❓</span></div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">04 · Warna & Arahan</div>
+    <div class="grid">
+      <div><label>Warna Diminta <span class="req">*</span></label><textarea id="colorRequest" required maxlength="1500" placeholder="Contoh: Main court biru, key merah, line putih. Kalau ada code warna, tulis sekali."></textarea><div class="hint">Boleh tulis code AP / hex / nama warna atau arahan umum.</div></div>
+      <div><label>Tarikh Perlu Siap</label><input id="dueDate" type="date"></div>
+      <div><label>Link Reference</label><input id="referenceLink" type="url" maxlength="1000" placeholder="Google Drive / gambar / drawing / pin lokasi"><div class="hint">Jika ada gambar tapak atau drawing, letak link Google Drive di sini.</div></div>
+      <div><label>Catatan Tambahan</label><textarea id="notes" maxlength="2000" placeholder="Contoh: Client nak 2 option warna, court existing, line lama perlu kekal…"></textarea></div>
+    </div>
+  </div>
+
+  <div id="formError" class="error"></div>
+</form>
+
+<section class="success card" id="successCard">
+  <div class="success-hero"><div class="success-icon">✓</div><div style="font-weight:900;margin-top:10px">Request berjaya dihantar</div><div class="code" id="requestCode"></div><p class="hint">Simpan code ini untuk rujukan.</p></div>
+  <pre class="summary" id="summaryText"></pre>
+  <div class="actions">
+    <button class="btn btn-light" id="copyBtn" type="button">Copy</button>
+    <button class="btn btn-light" id="shareBtn" type="button">Share</button>
+    <button class="btn btn-light" id="waBtn" type="button">WhatsApp</button>
+    <button class="btn btn-light" id="newBtn" type="button">Request Baru</button>
+  </div>
+</section>
+
+<div class="admin-link"><a href="./admin.html">Admin Inbox</a></div>
+</main>
+
+<div class="sticky" id="stickyBar"><div class="sticky-inner">
+  <button class="btn btn-primary" id="submitBtn" form="requestForm" type="submit">Hantar Request</button>
+</div></div>
+
+<script>
+const SUPABASE_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
+const SUPABASE_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
+const $=id=>document.getElementById(id);
+let sizeMode="dimension";
+let lastSummary="";
+
+function fmt(n){
+  const v=Number(n);
+  if(!Number.isFinite(v)) return "";
+  return String(Number(v.toFixed(3)));
+}
+function makeCode(){
+  const d=new Date();
+  const p=[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("");
+  const rand=Math.random().toString(36).slice(2,6).toUpperCase();
+  return "CR-"+p+"-"+rand;
+}
+async function loadSales(){
+  try{
+    const r=await fetch(SUPABASE_URL+"/rest/v1/sales_names?select=name&order=name.asc",{headers:{apikey:SUPABASE_KEY}});
+    if(!r.ok) throw new Error();
+    const rows=await r.json();
+    $("salesName").innerHTML='<option value="">Pilih nama sale</option>'+rows.map(x=>'<option>'+String(x.name||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))+'</option>').join("");
+  }catch(_){
+    $("salesName").innerHTML='<option value="">Pilih nama sale</option><option value="Lain-lain">Lain-lain</option>';
+  }
+}
+function setMode(mode){
+  sizeMode=mode;
+  document.querySelectorAll("#sizeMode button").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+  $("dimensionFields").classList.toggle("hidden",mode!=="dimension");
+  $("areaFields").classList.toggle("hidden",mode!=="area");
+  $("unknownFields").classList.toggle("hidden",mode!=="unknown");
+  $("lengthM").required=mode==="dimension"; $("widthM").required=mode==="dimension"; $("areaM2").required=mode==="area";
+}
+function updateArea(){
+  const l=Number($("lengthM").value),w=Number($("widthM").value);
+  $("calcArea").textContent=l>0&&w>0?fmt(l*w)+" m²":"— m²";
+}
+function buildSummary(data){
+  let size="Belum diketahui";
+  if(data.size_mode==="dimension") size=fmt(data.length_m)+" m × "+fmt(data.width_m)+" m ("+fmt(data.area_m2)+" m²)";
+  if(data.size_mode==="area") size=fmt(data.area_m2)+" m²";
+  const lines=[
+    "🏟️ COURT DRAWING REQUEST",
+    "Ref: "+data.request_code,
+    "",
+    "Sale: "+data.sales_name,
+    data.customer_name?"Customer/Company: "+data.customer_name:null,
+    "Tajuk: "+data.project_title,
+    "Lokasi: "+data.project_location,
+    "Jenis Court: "+data.court_type,
+    "Saiz/Keluasan: "+size,
+    "",
+    "🎨 Warna:",
+    data.color_request,
+    data.due_date?"":""
+  ].filter(v=>v!==null);
+  if(data.due_date) lines.push("Tarikh perlu siap: "+data.due_date);
+  if(data.reference_link) lines.push("Reference: "+data.reference_link);
+  if(data.notes) lines.push("Catatan: "+data.notes);
+  return lines.join("\n");
+}
+document.querySelectorAll("#sizeMode button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+$("lengthM").addEventListener("input",updateArea); $("widthM").addEventListener("input",updateArea);
+
+$("requestForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const btn=$("submitBtn"),err=$("formError");
+  err.classList.remove("show"); err.textContent="";
+  if(!$("requestForm").reportValidity()) return;
+  let length=null,width=null,area=null;
+  if(sizeMode==="dimension"){
+    length=Number($("lengthM").value); width=Number($("widthM").value);
+    if(!(length>0&&width>0)){err.textContent="Sila isi panjang dan lebar yang betul.";err.classList.add("show");return;}
+    area=Number((length*width).toFixed(3));
+  }else if(sizeMode==="area"){
+    area=Number($("areaM2").value);
+    if(!(area>0)){err.textContent="Sila isi keluasan yang betul.";err.classList.add("show");return;}
+  }
+  const payload={
+    request_code:makeCode(),
+    sales_name:$("salesName").value.trim(),
+    customer_name:$("customerName").value.trim()||null,
+    project_title:$("projectTitle").value.trim(),
+    project_location:$("projectLocation").value.trim(),
+    court_type:$("courtType").value,
+    size_mode:sizeMode,
+    length_m:length,width_m:width,area_m2:area,
+    color_request:$("colorRequest").value.trim(),
+    due_date:$("dueDate").value||null,
+    reference_link:$("referenceLink").value.trim()||null,
+    notes:$("notes").value.trim()||null
+  };
+  btn.disabled=true; btn.textContent="Menghantar…";
+  try{
+    const r=await fetch(SUPABASE_URL+"/rest/v1/court_drawing_requests",{
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok){
+      const body=await r.json().catch(()=>({}));
+      throw new Error(body.message||"Gagal hantar request.");
+    }
+    lastSummary=buildSummary(payload);
+    $("requestCode").textContent=payload.request_code;
+    $("summaryText").textContent=lastSummary;
+    $("requestForm").classList.add("hidden");
+    $("successCard").classList.add("show");
+    $("stickyBar").classList.add("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }catch(ex){
+    err.textContent=ex.message||"Gagal hantar request. Cuba lagi.";
+    err.classList.add("show");
+    err.scrollIntoView({behavior:"smooth",block:"center"});
+  }finally{
+    btn.disabled=false;btn.textContent="Hantar Request";
+  }
+});
+$("copyBtn").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(lastSummary);$("copyBtn").textContent="Copied ✓";setTimeout(()=>$("copyBtn").textContent="Copy",1300)}catch(_){}});
+$("shareBtn").addEventListener("click",async()=>{if(navigator.share){try{await navigator.share({title:"Court Drawing Request",text:lastSummary})}catch(_){}}else $("copyBtn").click()});
+$("waBtn").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(lastSummary),"_blank"));
+$("newBtn").addEventListener("click",()=>location.reload());
+loadSales();
+</script>
+</body>
+</html>
