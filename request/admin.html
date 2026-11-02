@@ -54,6 +54,7 @@ function render(){
       <div class="detail">
         ${r.customer_name?'<div><div class="label">Customer / Company</div><div class="value">'+esc(r.customer_name)+'</div></div>':''}
         <div><div class="label">Saiz / Keluasan</div><div class="value">${esc(sizeText(r))}</div></div>
+        ${r.court_notes?'<div><div class="label">Catatan Court</div><div class="value">'+esc(r.court_notes)+'</div></div>':''}
         <div><div class="label">Warna</div><div class="value">${esc(r.color_request)}</div></div>
         ${r.due_date?'<div><div class="label">Perlu siap</div><div class="value">'+esc(r.due_date)+'</div></div>':''}
         ${r.reference_link?'<div><div class="label">Reference</div><div class="value"><a target="_blank" rel="noopener" href="'+esc(r.reference_link)+'">Buka link</a></div></div>':''}
