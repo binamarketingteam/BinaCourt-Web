@@ -15,6 +15,14 @@ h1{font-size:25px;line-height:1.12;margin:18px 0 6px}.sub{margin:0;color:#cbd5e1
 .section-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin:2px 0 14px}.grid{display:grid;grid-template-columns:1fr;gap:13px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label{display:block;font-size:13px;font-weight:750;margin:0 0 6px}.req{color:#dc2626}input,select,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:13px;padding:13px 12px;font:inherit;font-size:15px;outline:none;transition:.15s}input:focus,select:focus,textarea:focus{border-color:#6b8afd;box-shadow:0 0 0 3px #2563eb14}textarea{min-height:96px;resize:vertical}.hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4}
 .segment{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;background:#eef2f7;padding:5px;border-radius:14px}.segment button{border:0;background:transparent;padding:10px 7px;border-radius:10px;font-size:12px;font-weight:800;color:#64748b}.segment button.active{background:#fff;color:#0f172a;box-shadow:0 2px 8px #0f172a14}
+.court-mode{display:grid;grid-template-columns:1fr 1fr;gap:7px;background:#eef2f7;padding:5px;border-radius:14px;margin-bottom:12px}
+.court-mode button{border:0;background:transparent;padding:10px 7px;border-radius:10px;font-size:12px;font-weight:800;color:#64748b}
+.court-mode button.active{background:#fff;color:#0f172a;box-shadow:0 2px 8px #0f172a14}
+.multi-list{display:grid;gap:9px}
+.multi-row{display:grid;grid-template-columns:76px 1fr 42px;gap:7px;align-items:center}
+.multi-row input,.multi-row select{padding:11px 10px}
+.icon-btn{border:0;background:#fff1f2;color:#be123c;border-radius:11px;height:42px;font-size:18px;font-weight:900}
+.add-court{width:100%;margin-top:9px;background:#eef2ff;color:#3730a3;border:1px dashed #a5b4fc}
 .area-box{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border:1px dashed #cbd5e1;padding:11px 12px;border-radius:13px}.area-value{font-size:18px;font-weight:900}.area-label{font-size:11px;color:var(--muted)}
 .sticky{position:fixed;left:0;right:0;bottom:0;background:#ffffffef;backdrop-filter:blur(14px);border-top:1px solid #e2e8f0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:20}.sticky-inner{max-width:720px;margin:auto;display:flex;gap:9px}.btn{border:0;border-radius:14px;padding:14px 16px;font:inherit;font-weight:850;cursor:pointer}.btn-primary{flex:1;background:var(--navy);color:#fff;box-shadow:0 8px 22px #0f172a2b}.btn-primary:disabled{opacity:.55}.btn-light{background:#eef2f7;color:#334155}.error{display:none;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;padding:11px 12px;border-radius:12px;font-size:13px;margin-bottom:10px}.error.show{display:block}
 .success{display:none}.success.show{display:block}.success-hero{text-align:center;padding:10px 0 2px}.success-icon{width:58px;height:58px;border-radius:50%;margin:auto;background:#ecfdf3;color:var(--ok);display:grid;place-items:center;font-size:28px;font-weight:900}.code{font-size:22px;font-weight:950;letter-spacing:.03em;margin-top:8px}.summary{white-space:pre-wrap;background:#0f172a;color:#e5e7eb;padding:14px;border-radius:14px;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions .btn{padding:12px}.admin-link{text-align:center;margin:20px 0;font-size:12px}.admin-link a{color:#64748b;text-decoration:none}
@@ -44,13 +52,27 @@ label{display:block;font-size:13px;font-weight:750;margin:0 0 6px}.req{color:#dc
     <div class="grid">
       <div><label>Tajuk Projek <span class="req">*</span></label><input id="projectTitle" required maxlength="250" placeholder="Contoh: Cadangan Skema Warna Gelanggang Sukan Futsal UKM Bangi"></div>
       <div><label>Lokasi Projek <span class="req">*</span></label><textarea id="projectLocation" required maxlength="500" placeholder="Nama tempat / sekolah / taman / alamat ringkas"></textarea></div>
-      <div><label>Jenis Court <span class="req">*</span></label>
-        <select id="courtType" required>
-          <option value="">Pilih jenis court</option>
-          <option>Badminton</option><option>Basketball</option><option>Futsal</option><option>Pickleball</option>
-          <option>Sepak Takraw</option><option>Tennis</option><option>Netball</option><option>Volleyball</option>
-          <option>Handball</option><option>Multipurpose / Multi-court</option><option>Lain-lain</option>
-        </select>
+      <div>
+        <label>Jenis Court <span class="req">*</span></label>
+        <div class="court-mode" id="courtMode">
+          <button type="button" data-mode="single" class="active">Single Court</button>
+          <button type="button" data-mode="multi">Multiple / Custom</button>
+        </div>
+
+        <div id="singleCourtWrap">
+          <select id="courtType">
+            <option value="">Pilih jenis court</option>
+            <option>Badminton</option><option>Basketball</option><option>Futsal</option><option>Pickleball</option>
+            <option>Sepak Takraw</option><option>Tennis</option><option>Netball</option><option>Volleyball</option>
+            <option>Handball</option><option>Multipurpose / Multi-court</option><option>Lain-lain</option>
+          </select>
+        </div>
+
+        <div id="multiCourtWrap" class="hidden">
+          <div class="multi-list" id="multiCourtList"></div>
+          <button type="button" class="btn add-court" id="addCourtBtn">+ Tambah Court</button>
+          <div class="hint">Contoh: 1× Pickleball + 1× Badminton + 1× Futsal</div>
+        </div>
       </div>
     </div>
   </div>
@@ -109,6 +131,7 @@ const SUPABASE_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
 const SUPABASE_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
 const $=id=>document.getElementById(id);
 let sizeMode="dimension";
+let courtMode="single";
 let lastSummary="";
 
 function fmt(n){
@@ -132,6 +155,38 @@ async function loadSales(){
     $("salesName").innerHTML='<option value="">Pilih nama sale</option><option value="Lain-lain">Lain-lain</option>';
   }
 }
+const COURT_OPTIONS=["Badminton","Basketball","Futsal","Pickleball","Sepak Takraw","Tennis","Netball","Volleyball","Handball","Multipurpose / Multi-court","Lain-lain"];
+
+function courtOptionHtml(selected=""){
+  return '<option value="">Pilih jenis</option>'+COURT_OPTIONS.map(v=>'<option '+(v===selected?'selected':'')+'>'+v+'</option>').join("");
+}
+function addMultiCourtRow(qty=1,type=""){
+  const row=document.createElement("div");
+  row.className="multi-row";
+  row.innerHTML='<input class="courtQty" type="number" inputmode="numeric" min="1" max="20" step="1" value="'+Math.max(1,parseInt(qty,10)||1)+'" aria-label="Kuantiti"><select class="courtMultiType" aria-label="Jenis court">'+courtOptionHtml(type)+'</select><button type="button" class="icon-btn" aria-label="Buang court">×</button>';
+  row.querySelector(".icon-btn").addEventListener("click",()=>{
+    row.remove();
+    if(!$("multiCourtList").children.length) addMultiCourtRow();
+  });
+  $("multiCourtList").appendChild(row);
+}
+function setCourtMode(mode){
+  courtMode=mode==="multi"?"multi":"single";
+  document.querySelectorAll("#courtMode button").forEach(b=>b.classList.toggle("active",b.dataset.mode===courtMode));
+  $("singleCourtWrap").classList.toggle("hidden",courtMode!=="single");
+  $("multiCourtWrap").classList.toggle("hidden",courtMode!=="multi");
+  if(courtMode==="multi" && !$("multiCourtList").children.length) addMultiCourtRow();
+}
+function getCourtTypeValue(){
+  if(courtMode==="single") return $("courtType").value.trim();
+  const items=[...document.querySelectorAll(".multi-row")].map(row=>{
+    const qty=Math.max(1,parseInt(row.querySelector(".courtQty")?.value,10)||1);
+    const type=String(row.querySelector(".courtMultiType")?.value||"").trim();
+    return type?qty+"× "+type:"";
+  }).filter(Boolean);
+  return items.join(", ");
+}
+
 function setMode(mode){
   sizeMode=mode;
   document.querySelectorAll("#sizeMode button").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
@@ -169,6 +224,8 @@ function buildSummary(data){
   return lines.join("\n");
 }
 document.querySelectorAll("#sizeMode button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+document.querySelectorAll("#courtMode button").forEach(b=>b.addEventListener("click",()=>setCourtMode(b.dataset.mode)));
+$("addCourtBtn").addEventListener("click",()=>addMultiCourtRow());
 $("lengthM").addEventListener("input",updateArea); $("widthM").addEventListener("input",updateArea);
 
 $("requestForm").addEventListener("submit",async e=>{
@@ -185,13 +242,20 @@ $("requestForm").addEventListener("submit",async e=>{
     area=Number($("areaM2").value);
     if(!(area>0)){err.textContent="Sila isi keluasan yang betul.";err.classList.add("show");return;}
   }
+  const courtTypeValue=getCourtTypeValue();
+  if(!courtTypeValue){
+    err.textContent=courtMode==="multi"?"Sila tambah sekurang-kurangnya satu jenis court.":"Sila pilih jenis court.";
+    err.classList.add("show");
+    err.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
   const payload={
     request_code:makeCode(),
     sales_name:$("salesName").value.trim(),
     customer_name:$("customerName").value.trim()||null,
     project_title:$("projectTitle").value.trim(),
     project_location:$("projectLocation").value.trim(),
-    court_type:$("courtType").value,
+    court_type:courtTypeValue,
     size_mode:sizeMode,
     length_m:length,width_m:width,area_m2:area,
     color_request:$("colorRequest").value.trim(),
@@ -230,6 +294,7 @@ $("shareBtn").addEventListener("click",async()=>{if(navigator.share){try{await n
 $("waBtn").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(lastSummary),"_blank"));
 $("newBtn").addEventListener("click",()=>location.reload());
 loadSales();
+setCourtMode("single");
 </script>
 </body>
 </html>
