@@ -650,9 +650,50 @@
               <div id="selCourtSizeRange" class="hint" style="margin-top:6px"></div>
               <div class="hint" style="margin-top:4px">Unit ini hanya untuk edit saiz court. Ia tidak mengubah unit paparan projek.</div>
               <div id="selCourtSizeWarning" class="warning"></div>
+
+              <div id="selCustomFitBox" style="display:none;margin-top:11px;padding:11px;border:1px solid #c7d2fe;border-radius:10px;background:#eef2ff">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <div style="font-weight:800;font-size:13px">Fit Court to Available Area</div>
+                  <span style="font-size:10px;font-weight:900;letter-spacing:.04em;color:#9a3412;background:#ffedd5;padding:4px 7px;border-radius:999px">CUSTOM / NON-STANDARD</span>
+                </div>
+                <div class="hint" style="margin-top:5px">Kekalkan nisbah rasmi Takraw 13.40 × 6.10 m dan tolak walkway di sekeliling.</div>
+
+                <div class="row" style="margin-top:9px">
+                  <div>
+                    <label id="selFitAreaWLabel" style="margin-top:0">Panjang area (m)</label>
+                    <input id="selFitAreaW" type="number" step="0.001" min="0.001">
+                  </div>
+                  <div>
+                    <label id="selFitAreaHLabel" style="margin-top:0">Lebar area (m)</label>
+                    <input id="selFitAreaH" type="number" step="0.001" min="0.001">
+                  </div>
+                </div>
+
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label style="margin-top:0">Walkway keliling</label>
+                    <input id="selFitWalkway" type="number" step="0.001" min="0" value="1">
+                  </div>
+                  <div>
+                    <label style="margin-top:0">Unit walkway</label>
+                    <select id="selFitWalkwayUnit">
+                      <option value="ft">Feet (ft)</option>
+                      <option value="m">Meter (m)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button id="selFitCourtToArea" class="secondary" type="button" style="margin-top:9px;width:100%">Fit Court · Maintain Proportion</button>
+                <div id="selFitCourtResult" class="hint" style="margin-top:7px"></div>
+              </div>
             </div>
 
             <div id="selSize" class="hint" style="margin-top:8px"></div>
+
+            <div id="selTakrawCustomConvertBox" style="display:none;margin-top:9px;padding:10px;border:1px dashed #f59e0b;border-radius:10px;background:#fffbeb">
+              <button id="selEnableTakrawCustom" class="secondary" type="button" style="width:100%">✎ Custom Resize / Fit to Area</button>
+              <div class="hint" style="margin-top:6px">Standard asal kekal 13.40 × 6.10 m. Tekan ini hanya jika tapak tak muat dan perlu versi non-standard.</div>
+            </div>
 
             <div class="row" style="margin-top:10px">
               <button id="rotateCourt" class="secondary">↻ Rotate 90°</button>
