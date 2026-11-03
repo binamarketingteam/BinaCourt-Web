@@ -9,7 +9,9 @@ function brandForSiteArea(area){
 }
 
 const CUSTOM_COLOUR_CACHE_KEY="binaCourtCustomColoursCloudCacheV1";
+const HIDDEN_PALETTE_CACHE_KEY="binaCourtHiddenPaletteColoursCloudCacheV1";
 let cloudCustomColours=[];
+let cloudHiddenPaletteColours=[];
 
 function readCachedCloudCustomColours(){
   try{
@@ -23,6 +25,38 @@ function cacheCloudCustomColours(list){
   try{
     localStorage.setItem(CUSTOM_COLOUR_CACHE_KEY,JSON.stringify(normalizedCustomColours(list)));
   }catch(_){}
+}
+
+function normalizedHiddenPaletteColours(value){
+  if(!Array.isArray(value)) return [];
+  const result=[];
+  value.forEach(item=>{
+    const color=normalizeHexColor(typeof item==="string" ? item : item?.color);
+    if(color && !result.includes(color)) result.push(color);
+  });
+  return result;
+}
+
+function readCachedHiddenPaletteColours(){
+  try{
+    return normalizedHiddenPaletteColours(JSON.parse(localStorage.getItem(HIDDEN_PALETTE_CACHE_KEY)||"[]"));
+  }catch(_){
+    return [];
+  }
+}
+
+function cacheHiddenPaletteColours(list){
+  try{
+    localStorage.setItem(HIDDEN_PALETTE_CACHE_KEY,JSON.stringify(normalizedHiddenPaletteColours(list)));
+  }catch(_){}
+}
+
+function isDefaultPaletteColourHidden(color){
+  return cloudHiddenPaletteColours.includes(normalizeHexColor(color));
+}
+
+function activeDefaultPalette(){
+  return DEFAULT_PALETTE.filter(item=>!isDefaultPaletteColourHidden(item.color));
 }
 
 function mergedCustomColours(){
@@ -41,18 +75,27 @@ function refreshCustomColourUi(){
 
 async function loadCloudCustomColours(){
   const cached=readCachedCloudCustomColours();
-  if(cached.length){
-    cloudCustomColours=cached;
-    refreshCustomColourUi();
-  }
+  const cachedHidden=readCachedHiddenPaletteColours();
+
+  if(cached.length) cloudCustomColours=cached;
+  if(cachedHidden.length) cloudHiddenPaletteColours=cachedHidden;
+  if(cached.length || cachedHidden.length) refreshCustomColourUi();
 
   try{
-    const rows=await window.BinaCourtAuth?.listCustomColours?.();
+    const [rows,hiddenRows]=await Promise.all([
+      window.BinaCourtAuth?.listCustomColours?.(),
+      window.BinaCourtAuth?.listHiddenPaletteColours?.()
+    ]);
+
     if(Array.isArray(rows)){
       cloudCustomColours=normalizedCustomColours(rows);
       cacheCloudCustomColours(cloudCustomColours);
-      refreshCustomColourUi();
     }
+    if(Array.isArray(hiddenRows)){
+      cloudHiddenPaletteColours=normalizedHiddenPaletteColours(hiddenRows);
+      cacheHiddenPaletteColours(cloudHiddenPaletteColours);
+    }
+    refreshCustomColourUi();
   }catch(_){
     // Keep the last cached palette when offline or if cloud read is unavailable.
   }
@@ -81,7 +124,7 @@ function getCustomPalette(){
 
 function getDefaultPaletteForBrand(brand){
   const brandName=productBrandName(brand);
-  const standard=DEFAULT_PALETTE.map(item=>({
+  const standard=activeDefaultPalette().map(item=>({
     ...item,
     name:item.name.replace(/^Duracourt\b/i, brandName)
   }));
@@ -90,7 +133,7 @@ function getDefaultPaletteForBrand(brand){
 
 function getLinePaletteForBrand(brand){
   const brandName=lineBrandName(brand);
-  const standard=DEFAULT_PALETTE.map(item=>({
+  const standard=activeDefaultPalette().map(item=>({
     ...item,
     name:item.name.replace(/^Duracourt\b/i, brandName)
   }));
