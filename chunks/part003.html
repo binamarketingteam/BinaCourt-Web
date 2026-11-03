@@ -559,6 +559,20 @@
               <input id="selKitchen" type="color">
             </div>
 
+            <div id="selPickleballCrossWrap" style="display:none;margin-top:10px;padding:10px;border:1px solid #d9e1ea;border-radius:10px;background:#f8fafc">
+              <div class="inline" style="margin-top:0">
+                <input id="selPickleballCrossEnabled" type="checkbox">
+                <span><strong>Cross Colour / Warna Silang</strong></span>
+              </div>
+              <div id="selPickleballCrossColours" style="display:none;margin-top:8px">
+                <div class="row">
+                  <div><label style="margin-top:0">Silang A</label><input id="selPickleballCrossA" type="color"></div>
+                  <div><label style="margin-top:0">Silang B</label><input id="selPickleballCrossB" type="color"></div>
+                </div>
+                <div class="hint" style="margin-top:6px">A = kiri atas + kanan bawah · B = kanan atas + kiri bawah. Kitchen kekal guna warna kitchen sedia ada.</div>
+              </div>
+            </div>
+
             <div id="selTakrawWrap" style="display:none">
               <label>Warna bulatan & serve</label>
               <input id="selTakraw" type="color">
@@ -723,6 +737,18 @@
                 <div class="palette-heading">3. Warna kitchen tengah</div>
                 <small>Khas untuk court Pickleball</small>
                 <div id="selKitchenPalette" class="palette"></div>
+              </div>
+
+              <div id="selPickleballCrossAPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">4. Silang A</div>
+                <small>Kiri atas + kanan bawah</small>
+                <div id="selPickleballCrossAPalette" class="palette"></div>
+              </div>
+
+              <div id="selPickleballCrossBPaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">5. Silang B</div>
+                <small>Kanan atas + kiri bawah</small>
+                <div id="selPickleballCrossBPalette" class="palette"></div>
               </div>
 
               <div id="selTakrawPaletteGroup" class="palette-group" style="display:none">
