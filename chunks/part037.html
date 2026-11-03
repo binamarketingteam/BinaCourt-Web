@@ -1,0 +1,157 @@
+<style>
+.bcStdOptBtn{
+  height:34px!important;width:auto!important;min-width:0!important;padding:5px 9px!important;
+  border-radius:8px!important;border:1px solid #9fc1e8!important;background:#eef6ff!important;
+  color:#0d5cab!important;font-size:9px!important;font-weight:900!important;white-space:nowrap
+}
+.bcStdOptBtn:hover{background:#dfeeff!important;border-color:#6fa7df!important}
+.bcStdOptToast{
+  position:fixed;right:18px;bottom:18px;z-index:100200;background:#0b2b4c;color:#fff;
+  border-radius:10px;padding:10px 13px;font-size:10px;font-weight:800;box-shadow:0 10px 28px #00152d55
+}
+.bcStdOptToast[hidden]{display:none!important}
+@media(max-width:700px){.bcStdOptBtn{font-size:8px!important;padding:5px 7px!important}}
+</style>
+<script>
+(function setupBinaCourtStandardColourOptions(){
+"use strict";
+const BLUE="#1b427a";
+const GREEN="#416c3f";
+const RED="#a53531";
+const WHITE="#ffffff";
+const SCHEMES=[
+  {name:"Option 1 · Blue / Red",inner:BLUE,walkway:RED},
+  {name:"Option 2 · Green / Red",inner:GREEN,walkway:RED},
+  {name:"Option 3 · Green / Blue",inner:GREEN,walkway:BLUE}
+];
+const $=id=>document.getElementById(id);
+const clone=v=>typeof cloneData==="function"?cloneData(v):JSON.parse(JSON.stringify(v));
+
+function setAllCourtSurfaceColours(court,inner){
+  if(!court||typeof court!=="object")return court;
+  court.fill=inner;
+  court.line=WHITE;
+
+  // Keep every painted court zone inside the same 2-colour standard scheme.
+  [
+    "kitchenFill",
+    "pickleballCrossA","pickleballCrossB",
+    "zoneFill","keyFill","centerFill",
+    "takrawAccentFill",
+    "netballAccentFill","netballGoalFill","netballCenterFill","netballMiddleFill",
+    "volleyballAccentFill",
+    "futsalCenterFill","futsalDFill",
+    "handballDFill",
+    "accentFill"
+  ].forEach(key=>{
+    if(key in court || [
+      "kitchenFill","zoneFill","keyFill","centerFill",
+      "takrawAccentFill","netballAccentFill","netballGoalFill","netballCenterFill","netballMiddleFill",
+      "volleyballAccentFill","futsalCenterFill","futsalDFill","handballDFill"
+    ].includes(key)){
+      court[key]=inner;
+    }
+  });
+  return court;
+}
+
+function applySchemeToOption(base,scheme){
+  const opt=clone(base);
+  opt.siteColor=scheme.walkway;
+
+  if(Array.isArray(opt.siteAreas)){
+    opt.siteAreas=opt.siteAreas.map(area=>Object.assign({},area,{color:scheme.walkway}));
+  }
+
+  if(Array.isArray(opt.courts)){
+    opt.courts=opt.courts.map(c=>setAllCourtSurfaceColours(Object.assign({},c),scheme.inner));
+  }
+
+  return opt;
+}
+
+function currentBaseOption(){
+  if(typeof ensureOptionGroups==="function")ensureOptionGroups();
+  if(typeof saveCurrentGroupToStore==="function")saveCurrentGroupToStore();
+  if(typeof ensureOptionPages==="function")ensureOptionPages();
+  if(typeof saveCurrentOptionToStore==="function")saveCurrentOptionToStore();
+
+  const current=Math.max(1,parseInt(state.projectOption||1,10)||1);
+  const base=state.optionPages?.[current-1] || (typeof captureCurrentOptionData==="function"?captureCurrentOptionData():null);
+  if(!base)throw new Error("Artwork semasa tidak dapat dibaca.");
+  return clone(base);
+}
+
+function showToast(){
+  let t=$("bcStdOptToast");
+  if(!t){t=document.createElement("div");t.id="bcStdOptToast";t.className="bcStdOptToast";t.hidden=true;document.body.appendChild(t)}
+  t.textContent="✓ 3 standard colour options generated";
+  t.hidden=false;clearTimeout(showToast._timer);showToast._timer=setTimeout(()=>{t.hidden=true},2600);
+}
+
+function generateStandardOptions(){
+  if(typeof state==="undefined")return alert("Designer belum tersedia.");
+  if(!Array.isArray(state.courts)||!state.courts.length){
+    return alert("Belum ada court dalam artwork ini.");
+  }
+
+  if(typeof ensureOptionGroups==="function")ensureOptionGroups();
+  if(typeof ensureOptionPages==="function")ensureOptionPages();
+
+  const existing=Array.isArray(state.optionPages)?state.optionPages.length:0;
+  if(existing>1){
+    const ok=confirm(
+      "Group ini sudah mempunyai "+existing+" option.\n\n"+
+      "Generate 3 Standard Options akan menggantikan option dalam GROUP INI sahaja berdasarkan artwork option yang sedang aktif.\n\nTeruskan?"
+    );
+    if(!ok)return;
+  }
+
+  const base=currentBaseOption();
+  const pages=SCHEMES.map(s=>applySchemeToOption(base,s));
+
+  state.optionPages=clone(pages);
+  state.projectOption=1;
+
+  const groupIndex=Math.max(0,(parseInt(state.projectGroup||1,10)||1)-1);
+  if(Array.isArray(state.optionGroups)&&state.optionGroups[groupIndex]){
+    state.optionGroups[groupIndex].optionPages=clone(pages);
+    state.optionGroups[groupIndex].currentOption=1;
+  }
+
+  if(typeof applyOptionData==="function")applyOptionData(clone(pages[0]));
+  if(typeof saveCurrentGroupToStore==="function")saveCurrentGroupToStore();
+  if(typeof syncProjectInputs==="function")syncProjectInputs();
+  if(typeof updateOptionControls==="function")updateOptionControls();
+  if(typeof initPalettes==="function")initPalettes();
+  if(typeof refreshPaletteSelections==="function")refreshPaletteSelections();
+  if(typeof render==="function")render({preserveStagePosition:false});
+  if(typeof commitHistory==="function")commitHistory();
+
+  showToast();
+}
+
+function inject(){
+  const control=document.querySelector(".option-inline-control");
+  if(!control||$("bcGenerateStdOptions"))return;
+  const b=document.createElement("button");
+  b.id="bcGenerateStdOptions";
+  b.type="button";
+  b.className="bcStdOptBtn";
+  b.textContent="⚡ 3 Standard Options";
+  b.title="Generate: Blue/Red, Green/Red, Green/Blue";
+  b.onclick=generateStandardOptions;
+  control.appendChild(b);
+}
+
+async function init(){
+  for(let i=0;i<120&&(typeof state==="undefined"||!document.querySelector(".option-inline-control"));i++){
+    await new Promise(r=>setTimeout(r,50));
+  }
+  inject();
+  window.BinaCourtStandardOptions={generate:generateStandardOptions,schemes:clone(SCHEMES)};
+}
+
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+})();
+</script>
