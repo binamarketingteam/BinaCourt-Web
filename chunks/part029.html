@@ -425,6 +425,122 @@
     });
   }
 
+  async function createBinaryFile(parentId,fileName,blob,mimeType="application/octet-stream"){
+    if(!parentId) throw new Error("Folder Google Drive tidak tersedia.");
+    if(!(blob instanceof Blob)) throw new Error("Fail upload tidak sah.");
+
+    const created=await driveRequest(`${DRIVE_BASE}/files?fields=id,name,parents,mimeType,size,modifiedTime`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name:fileName,
+        mimeType:mimeType || blob.type || "application/octet-stream",
+        parents:[parentId]
+      })
+    });
+
+    await driveRequest(
+      `${DRIVE_UPLOAD}/files/${encodeURIComponent(created.id)}?uploadType=media&fields=id,name,parents,mimeType,size,modifiedTime`,
+      {
+        method:"PATCH",
+        headers:{"Content-Type":mimeType || blob.type || "application/octet-stream"},
+        body:blob
+      }
+    );
+
+    return await driveRequest(
+      `${DRIVE_BASE}/files/${encodeURIComponent(created.id)}?fields=id,name,parents,mimeType,size,modifiedTime`
+    );
+  }
+
+  async function ensureCurrentProjectFolders(){
+    if(!currentCloud.jobFolderId || !currentCloud.fileId){
+      const saved=await saveCloudProject();
+      if(!saved?.ok) throw new Error(saved?.error || "Simpan project dahulu.");
+    }
+
+    const jobFolderId=currentCloud.jobFolderId;
+    const names={
+      photos:"Site Photos",
+      proposals:"Proposal",
+      exports:"Exports",
+      versions:"Versions",
+      attachments:"Attachments",
+      previews:"Preview"
+    };
+    const folders={jobFolderId};
+
+    for(const [key,name] of Object.entries(names)){
+      folders[key]=(await getOrCreateFolder(name,jobFolderId)).id;
+    }
+    return folders;
+  }
+
+  async function readDriveFile(fileId){
+    if(!fileId) throw new Error("Drive file ID tidak tersedia.");
+    return await driveRequest(`${DRIVE_BASE}/files/${encodeURIComponent(fileId)}?alt=media`);
+  }
+
+  async function loadProjectFileById(fileId,override={}){
+    if(!fileId) throw new Error("Drive project file ID tidak tersedia.");
+    await ensureAuth();
+    const meta=await driveRequest(
+      `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}?fields=id,name,parents,modifiedTime,mimeType`
+    );
+    const data=await readDriveFile(fileId);
+    if(!data || typeof data!=="object") throw new Error("Fail project tidak sah atau kosong.");
+
+    const project=data.project&&typeof data.project==="object"?data.project:data;
+    if(typeof restoreProjectSnapshot!=="function") throw new Error("Project loader tidak tersedia.");
+    restoreProjectSnapshot(JSON.stringify(project));
+    if(typeof initializeHistory==="function") initializeHistory();
+
+    const cloud=project._binaCloud||data._binaCloud||data.cloud||{};
+    currentCloud={
+      rootFolderId:override.rootFolderId||cloud.rootFolderId||loadRoot()?.id||"",
+      year:String(override.year||cloud.year||new Date().getFullYear()),
+      saleName:override.saleName||cloud.saleName||project.projectSalesName||"",
+      referenceNo:override.referenceNo||cloud.referenceNo||project.projectReferenceNo||"",
+      yearFolderId:override.yearFolderId||cloud.yearFolderId||"",
+      saleFolderId:override.saleFolderId||cloud.saleFolderId||"",
+      jobFolderId:override.jobFolderId||cloud.jobFolderId||meta?.parents?.[0]||"",
+      fileId
+    };
+    newCloudPending=false;
+    renderDriveUi();
+    return {ok:true,project,meta,current:{...currentCloud}};
+  }
+
+  async function createVersionSnapshot(versionNo,reason="autosave"){
+    const folders=await ensureCurrentProjectFolders();
+    const number=Math.max(1,parseInt(versionNo,10)||1);
+    const reference=normalizeRef(state.projectReferenceNo||currentCloud.referenceNo||"PROJECT");
+    const safeTitle=cleanFolderName(
+      typeof window.BinaCourtProjectTitleForFile==="function"
+        ? window.BinaCourtProjectTitleForFile(state.projectTitle||"Project")
+        : (state.projectTitle||"Project")
+    );
+    const fileName=`${reference} - ${safeTitle} - v${String(number).padStart(4,"0")}.binacourt`;
+    const meta={...currentCloud,fileId:currentCloud.fileId||""};
+    const created=await createProjectFile(folders.versions,fileName,cloudPayload(meta));
+    return {...created,versionNo:number,reason,folderId:folders.versions};
+  }
+
+  async function uploadProjectAsset(kind,fileName,blob,mimeType="application/octet-stream"){
+    const folders=await ensureCurrentProjectFolders();
+    const map={
+      site_photo:"photos",
+      proposal:"proposals",
+      export:"exports",
+      attachment:"attachments",
+      thumbnail:"previews"
+    };
+    const folderKey=map[kind];
+    if(!folderKey) throw new Error("Jenis fail project tidak sah.");
+    const uploaded=await createBinaryFile(folders[folderKey],fileName,blob,mimeType);
+    return {...uploaded,assetType:kind,folderId:folders[folderKey],folders};
+  }
+
   async function saveCloudProject(){
     if(busy) return;
     setBusy(true,"Menyimpan project ke Google Drive...");
@@ -498,9 +614,11 @@
       state._binaCloud={...JSON.parse(cloudPayload(meta))._binaCloud};
       const now=new Date();
       setStatus(`✓ Saved: ${structure.year} / ${sale} / ${jobName} · ${now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`,"success");
+      return {ok:true,current:{...currentCloud},jobName,fileName};
     }catch(error){
       console.error("Google Drive save:",error);
       setStatus(error?.message||"Gagal simpan ke Google Drive.","error");
+      return {ok:false,error:error?.message||"Gagal simpan ke Google Drive."};
     }finally{setBusy(false);renderDriveUi();}
   }
 
@@ -531,9 +649,11 @@
       };
       newCloudPending=false;
       setStatus(`✓ Opened: ${picked.name}`,"success");
+      return {ok:true,current:{...currentCloud},project};
     }catch(error){
       console.error("Google Drive open:",error);
       setStatus(error?.message||"Gagal buka project dari Google Drive.","error");
+      return {ok:false,error:error?.message||"Gagal buka project dari Google Drive."};
     }finally{setBusy(false);renderDriveUi();}
   }
 
@@ -657,6 +777,29 @@
     save:saveCloudProject,
     open:loadCloudProject,
     newProject:newCloudProject,
+    loadById:loadProjectFileById,
+    readFile:readDriveFile,
+    ensureProjectFolders:ensureCurrentProjectFolders,
+    uploadAsset:uploadProjectAsset,
+    createVersion:createVersionSnapshot,
+    createBinaryFile,
+    createFolder,
+    getOrCreateFolder,
+    listChildren,
+    ensureAuth,
+    request:driveRequest,
+    setCurrent(meta={}){
+      currentCloud={...currentCloud,...meta};
+      newCloudPending=false;
+      renderDriveUi();
+      return {...currentCloud};
+    },
+    clearCurrent(){
+      currentCloud={};
+      newCloudPending=false;
+      renderDriveUi();
+    },
+    serialize(meta=currentCloud){ return cloudPayload(meta||{}); },
     get root(){return loadRoot();},
     get current(){return {...currentCloud};}
   };
