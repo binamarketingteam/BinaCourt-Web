@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "1.0.16",
+  "versionCode": 18,
+  "versionName": "1.0.17",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Custom Template Library: save current design as template, thumbnail preview, search/filter, use template as a clean new project, edit info, update artwork, duplicate, pin, archive/restore and delete. Hardcoded presets removed."
+  "notes": "One-click Standard Colour Options: generate 3 options from the active artwork — Blue/Red, Green/Red and Green/Blue. Court interior zones are unified, walkway/site colours are applied, court lines stay white, and option labels show the scheme."
 }
