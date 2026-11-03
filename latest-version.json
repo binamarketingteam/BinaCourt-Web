@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "1.0.17",
+  "versionCode": 19,
+  "versionName": "1.0.18",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "One-click Standard Colour Options: generate 3 options from the active artwork — Blue/Red, Green/Red and Green/Blue. Court interior zones are unified, walkway/site colours are applied, court lines stay white, and option labels show the scheme."
+  "notes": "Project thumbnails now generate automatically after successful manual saves and refresh immediately in the project list. Duplicate preview generation is prevented while autosave stays lightweight."
 }
