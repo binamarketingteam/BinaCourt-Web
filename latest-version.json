@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "1.0.12",
+  "versionCode": 14,
+  "versionName": "1.0.13",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "V3 Client Preview & Approval, approved-project revision lock, V5 Admin Court Standard Manager, V6 brand-specific Colour Library with favourites/recent/pairing presets, V7 Management Dashboard and reporting."
+  "notes": "Unified BinaCourt branding: dashboard, login, editor header, client preview, favicon and Android offline bundle now use the exact Android app icon artwork."
 }
