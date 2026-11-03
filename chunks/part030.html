@@ -30,7 +30,7 @@
 var SB_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
 var SB_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
 var CURRENT_KEY="binaCourtRegistryCurrentV1", SETTINGS_KEY="binaCourtDashboardSettingsV1", RECOVERY_KEY="binaCourtRecoveryV1";
-var projects=[],currentProject=null,modalProject=null,dirty=false,initialized=false,autosaveTimer=null,previewSavePromise=null,lastPreviewProjectId="",lastPreviewAt=0,suppressDriveEventPreview=false;
+var projects=[],currentProject=null,modalProject=null,dirty=false,initialized=false,autosaveTimer=null,previewSavePromise=null,lastPreviewProjectId="",lastPreviewAt=0;
 var statusLabels={draft:"Draft",internal_review:"Internal Review",sent_to_client:"Sent to Client",approved:"Approved",revised:"Revised",completed:"Completed",archived:"Archived"};
 function $(id){return document.getElementById(id)}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
@@ -109,9 +109,7 @@ async function ensureAutoPreview(row){
 }
 async function saveNow(opt){
   opt=opt||{};if(!window.BinaCourtDrive)throw new Error("Google Drive module tidak tersedia.");setSaveIndicator("Saving…","warn");
-  var out;
-  suppressDriveEventPreview=opt.preview===false;
-  try{out=await window.BinaCourtDrive.save()}finally{suppressDriveEventPreview=false}
+  var out=await window.BinaCourtDrive.save({emitEvent:false});
   if(!out||!out.ok)throw new Error(out&&out.error||"Drive save gagal");
   var row=await upsertRegistry(out.current);if(!row)throw new Error("Project registry perlukan nama project dan Nama Sale.");
   if(opt.preview!==false)row=await ensureAutoPreview(row);
@@ -295,7 +293,7 @@ function watchRole(){
 }
 async function init(){
   inject();injectDesignerButton();bind();installDirty();restartAutosave();watchRole();var s=settings();$("bcCoverage").value=s.coverage||"";$("bcCoats").value=s.coats||2;$("bcAllowance").value=s.allowance||10;await restoreRegistry();try{await listProjects()}catch(e){console.warn(e)}renderStats();renderRecoveryBanner();
-  window.addEventListener("binacourt:drive-saved",async function(e){try{var row=await upsertRegistry(e.detail&&e.detail.current||currentDrive());if(row){if(!suppressDriveEventPreview)row=await ensureAutoPreview(row);await addActivity(row.id,"saved",{source:"drive_menu",thumbnail:!suppressDriveEventPreview})}dirty=false;setSaveIndicator("Saved","ok");renderProjects();renderStats()}catch(err){console.warn(err)}});
+  window.addEventListener("binacourt:drive-saved",async function(e){try{var row=await upsertRegistry(e.detail&&e.detail.current||currentDrive());if(row){row=await ensureAutoPreview(row);await addActivity(row.id,"saved",{source:"external_drive_save",thumbnail:true})}dirty=false;setSaveIndicator("Saved","ok");renderProjects();renderStats()}catch(err){console.warn(err)}});
   window.addEventListener("binacourt:drive-opened",async function(e){try{var m=e.detail&&e.detail.current||{};var row=projects.find(function(p){return p.drive_project_file_id===m.fileId});if(row){currentProject=row;localStorage.setItem(CURRENT_KEY,row.id);await patchProject(row.id,{last_opened_at:now()})}dirty=false}catch(err){console.warn(err)}});
   window.BinaCourtDashboard={show:showDashboard,hide:hideDashboard,refresh:refreshProjects,scanDrive:scanDriveProjects,save:saveNow,openProject:openProject,createVersion:createVersion,savePdfToDrive:savePdfToDrive,clearProjectContext:function(){currentProject=null;modalProject=null;dirty=true;try{localStorage.removeItem(CURRENT_KEY)}catch(_){}try{window.BinaCourtDrive?.clearCurrent?.()}catch(_){}setSaveIndicator("Template · unsaved","warn")},get currentProject(){return currentProject},get dirty(){return dirty}}
 }
