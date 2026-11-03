@@ -226,7 +226,7 @@ function updateOptionControls(){
   state.optionPages.forEach((_,index)=>{
     const option=document.createElement("option");
     option.value=String(index+1);
-    option.textContent=`Option ${index+1}`;
+    option.textContent=window.BinaCourtStandardOptions?.labelForOptionData?.(state.optionPages[index],index+1) || `Option ${index+1}`;
     select.appendChild(option);
   });
 
