@@ -178,7 +178,9 @@ function applyGridEnhancements(){
       ref:(a,b)=>String(a.reference_no||"").localeCompare(String(b.reference_no||""),undefined,{numeric:true}),
       courts:(a,b)=>Number(b.court_count||0)-Number(a.court_count||0)
     }[sort]||(()=>0);
-    cards.sort((a,b)=>cmp(cardRow(a)||{},cardRow(b)||{})).forEach(c=>grid.appendChild(c));
+    const sorted=cards.slice().sort((a,b)=>cmp(cardRow(a)||{},cardRow(b)||{}));
+    const sameOrder=sorted.every((c,i)=>cards[i]===c);
+    if(!sameOrder)sorted.forEach(c=>grid.appendChild(c));
     const sum=$("bcV2FilterSummary");if(sum)sum.textContent="Paparan "+visible.length+" project · "+projects.filter(p=>!p.archived).length+" aktif · "+projects.filter(p=>p.archived).length+" archived";
   }finally{enhancing=false}
 }
@@ -244,6 +246,8 @@ async function duplicateProject(row){
 }
 async function archiveProject(row,restore=false){
   if(!row)return;
+  const wasActive=currentId()===row.id;
+  if(wasActive&&window.BinaCourtDashboard?.dirty)throw new Error("Project ini ada perubahan belum disimpan. Save dahulu sebelum archive.");
   const headers=await adminHeaders();
   const meta=Object.assign({},row.metadata||{});
   let status="archived",archived=true;
@@ -252,9 +256,12 @@ async function archiveProject(row,restore=false){
   const out=await sb("binacourt_projects?id=eq."+encodeURIComponent(row.id),{method:"PATCH",headers:Object.assign({Prefer:"return=representation"},headers),body:JSON.stringify({status,archived,metadata:meta,updated_at:now()})});
   await sb("binacourt_project_activity",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:row.id,action:restore?"restored_from_archive":"archived",detail:{}})});
   await refreshAll();hideModalIfOpen();
+  if(wasActive){try{localStorage.removeItem(CURRENT_KEY)}catch(_){};try{window.BinaCourtDrive?.clearCurrent()}catch(_){};location.reload()}
 }
 async function deleteProject(row){
   if(!row)return;
+  const wasActive=currentId()===row.id;
+  if(wasActive&&window.BinaCourtDashboard?.dirty)throw new Error("Project ini ada perubahan belum disimpan. Save dahulu sebelum delete.");
   if(!confirm('Delete project "'+row.title+'"? Project akan dipindahkan ke Google Drive Trash.'))return;
   if(!confirm("Pengesahan terakhir: tindakan ini akan buang registry, versions dan asset references. Teruskan?"))return;
   const headers=await adminHeaders(),d=window.BinaCourtDrive;
@@ -266,7 +273,7 @@ async function deleteProject(row){
     }
     await sb("binacourt_projects?id=eq."+encodeURIComponent(row.id),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)});
     if(window.BinaCourtDashboard?.currentProject?.id===row.id){try{localStorage.removeItem(CURRENT_KEY)}catch(_){};try{d?.clearCurrent()}catch(_){}}
-    await refreshAll();hideModalIfOpen();alert("Project dipindahkan ke Trash dan registry telah dibuang.");
+    await refreshAll();hideModalIfOpen();alert("Project dipindahkan ke Trash dan registry telah dibuang.");if(wasActive)location.reload();
   }catch(error){
     if(trashed&&row.drive_job_folder_id){try{await d.request(driveUrl(row.drive_job_folder_id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:false})})}catch(_){}}
     throw error;
@@ -302,7 +309,7 @@ function updateModal(){
   const arc=$("bcV2ArchiveModal"),del=$("bcV2DeleteModal"),thumb=$("bcV2ThumbModal");
   if(arc){arc.hidden=!adm;arc.textContent=r.archived?"Restore from Archive":"Archive Project"}
   if(del)del.hidden=!adm;if(thumb)thumb.hidden=!active;
-  const archOpt=$("bcModalStatus")?.querySelector('option[value="archived"]');if(archOpt)archOpt.disabled=true;
+  const statusSel=$("bcModalStatus"),archOpt=statusSel?.querySelector('option[value="archived"]');if(archOpt)archOpt.disabled=true;if(statusSel)statusSel.disabled=!!r.archived;
 }
 function hideModalIfOpen(){const m=$("bcProjectModal");if(m&&!m.hidden)$("bcModalClose")?.click()}
 
