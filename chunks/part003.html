@@ -135,7 +135,7 @@
       <div id="sitePalette" class="palette"></div>
       <div class="custom-colour-box">
         <strong>Tambah warna custom</strong>
-        <div class="custom-colour-grid">
+        <div class="custom-colour-grid admin-only-colour-controls">
           <div>
             <label for="customColourHex" style="margin-top:0">HEX</label>
             <input id="customColourHex" type="text" placeholder="#123456" maxlength="7" autocomplete="off">
@@ -145,10 +145,10 @@
             <input id="customColourName" type="text" placeholder="Contoh: Corporate Blue" autocomplete="off">
           </div>
         </div>
-        <div class="custom-colour-actions">
+        <div class="custom-colour-actions admin-only-colour-controls">
           <button id="addCustomColour" type="button" class="secondary">+ Tambah ke palette</button>
         </div>
-        <div class="hint" style="margin-top:6px">Warna custom akan muncul dalam semua colour palette dan nama ini akan digunakan dalam export.</div>
+        <div class="hint admin-only-colour-controls" style="margin-top:6px">Warna custom Admin disimpan ke cloud, kekal selepas refresh dan akan muncul dalam semua colour palette serta export.</div>
         <div id="customColourList" class="custom-colour-list"></div>
       </div>
 
@@ -1050,6 +1050,54 @@
       );
       if(!listResponse.ok) throw new Error("cloud_read_failed");
       return {ok:true,sales:await listResponse.json()};
+    },
+    async listCustomColours(){
+      const response=await fetch(
+        SUPABASE_URL+"/rest/v1/custom_colours?select=id,name,color,created_at,updated_at&order=name.asc",
+        {headers:{"apikey":SUPABASE_PUBLISHABLE_KEY}}
+      );
+      if(!response.ok) throw new Error("cloud_read_failed");
+      return await response.json();
+    },
+    async manageCustomColours(action,args={}){
+      if(this.role!=="admin") throw new Error("admin_only");
+      if(!adminWritePassword) throw new Error("admin_relogin_required");
+
+      const color=String(args.color||"").trim().toLowerCase();
+      const name=String(args.name||"").trim();
+      const headers={
+        "apikey":SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type":"application/json",
+        "x-admin-password":adminWritePassword,
+        "Prefer":"return=representation"
+      };
+
+      let url=SUPABASE_URL+"/rest/v1/custom_colours";
+      let method="POST";
+      let payload=null;
+
+      if(action==="upsert"){
+        url+="?on_conflict=color";
+        headers.Prefer="resolution=merge-duplicates,return=representation";
+        payload={name,color,updated_at:new Date().toISOString()};
+      }else if(action==="delete"){
+        method="DELETE";
+        url+="?color=eq."+encodeURIComponent(color);
+      }else{
+        throw new Error("invalid_action");
+      }
+
+      const options={method,headers};
+      if(payload!==null) options.body=JSON.stringify(payload);
+      const response=await fetch(url,options);
+      const body=await response.json().catch(()=>null);
+      if(!response.ok){
+        const message=String(body?.message || body?.details || body?.error || "cloud_write_failed");
+        throw new Error(message);
+      }
+
+      const colours=await this.listCustomColours();
+      return {ok:true,colours};
     }
   };
 
