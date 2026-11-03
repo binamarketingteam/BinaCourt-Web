@@ -54,13 +54,13 @@ function addAsset(id,a){return sb("binacourt_project_assets?on_conflict=project_
 function currentDrive(){return window.BinaCourtDrive&&window.BinaCourtDrive.current||{}}
 function projectPayload(meta){
   meta=meta||currentDrive(); var s=window.state||{};
-  return {project_year:Number(meta.year||new Date().getFullYear()),reference_no:String(s.projectReferenceNo||meta.referenceNo||""),title:String(s.projectTitle||"").trim(),sales_name:String(s.projectSalesName||meta.saleName||"").trim(),status:(currentProject&&currentProject.status)||"draft",brand_system:String(s.brand||"duracourt"),court_count:Array.isArray(s.courts)?s.courts.length:0,drive_root_folder_id:String(meta.rootFolderId||""),drive_year_folder_id:String(meta.yearFolderId||""),drive_sales_folder_id:String(meta.saleFolderId||""),drive_job_folder_id:String(meta.jobFolderId||""),drive_project_file_id:String(meta.fileId||""),last_saved_at:now(),metadata:{site_w:Number(s.siteW||0),site_h:Number(s.siteH||0),measurement_unit:s.measurementUnit||"m"}}
+  return {project_year:Number(meta.year||new Date().getFullYear()),reference_no:String(s.projectReferenceNo||meta.referenceNo||""),title:String(s.projectTitle||"").trim(),sales_name:String(s.projectSalesName||meta.saleName||"").trim(),status:(currentProject&&currentProject.status)||"draft",brand_system:String(s.brand||"duracourt"),court_count:Array.isArray(s.courts)?s.courts.length:0,drive_root_folder_id:String(meta.rootFolderId||""),drive_year_folder_id:String(meta.yearFolderId||""),drive_sales_folder_id:String(meta.saleFolderId||""),drive_job_folder_id:String(meta.jobFolderId||""),drive_project_file_id:String(meta.fileId||""),last_saved_at:now(),metadata:Object.assign({},currentProject&&currentProject.metadata||{},{site_w:Number(s.siteW||0),site_h:Number(s.siteH||0),measurement_unit:s.measurementUnit||"m"})}
 }
 async function upsertRegistry(meta){
   var p=projectPayload(meta); if(!p.title||!p.sales_name||!p.drive_project_file_id)return null;
   if(currentProject&&currentProject.id){currentProject=await patchProject(currentProject.id,p)}
   else{
-    var q="binacourt_projects?on_conflict=project_year,sales_name,reference_no";
+    var q="binacourt_projects?on_conflict=drive_project_file_id";
     try{var r=await sb(q,{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify(p)});currentProject=r&&r[0]||null}
     catch(_){var found=projects.find(function(x){return x.project_year===p.project_year&&String(x.sales_name).toLowerCase()===p.sales_name.toLowerCase()&&x.reference_no===p.reference_no});if(found)currentProject=await patchProject(found.id,p);else{var r2=await sb("binacourt_projects",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(p)});currentProject=r2&&r2[0]||null}}
   }
@@ -75,8 +75,8 @@ function installDirty(){
   if(window.commitHistory&&!window.commitHistory.__bcWrapped){var original=window.commitHistory;var wrapped=function(){var x=original.apply(this,arguments);markDirty();return x};wrapped.__bcWrapped=true;window.commitHistory=wrapped}
 }
 async function previewBlob(){
-  if(typeof window.svgToCanvas!=="function")return null;var c=await window.svgToCanvas(720);if(!c)return null;
-  return await new Promise(function(res){c.toBlob(function(b){res(b)},"image/jpeg",.72)})
+  if(typeof window.svgToCanvas!=="function")return null;var c=await window.svgToCanvas(360);if(!c)return null;
+  return await new Promise(function(res){c.toBlob(function(b){res(b)},"image/jpeg",.55)})
 }
 async function savePreview(row){
   try{
