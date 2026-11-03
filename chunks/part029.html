@@ -453,6 +453,22 @@
     );
   }
 
+  async function updateBinaryFile(fileId,blob,mimeType="application/octet-stream"){
+    if(!fileId) throw new Error("Drive file ID tidak tersedia.");
+    if(!(blob instanceof Blob)) throw new Error("Fail upload tidak sah.");
+    await driveRequest(
+      `${DRIVE_UPLOAD}/files/${encodeURIComponent(fileId)}?uploadType=media`,
+      {
+        method:"PATCH",
+        headers:{"Content-Type":mimeType || blob.type || "application/octet-stream"},
+        body:blob
+      }
+    );
+    return await driveRequest(
+      `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}?fields=id,name,parents,mimeType,size,modifiedTime`
+    );
+  }
+
   async function ensureCurrentProjectFolders(){
     if(!currentCloud.jobFolderId || !currentCloud.fileId){
       const saved=await saveCloudProject();
@@ -785,6 +801,7 @@
     uploadAsset:uploadProjectAsset,
     createVersion:createVersionSnapshot,
     createBinaryFile,
+    updateBinaryFile,
     createFolder,
     getOrCreateFolder,
     listChildren,
