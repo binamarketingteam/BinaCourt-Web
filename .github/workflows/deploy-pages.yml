@@ -45,7 +45,7 @@ jobs:
             esac
           done < <(find chunks -maxdepth 1 -type f \( -name 'part*.html' -o -name 'part*.b64' \) | sort -V)
           test -s "$OUT"
-          grep -q "Bina Court Designer" "$OUT"
+          grep -q "BinaCourt" "$OUT"
 
           cp latest-version.json _site/latest-version.json
           # Independent tournament scoreboard; does not alter the Court Designer build.
