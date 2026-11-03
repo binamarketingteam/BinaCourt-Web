@@ -1069,6 +1069,53 @@
       if(!response.ok) throw new Error("cloud_read_failed");
       return await response.json();
     },
+    async listHiddenPaletteColours(){
+      const response=await fetch(
+        SUPABASE_URL+"/rest/v1/hidden_palette_colours?select=color,hidden_at&order=hidden_at.asc",
+        {headers:{"apikey":SUPABASE_PUBLISHABLE_KEY}}
+      );
+      if(!response.ok) throw new Error("cloud_read_failed");
+      return await response.json();
+    },
+    async manageHiddenPaletteColours(action,args={}){
+      if(this.role!=="admin") throw new Error("admin_only");
+      await ensureAdminWritePassword();
+
+      const color=String(args.color||"").trim().toLowerCase();
+      const headers={
+        "apikey":SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type":"application/json",
+        "x-admin-password":adminWritePassword,
+        "Prefer":"return=representation"
+      };
+
+      let url=SUPABASE_URL+"/rest/v1/hidden_palette_colours";
+      let method="POST";
+      let payload=null;
+
+      if(action==="hide"){
+        url+="?on_conflict=color";
+        headers.Prefer="resolution=merge-duplicates,return=representation";
+        payload={color};
+      }else if(action==="restore"){
+        method="DELETE";
+        url+="?color=eq."+encodeURIComponent(color);
+      }else{
+        throw new Error("invalid_action");
+      }
+
+      const options={method,headers};
+      if(payload!==null) options.body=JSON.stringify(payload);
+      const response=await fetch(url,options);
+      const body=await response.json().catch(()=>null);
+      if(!response.ok){
+        const message=String(body?.message || body?.details || body?.error || "cloud_write_failed");
+        throw new Error(message);
+      }
+
+      const hidden=await this.listHiddenPaletteColours();
+      return {ok:true,hidden};
+    },
     async manageCustomColours(action,args={}){
       if(this.role!=="admin") throw new Error("admin_only");
       await ensureAdminWritePassword();
