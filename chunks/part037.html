@@ -131,6 +131,14 @@ function generateStandardOptions(){
   showToast();
 }
 
+function labelForOptionData(opt,index){
+  const walkway=String(opt?.siteColor||"").toLowerCase();
+  const court=(opt?.courts||[]).find(c=>!c?.lineOnly) || (opt?.courts||[])[0] || null;
+  const inner=String(court?.fill||"").toLowerCase();
+  const match=SCHEMES.find(s=>s.inner===inner&&s.walkway===walkway);
+  return match ? match.name : ("Option "+index);
+}
+
 function inject(){
   const control=document.querySelector(".option-inline-control");
   if(!control||$("bcGenerateStdOptions"))return;
@@ -149,7 +157,7 @@ async function init(){
     await new Promise(r=>setTimeout(r,50));
   }
   inject();
-  window.BinaCourtStandardOptions={generate:generateStandardOptions,schemes:clone(SCHEMES)};
+  window.BinaCourtStandardOptions={generate:generateStandardOptions,schemes:clone(SCHEMES),labelForOptionData};
 }
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
