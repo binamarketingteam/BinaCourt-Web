@@ -614,6 +614,7 @@
       state._binaCloud={...JSON.parse(cloudPayload(meta))._binaCloud};
       const now=new Date();
       setStatus(`✓ Saved: ${structure.year} / ${sale} / ${jobName} · ${now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`,"success");
+      try{window.dispatchEvent(new CustomEvent("binacourt:drive-saved",{detail:{current:{...currentCloud},jobName,fileName}}));}catch(_){}
       return {ok:true,current:{...currentCloud},jobName,fileName};
     }catch(error){
       console.error("Google Drive save:",error);
@@ -649,6 +650,7 @@
       };
       newCloudPending=false;
       setStatus(`✓ Opened: ${picked.name}`,"success");
+      try{window.dispatchEvent(new CustomEvent("binacourt:drive-opened",{detail:{current:{...currentCloud},project,fileName:picked.name}}));}catch(_){}
       return {ok:true,current:{...currentCloud},project};
     }catch(error){
       console.error("Google Drive open:",error);
@@ -801,6 +803,7 @@
     },
     serialize(meta=currentCloud){ return cloudPayload(meta||{}); },
     get root(){return loadRoot();},
+    get connected(){return isTokenValid();},
     get current(){return {...currentCloud};}
   };
 
