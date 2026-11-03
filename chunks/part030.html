@@ -127,6 +127,56 @@ function renderProjects(){
   grid.querySelectorAll("[data-detail]").forEach(function(b){b.onclick=function(){showProjectModal(projects.find(function(p){return p.id===b.dataset.detail}))}})
 }
 async function refreshProjects(){try{await listProjects();renderStats();renderProjects()}catch(e){console.warn(e);var g=$("bcProjectGrid");if(g)g.innerHTML='<div class="bcEmpty">Registry cloud tidak dapat dibaca. Cuba Refresh.</div>'}}
+async function scanDriveProjects(){
+  var d=window.BinaCourtDrive,btn=$("bcProjectScan");
+  if(!d)throw new Error("Google Drive module tidak tersedia.");
+  if(btn){btn.disabled=true;btn.textContent="Scanning…"}
+  try{
+    if(!d.connected)await d.connect();
+    var root=d.root;
+    if(!root){await d.selectRoot();root=d.root}
+    if(!root||!root.id)throw new Error("Pilih folder BINA COURT PROJECTS dahulu.");
+    var years=(await d.listChildren(root.id,{foldersOnly:true})).filter(function(x){return /^20\d{2}$/.test(String(x.name||""))});
+    var imported=0,failed=0;
+    for(var yi=0;yi<years.length;yi++){
+      var year=years[yi],sales=await d.listChildren(year.id,{foldersOnly:true});
+      for(var si=0;si<sales.length;si++){
+        var sale=sales[si],jobs=await d.listChildren(sale.id,{foldersOnly:true});
+        for(var ji=0;ji<jobs.length;ji++){
+          var job=jobs[ji];
+          try{
+            var files=await d.listChildren(job.id);
+            var projectFiles=files.filter(function(x){return /\.(binacourt|json)$/i.test(String(x.name||""))});
+            if(!projectFiles.length)continue;
+            projectFiles.sort(function(a,b){return String(b.modifiedTime||"").localeCompare(String(a.modifiedTime||""))});
+            var pf=projectFiles[0],data=await d.readFile(pf.id),p=data&&data.project&&typeof data.project==="object"?data.project:data;
+            if(!p||typeof p!=="object")continue;
+            var cloud=p._binaCloud||data._binaCloud||{};
+            var ref=String(p.projectReferenceNo||cloud.referenceNo||String(job.name||"").match(/^\s*([^\s-]+)/)?.[1]||"").trim();
+            var title=String(p.projectTitle||String(job.name||"").replace(/^\s*[^\s-]+\s*[-–—]?\s*/,"")||job.name||"Untitled Project").trim();
+            var payload={
+              project_year:Number(year.name)||Number(cloud.year)||new Date().getFullYear(),
+              reference_no:ref,title:title||"Untitled Project",
+              sales_name:String(p.projectSalesName||cloud.saleName||sale.name||"Unknown").trim(),
+              status:"draft",brand_system:String(p.brand||"duracourt"),
+              court_count:Array.isArray(p.courts)?p.courts.filter(function(c){return !c.hidden}).length:0,
+              drive_root_folder_id:root.id,drive_year_folder_id:year.id,drive_sales_folder_id:sale.id,
+              drive_job_folder_id:job.id,drive_project_file_id:pf.id,
+              last_saved_at:pf.modifiedTime||cloud.savedAt||now(),
+              metadata:{site_w:Number(p.siteW||0),site_h:Number(p.siteH||0),measurement_unit:p.measurementUnit||"m"}
+            };
+            await sb("binacourt_projects?on_conflict=drive_project_file_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(payload)});
+            imported++;
+          }catch(error){failed++;console.warn("Drive scan project:",job.name,error)}
+        }
+      }
+    }
+    await refreshProjects();
+    alert("Drive scan selesai. "+imported+" project didaftarkan"+(failed?" · "+failed+" gagal dibaca":"")+".");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Import / Scan Drive"}
+  }
+}
 function showView(name){
   document.querySelectorAll("#bcDash .bcView").forEach(function(v){v.hidden=v.dataset.view!==name});document.querySelectorAll("#bcDash .bcNav button[data-view]").forEach(function(b){b.classList.toggle("active",b.dataset.view===name)});
   if(name==="projects")refreshProjects();if(name==="material")renderMaterial();if(name==="settings")renderSettings()
@@ -188,7 +238,7 @@ function inject(){
   '<div id="bcRecovery" class="bcBanner" hidden><span id="bcRecoveryText"></span><span><button class="bcBtn" id="bcRecoveryRestore">Restore</button> <button class="bcBtn" id="bcRecoveryDismiss">Dismiss</button></span></div>'+
   '<section class="bcView" data-view="home"><div class="bcHero"><h2>Selamat Datang ke</h2><strong>BinaCourt</strong><p>Sports Court Design System</p><div class="bcHeroLine"></div></div><div class="bcQuick">'+quick("bcQuickNew","Projek Baharu","Mulakan reka bentuk baharu","M12 5v14M5 12h14")+quick("bcQuickOpen","Buka Projek","Kemas kini project sedia ada","M3 6h18v14H3z")+quick("bcQuickTemplates","Template / Preset","Pilih susunan court standard","M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z")+quick("bcQuickColors","Urus Warna","Tambah, ubah atau padam warna","M12 3a9 9 0 1 0 0 18")+quick("bcQuickMaterial","Anggaran Bahan","Kira keluasan dan anggaran cat","M5 19V9M12 19V5M19 19V2")+'</div><div class="bcStats"><div class="bcStat"><b id="bcStatProjects">0</b><span>Project aktif</span></div><div class="bcStat"><b id="bcStatApproved">0</b><span>Approved / completed</span></div><div class="bcStat"><b id="bcStatCourts">0</b><span>Jumlah court</span></div><div class="bcStat"><b id="bcStatDrive">Ready</b><span>Google Drive</span></div></div></section>'+
   '<section class="bcView" data-view="new" hidden><div class="bcHead"><div><h2>Projek Baharu</h2><p>Project baharu akan menggunakan struktur cloud Google Drive sedia ada.</p></div></div><div class="bcPanel"><p>Tekan di bawah untuk reset editor dan mulakan Cloud Project baharu. Nama Sale akan menentukan nombor rujukan seterusnya.</p><button class="bcBtn primary" id="bcNewProjectBig">＋ Mulakan Projek Baharu</button></div></section>'+
-  '<section class="bcView" data-view="projects" hidden><div class="bcHead"><div><h2>Senarai Projek</h2><p>Registry ringan daripada Supabase, fail sebenar di Google Drive.</p></div><div class="bcActions"><button class="bcBtn primary" id="bcProjectNew">＋ Projek Baharu</button><button class="bcBtn" id="bcProjectRefresh">Refresh</button></div></div><div class="bcFilters"><input id="bcProjectSearch" placeholder="Cari project / rujukan / sale"><select id="bcProjectSale"><option value="">Semua Sale</option></select><select id="bcProjectStatusFilter"><option value="">Semua Status</option>'+Object.keys(statusLabels).map(function(k){return'<option value="'+k+'">'+statusLabels[k]+'</option>'}).join("")+'</select><label style="font-size:10px;display:flex;align-items:center;gap:6px"><input id="bcShowArchived" type="checkbox" style="width:auto"> Archived</label></div><div class="bcGrid" id="bcProjectGrid"></div></section>'+
+  '<section class="bcView" data-view="projects" hidden><div class="bcHead"><div><h2>Senarai Projek</h2><p>Registry ringan daripada Supabase, fail sebenar di Google Drive.</p></div><div class="bcActions"><button class="bcBtn primary" id="bcProjectNew">＋ Projek Baharu</button><button class="bcBtn" id="bcProjectScan">Import / Scan Drive</button><button class="bcBtn" id="bcProjectRefresh">Refresh</button></div></div><div class="bcFilters"><input id="bcProjectSearch" placeholder="Cari project / rujukan / sale"><select id="bcProjectSale"><option value="">Semua Sale</option></select><select id="bcProjectStatusFilter"><option value="">Semua Status</option>'+Object.keys(statusLabels).map(function(k){return'<option value="'+k+'">'+statusLabels[k]+'</option>'}).join("")+'</select><label style="font-size:10px;display:flex;align-items:center;gap:6px"><input id="bcShowArchived" type="checkbox" style="width:auto"> Archived</label></div><div class="bcGrid" id="bcProjectGrid"></div></section>'+
   '<section class="bcView" data-view="templates" hidden><div class="bcHead"><div><h2>Template / Preset</h2><p>Mulakan susunan standard dengan satu klik.</p></div></div><div class="bcTemplates">'+template("1 Pickleball","Satu court standard","pickleball")+template("2 Pickleball","Dua court, auto arrange","pickleball,pickleball")+template("4 Pickleball","Empat court, auto arrange","pickleball,pickleball,pickleball,pickleball")+template("1 Badminton","Satu court 13.4 × 6.1 m","badminton")+template("Badminton + Takraw","Dua court untuk multipurpose","badminton,sepak_takraw")+template("Basketball + Badminton","Multipurpose court","basketball,badminton")+'</div></section>'+
   '<section class="bcView" data-view="material" hidden><div class="bcHead"><div><h2>Anggaran Bahan</h2><p>Guna kiraan keluasan warna sebenar daripada drawing.</p></div><button class="bcBtn" id="bcMaterialRefresh">Kira Semula</button></div><div class="bcMaterial"><div class="bcPanel"><div class="bcForm"><div><label>Coverage produk (m² / unit / coat)</label><input id="bcCoverage" type="number" step=".01" min="0" placeholder="Contoh 5"></div><div><label>Bilangan coat</label><input id="bcCoats" type="number" min="1" value="2"></div><div><label>Allowance / wastage %</label><input id="bcAllowance" type="number" min="0" value="10"></div></div><p id="bcMaterialSummary" style="font-size:11px;color:#667085"></p><div id="bcMaterialList" class="bcMaterialList"></div></div><div class="bcPanel"><h3>Formula</h3><p style="font-size:11px;color:#667085;line-height:1.6">Material = keluasan × coat ÷ coverage + allowance. Line marking tidak termasuk dalam kiraan warna permukaan.</p></div></div></section>'+
   '<section class="bcView" data-view="settings" hidden><div class="bcHead"><div><h2>Tetapan</h2><p>Cloud, autosave dan recovery.</p></div></div><div class="bcTwo"><div class="bcPanel"><h3>Google Drive</h3><div class="bcSettings"><div class="bcSetting"><div><b>Root Project Folder</b><span id="bcDriveRoot"></span></div><span><button class="bcBtn" id="bcDriveConnect">Connect</button> <button class="bcBtn" id="bcDriveSelect">Pilih Folder</button></span></div><div class="bcSetting"><div><b>Project registry aktif</b><span id="bcSettingsRegistry"></span></div></div></div></div><div class="bcPanel"><h3>Autosave & Recovery</h3><div class="bcSettings"><div class="bcSetting"><div><b>Autosave Google Drive</b><span>Berjalan bila Drive connected dan drawing berubah.</span></div><input id="bcAutosave" class="bcToggle" type="checkbox"></div><div class="bcSetting"><div><b>Interval</b><span>Minimum 30 saat.</span></div><input id="bcAutosaveSec" type="number" min="30" max="900" style="width:90px"></div><div class="bcSetting"><div><b>Local recovery</b><span>Backup sementara pada browser.</span></div><button class="bcBtn danger" id="bcClearRecovery">Clear</button></div></div></div></div></section>'+
@@ -204,7 +254,7 @@ function injectDesignerButton(){
 function bind(){
   document.querySelectorAll("#bcDash [data-view]").forEach(function(b){b.onclick=function(){if(b.dataset.view==="colors"){hideDashboard();var e=$("customColourHex");var box=e&&e.closest(".custom-colour-box");if(box)box.scrollIntoView({behavior:"smooth",block:"center"});return}showView(b.dataset.view)}});
   $("bcOpenDesigner").onclick=hideDashboard;$("bcQuickNew").onclick=$("bcNewProjectBig").onclick=$("bcProjectNew").onclick=newProject;$("bcQuickOpen").onclick=function(){showView("projects")};$("bcQuickTemplates").onclick=function(){showView("templates")};$("bcQuickColors").onclick=function(){hideDashboard();var e=$("customColourHex");if(e)e.scrollIntoView({behavior:"smooth",block:"center"})};$("bcQuickMaterial").onclick=function(){showView("material")};
-  $("bcProjectRefresh").onclick=refreshProjects;["bcProjectSearch","bcProjectSale","bcProjectStatusFilter","bcShowArchived"].forEach(function(id){var e=$(id);if(e)e.addEventListener(id==="bcProjectSearch"?"input":"change",renderProjects)});
+  $("bcProjectRefresh").onclick=refreshProjects;$("bcProjectScan").onclick=function(){scanDriveProjects().catch(function(e){alert("Drive scan gagal: "+e.message)})};["bcProjectSearch","bcProjectSale","bcProjectStatusFilter","bcShowArchived"].forEach(function(id){var e=$(id);if(e)e.addEventListener(id==="bcProjectSearch"?"input":"change",renderProjects)});
   document.querySelectorAll("[data-template]").forEach(function(b){b.onclick=function(){templateApply(b.dataset.template.split(","))}});
   $("bcMaterialRefresh").onclick=renderMaterial;["bcCoverage","bcCoats","bcAllowance"].forEach(function(id){$(id).onchange=renderMaterial});
   $("bcModalClose").onclick=hideModal;$("bcProjectModal").onclick=function(e){if(e.target===e.currentTarget)hideModal()};$("bcModalOpen").onclick=function(){openProject(currentProject)};$("bcModalSave").onclick=function(){saveNow({reason:"manual"}).then(function(){showProjectModal(currentProject)}).catch(function(e){alert(e.message)})};$("bcModalVersion").onclick=function(){createVersion("manual").catch(function(e){alert(e.message)})};$("bcModalPdf").onclick=savePdfToDrive;$("bcModalDrive").onclick=function(){if(currentProject&&currentProject.drive_job_folder_id)window.open("https://drive.google.com/drive/folders/"+encodeURIComponent(currentProject.drive_job_folder_id),"_blank")};$("bcPhotoInput").onchange=function(e){uploadFiles([...e.target.files],"site_photo");e.target.value=""};$("bcAttachInput").onchange=function(e){uploadFiles([...e.target.files],"attachment");e.target.value=""};
@@ -220,7 +270,7 @@ async function init(){
   inject();injectDesignerButton();bind();installDirty();restartAutosave();watchRole();var s=settings();$("bcCoverage").value=s.coverage||"";$("bcCoats").value=s.coats||2;$("bcAllowance").value=s.allowance||10;await restoreRegistry();try{await listProjects()}catch(e){console.warn(e)}renderStats();renderRecoveryBanner();
   window.addEventListener("binacourt:drive-saved",async function(e){try{var row=await upsertRegistry(e.detail&&e.detail.current||currentDrive());if(row)await addActivity(row.id,"saved",{source:"drive_menu"});dirty=false;setSaveIndicator("Saved","ok");renderStats()}catch(err){console.warn(err)}});
   window.addEventListener("binacourt:drive-opened",async function(e){try{var m=e.detail&&e.detail.current||{};var row=projects.find(function(p){return p.drive_project_file_id===m.fileId});if(row){currentProject=row;localStorage.setItem(CURRENT_KEY,row.id);await patchProject(row.id,{last_opened_at:now()})}dirty=false}catch(err){console.warn(err)}});
-  window.BinaCourtDashboard={show:showDashboard,hide:hideDashboard,refresh:refreshProjects,save:saveNow,openProject:openProject,createVersion:createVersion,savePdfToDrive:savePdfToDrive,get currentProject(){return currentProject},get dirty(){return dirty}}
+  window.BinaCourtDashboard={show:showDashboard,hide:hideDashboard,refresh:refreshProjects,scanDrive:scanDriveProjects,save:saveNow,openProject:openProject,createVersion:createVersion,savePdfToDrive:savePdfToDrive,get currentProject(){return currentProject},get dirty(){return dirty}}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init()
 })();
