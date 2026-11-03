@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
+  "versionCode": 11,
+  "versionName": "1.0.10",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Guest access ditambah. Admin dan Guest direkod sebagai role berasingan untuk kawalan akses masa depan. Pinch zoom turut tersedia dalam fallback offline."
+  "notes": "Dashboard project baharu, registry Supabase, Google Drive assets/versions, autosave recovery, template preset, anggaran bahan, dan offline fallback dikemas kini."
 }
