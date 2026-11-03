@@ -1,0 +1,36 @@
+<script>
+(function setupBinaCourtStartupLanding(){
+  "use strict";
+  var landingShown=false;
+  function isClientShare(){
+    try{return !!new URLSearchParams(window.location.search).get("share")}catch(_){return false}
+  }
+  function tryShowLanding(){
+    if(landingShown || isClientShare()) return false;
+    if(document.body.classList.contains("admin-locked")) return false;
+    if(!document.body.dataset.userRole) return false;
+    if(!window.BinaCourtDashboard || typeof window.BinaCourtDashboard.show!=="function") return false;
+    landingShown=true;
+    window.BinaCourtDashboard.show("home");
+    return true;
+  }
+  function start(){
+    if(isClientShare()) return;
+    if(tryShowLanding()) return;
+    var observer=new MutationObserver(function(){
+      if(tryShowLanding()) observer.disconnect();
+    });
+    observer.observe(document.body,{attributes:true,attributeFilter:["class","data-user-role"]});
+    var attempts=0;
+    var timer=setInterval(function(){
+      attempts++;
+      if(tryShowLanding() || attempts>=120){
+        clearInterval(timer);
+        if(landingShown) observer.disconnect();
+      }
+    },50);
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",start,{once:true});
+  else start();
+})();
+</script>
