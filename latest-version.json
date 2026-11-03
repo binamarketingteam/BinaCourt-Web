@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "1.0.10",
+  "versionCode": 12,
+  "versionName": "1.0.11",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Dashboard project baharu, registry Supabase, Google Drive assets/versions, autosave recovery, template preset, anggaran bahan, dan offline fallback dikemas kini."
+  "notes": "Project Workflow V2: Continue Last Project, Recent Projects, advanced filters, duplicate project, Admin archive/restore/delete, real thumbnail refresh, transactional System Check, project metadata sync, dan offline Android fallback."
 }
