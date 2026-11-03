@@ -53,7 +53,7 @@ function addVersion(id,v){return sb("binacourt_project_versions",{method:"POST",
 function addAsset(id,a){return sb("binacourt_project_assets?on_conflict=project_id,drive_file_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify(Object.assign({project_id:id},a))}).then(function(r){return r&&r[0]})}
 function currentDrive(){return window.BinaCourtDrive&&window.BinaCourtDrive.current||{}}
 function projectPayload(meta){
-  meta=meta||currentDrive(); var s=window.state||{};
+  meta=meta||currentDrive(); var s=state||{};
   return {project_year:Number(meta.year||new Date().getFullYear()),reference_no:String(s.projectReferenceNo||meta.referenceNo||""),title:String(s.projectTitle||"").trim(),sales_name:String(s.projectSalesName||meta.saleName||"").trim(),status:(currentProject&&currentProject.status)||"draft",brand_system:String(s.brand||"duracourt"),court_count:Array.isArray(s.courts)?s.courts.length:0,drive_root_folder_id:String(meta.rootFolderId||""),drive_year_folder_id:String(meta.yearFolderId||""),drive_sales_folder_id:String(meta.saleFolderId||""),drive_job_folder_id:String(meta.jobFolderId||""),drive_project_file_id:String(meta.fileId||""),last_saved_at:now(),metadata:Object.assign({},currentProject&&currentProject.metadata||{},{site_w:Number(s.siteW||0),site_h:Number(s.siteH||0),measurement_unit:s.measurementUnit||"m"})}
 }
 async function upsertRegistry(meta){
@@ -67,7 +67,7 @@ async function upsertRegistry(meta){
   if(currentProject)localStorage.setItem(CURRENT_KEY,currentProject.id); await listProjects(); return currentProject
 }
 function setSaveIndicator(text,cls){var e=$("bcSaveState");if(e){e.textContent=text;e.className="bcSaveDot "+(cls||"")}}
-function recoverySave(){try{var raw=JSON.stringify(window.state||{});if(raw.length<3500000)localStorage.setItem(RECOVERY_KEY,JSON.stringify({at:now(),project_id:currentProject&&currentProject.id||"",state:raw}))}catch(_){}}
+function recoverySave(){try{var raw=JSON.stringify(state||{});if(raw.length<3500000)localStorage.setItem(RECOVERY_KEY,JSON.stringify({at:now(),project_id:currentProject&&currentProject.id||"",state:raw}))}catch(_){}}
 function recoveryClear(){try{localStorage.removeItem(RECOVERY_KEY)}catch(_){}renderRecovery()}
 function renderRecovery(){var b=$("bcRecovery");if(!b)return;try{var r=JSON.parse(localStorage.getItem(RECOVERY_KEY)||"null");if(!r||!r.state){b.hidden=true;return}b.hidden=false;$("bcRecoveryText").textContent="Recovery snapshot "+new Date(r.at).toLocaleString()}catch(_){b.hidden=true}}
 function markDirty(){dirty=true;setSaveIndicator("Unsaved","warn");recoverySave()}
@@ -75,7 +75,7 @@ function installDirty(){
   if(window.commitHistory&&!window.commitHistory.__bcWrapped){var original=window.commitHistory;var wrapped=function(){var x=original.apply(this,arguments);markDirty();return x};wrapped.__bcWrapped=true;window.commitHistory=wrapped}
 }
 async function previewBlob(){
-  if(typeof window.svgToCanvas!=="function")return null;var c=await window.svgToCanvas(360);if(!c)return null;
+  if(typeof svgToCanvas!=="function")return null;var c=await svgToCanvas(360);if(!c)return null;
   return await new Promise(function(res){c.toBlob(function(b){res(b)},"image/jpeg",.55)})
 }
 async function savePreview(row){
@@ -134,11 +134,11 @@ function showView(name){
 function showDashboard(view){var s=$("bcDash");if(!s)return;s.hidden=false;showView(view||"home");renderStats();renderRecovery()}
 function hideDashboard(){var s=$("bcDash");if(s)s.hidden=true}
 function templateApply(types){
-  if(!confirm("Apply preset ini? Drawing semasa akan di-reset."))return;hideDashboard();if(typeof window.resetProject==="function")window.resetProject();setTimeout(function(){types.forEach(function(t){if(typeof window.addCourt==="function")window.addCourt(t,{skipHistory:true})});if(typeof window.autoArrange==="function"&&types.length>1)window.autoArrange();if(typeof window.render==="function")window.render({preserveStagePosition:false});if(typeof window.commitHistory==="function")window.commitHistory()},100)
+  if(!confirm("Apply preset ini? Drawing semasa akan di-reset."))return;hideDashboard();if(typeof resetProject==="function")resetProject();setTimeout(function(){types.forEach(function(t){if(typeof addCourt==="function")addCourt(t,{skipHistory:true})});if(typeof autoArrange==="function"&&types.length>1)autoArrange();if(typeof render==="function")render({preserveStagePosition:false});if(typeof commitHistory==="function")commitHistory()},100)
 }
 async function renderMaterial(){
   var box=$("bcMaterialList"),summary=$("bcMaterialSummary");if(!box||!summary)return;box.innerHTML="Mengira…";
-  try{var items=typeof window.calculateVisibleColorAreas==="function"?await window.calculateVisibleColorAreas():[];var set=settings(),cov=Number($("bcCoverage")&&$("bcCoverage").value||set.coverage||0),coats=Math.max(1,Number($("bcCoats")&&$("bcCoats").value||set.coats||2)),allow=Math.max(0,Number($("bcAllowance")&&$("bcAllowance").value||set.allowance||10));var total=0;
+  try{var items=typeof calculateVisibleColorAreas==="function"?await calculateVisibleColorAreas():[];var set=settings(),cov=Number($("bcCoverage")&&$("bcCoverage").value||set.coverage||0),coats=Math.max(1,Number($("bcCoats")&&$("bcCoats").value||set.coats||2)),allow=Math.max(0,Number($("bcAllowance")&&$("bcAllowance").value||set.allowance||10));var total=0;
     box.innerHTML=items.map(function(i){var need=cov>0?(i.area*coats/cov)*(1+allow/100):0;total+=need;return'<div class="bcMaterialRow"><span class="bcSwatch" style="background:'+esc(i.hex)+'"></span><span><b>'+esc(i.name)+'</b><br><small>'+esc(i.hex.toUpperCase())+'</small></span><span>'+Number(i.area).toFixed(2)+' m²</span><span>'+(cov>0?need.toFixed(2)+' unit':'Set coverage')+'</span></div>'}).join("")||'<div class="bcEmpty">Tiada kawasan warna untuk dikira.</div>';summary.textContent=cov>0?"Anggaran keseluruhan: "+total.toFixed(2)+" unit · "+coats+" coat · "+allow+"% allowance":"Masukkan coverage produk untuk anggaran material.";
     set.coverage=cov||"";set.coats=coats;set.allowance=allow;saveSettings(set)
   }catch(e){box.innerHTML='<div class="bcEmpty">Kiraan tidak dapat dijana.</div>'}
