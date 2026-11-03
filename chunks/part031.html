@@ -331,7 +331,7 @@ async function testPdfEngine(){
 }
 async function runSystemCheck(){
   const out=$("bcV2HealthLog"),btn=$("bcV2RunCheck");if(!out||!btn)return;
-  btn.disabled=true;out.textContent="Running checks…";const lines=[];let qaFolder=null,qaRow=null;
+  btn.disabled=true;out.textContent="Running checks…";const lines=[];let qaFolder=null;
   try{
     const rows=await loadProjects();logCheck(lines,"Supabase registry read","pass",rows.length+" project");
     try{localStorage.setItem("__bcqa","ok");if(localStorage.getItem("__bcqa")!=="ok")throw 0;localStorage.removeItem("__bcqa");logCheck(lines,"Local recovery storage","pass")}catch(_){logCheck(lines,"Local recovery storage","fail")}
@@ -342,24 +342,18 @@ async function runSystemCheck(){
       else{
         const kids=await d.listChildren(root.id,{foldersOnly:true});logCheck(lines,"Google Drive read","pass",kids.length+" folder");
         if(isAdmin()){
-          const headers=await adminHeaders(),stamp=Date.now(),qaId=crypto.randomUUID(),qaDriveId="qa-"+stamp;
+          const headers=await adminHeaders(),stamp=Date.now();
           qaFolder=await d.createFolder("__BinaCourt QA "+stamp,root.id);
           const blob=new Blob([JSON.stringify({qa:true,at:now()})],{type:"application/json"});
           const file=await d.createBinaryFile(qaFolder.id,"qa.binacourt",blob,"application/json");
           const read=await d.readFile(file.id);if(!read?.qa)throw new Error("Drive roundtrip mismatch");
           await d.updateBinaryFile(file.id,new Blob([JSON.stringify({qa:true,updated:true})],{type:"application/json"}),"application/json");
           logCheck(lines,"Google Drive write/read/update","pass","Temporary file verified");
-          const ins=await sb("binacourt_projects",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({id:qaId,project_year:new Date().getFullYear(),reference_no:"QA"+stamp,title:"BinaCourt QA",sales_name:"System QA",status:"draft",drive_project_file_id:qaDriveId,drive_job_folder_id:qaFolder.id,metadata:{qa:true}})});
-          qaRow=ins?.[0]||{id:qaId};
-          await sb("binacourt_project_versions",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,version_no:1,drive_file_id:file.id,drive_file_name:"qa.binacourt",reason:"qa"})});
-          await sb("binacourt_project_assets",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,asset_type:"attachment",drive_file_id:file.id+"-asset",drive_folder_id:qaFolder.id,name:"qa.json",mime_type:"application/json",size_bytes:blob.size})});
-          await sb("binacourt_project_activity",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,action:"qa_test",detail:{ok:true}})});
-          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"PATCH",headers:Object.assign({Prefer:"return=minimal"},headers),body:JSON.stringify({status:"archived",archived:true})});
-          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"PATCH",headers:Object.assign({Prefer:"return=minimal"},headers),body:JSON.stringify({status:"draft",archived:false})});
-          logCheck(lines,"Supabase CRUD + Admin archive guard","pass","Temporary row verified");
-          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)});qaRow=null;
+          const probe=await sb("rpc/binacourt_admin_qa_probe",{method:"POST",headers:headers,body:"{}"});
+          if(!probe?.ok||!probe?.rolled_back)throw new Error("Supabase QA probe gagal.");
+          logCheck(lines,"Supabase CRUD + Admin archive/delete guard","pass","Transactional probe rolled back");
           await d.request(driveUrl(qaFolder.id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})});qaFolder=null;
-          logCheck(lines,"QA cleanup","pass","Temporary data removed");
+          logCheck(lines,"QA cleanup","pass","Temporary Drive data moved to Trash");
         }else logCheck(lines,"Write / Admin tests","skip","Login Admin untuk full check");
       }
     }
@@ -371,9 +365,6 @@ async function runSystemCheck(){
     logCheck(lines,"Network",navigator.onLine?"pass":"skip",navigator.onLine?"Online":"Offline");
   }catch(error){logCheck(lines,"System Check","fail",error.message)}
   finally{
-    try{
-      if(qaRow){const headers=await adminHeaders();await sb("binacourt_projects?id=eq."+encodeURIComponent(qaRow.id),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)})}
-    }catch(_){}
     try{if(qaFolder)await window.BinaCourtDrive.request(driveUrl(qaFolder.id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})})}catch(_){}
     out.innerHTML=lines.map(x=>'<div class="'+(x.startsWith("✓")?"bcV2Pass":x.startsWith("✕")?"bcV2Fail":"bcV2Skip")+'">'+esc(x)+'</div>').join("");
     btn.disabled=false;await refreshAll().catch(()=>{});
