@@ -22,7 +22,7 @@ function saveObj(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function favs(b=brand){return localObj(FAVORITES_KEY)[b]||[]}
 function recents(b=brand){return localObj(RECENT_KEY)[b]||[]}
 function toggleFav(hex){const o=localObj(FAVORITES_KEY),a=new Set(o[brand]||[]);a.has(hex)?a.delete(hex):a.add(hex);o[brand]=[...a];saveObj(FAVORITES_KEY,o);renderColours()}
-function remember(hex){const o=localObj(RECENT_KEY),a=[hex,...(o[brand]||[]).filter(x=>x!==hex)].slice(0,8);o[brand]=a;saveObj(RECENT_KEY,o);renderColourSide()}
+function remember(hex,targetBrand=brand){const b=["duracourt","primacourt","terracourt"].includes(targetBrand)?targetBrand:brand,o=localObj(RECENT_KEY),a=[String(hex||"").toLowerCase(),...(o[b]||[]).filter(x=>x!==String(hex||"").toLowerCase())].filter(Boolean).slice(0,8);o[b]=a;saveObj(RECENT_KEY,o);if(b===brand)renderColourSide()}
 
 function applyStandards(){
   if(typeof COURT_TYPES==="undefined")return;
