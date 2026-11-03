@@ -1,0 +1,50 @@
+<style>
+.bcMgmtKpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-bottom:14px}.bcMgmtKpi{background:#fff;border:1px solid #d9e2ec;border-radius:12px;padding:13px}.bcMgmtKpi b{display:block;font-size:22px}.bcMgmtKpi span{font-size:9px;color:#667085;margin-top:3px;display:block}.bcMgmtGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.bcMgmtPanel{background:#fff;border:1px solid #d9e2ec;border-radius:13px;padding:14px}.bcMgmtPanel h3{margin:0 0 10px;font-size:13px}.bcBars{display:flex;flex-direction:column;gap:8px}.bcBarRow{display:grid;grid-template-columns:120px 1fr 40px;gap:8px;align-items:center;font-size:10px}.bcBarLabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bcBarTrack{height:9px;background:#eef2f6;border-radius:99px;overflow:hidden}.bcBarFill{height:100%;background:#0d5cab;border-radius:99px}.bcMgmtTable{width:100%;border-collapse:collapse;font-size:9px}.bcMgmtTable th,.bcMgmtTable td{text-align:left;padding:7px;border-top:1px solid #eef2f6;vertical-align:top}.bcMgmtTable th{color:#667085;font-size:8px;text-transform:uppercase;letter-spacing:.05em}.bcMgmtWide{grid-column:1/-1}.bcMgmtEmpty{font-size:10px;color:#667085;padding:16px 0;text-align:center}.bcMgmtBadge{display:inline-flex;padding:3px 6px;border-radius:99px;background:#eef4ff;color:#175cd3;font-size:8px;font-weight:900}.bcMgmtBadge.revision_requested{background:#fff4ed;color:#b54708}.bcMgmtBadge.approved{background:#ecfdf3;color:#027a48}
+@media(max-width:1100px){.bcMgmtKpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:760px){.bcMgmtKpis{grid-template-columns:repeat(2,1fr)}.bcMgmtGrid{grid-template-columns:1fr}.bcMgmtWide{grid-column:auto}.bcBarRow{grid-template-columns:90px 1fr 32px}}
+</style>
+<script>
+(function setupBinaCourtManagement(){
+"use strict";
+let data=null;
+const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isAdmin=()=>String(document.body.dataset.userRole||"")==="admin";
+async function load(){
+  if(!isAdmin()){renderLocked();return}
+  const h=window.BinaCourtAdminTools?.headers?await window.BinaCourtAdminTools.headers():{};
+  data=await window.BinaCourtAdminTools.rpc("binacourt_admin_management",{},h);render()
+}
+function navButton(){const b=document.createElement("button");b.id="bcNavManagement";b.dataset.view="management";b.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7V3"/></svg><span>Management</span>';b.onclick=()=>{window.BinaCourtDashboard?.show("management");setTimeout(()=>load().catch(e=>showError(e)),50)};return b}
+function inject(){
+  const nav=document.querySelector("#bcDash .bcNav");if(nav&&!$("bcNavManagement")){const settings=nav.querySelector('[data-view="settings"]');nav.insertBefore(navButton(),settings)}
+  const main=document.querySelector("#bcDash .bcMain");if(main&&!$("bcManagementView")){const v=document.createElement("section");v.id="bcManagementView";v.className="bcView";v.dataset.view="management";v.hidden=true;v.innerHTML='<div class="bcAdminViewHead"><div><h2>Management Dashboard</h2><p>Project pipeline, Sale performance, sport/brand usage dan client approval.</p></div><div class="bcActions"><button class="bcBtn" id="bcMgmtExport">Export CSV</button><button class="bcBtn primary" id="bcMgmtRefresh">Refresh</button></div></div><div id="bcMgmtContent"></div>';main.appendChild(v);$("bcMgmtRefresh").onclick=()=>load().catch(e=>showError(e));$("bcMgmtExport").onclick=exportCsv}
+}
+function renderLocked(){const h=$("bcMgmtContent");if(h)h.innerHTML='<div class="bcPanel"><div class="bcMgmtEmpty">Management Dashboard hanya tersedia untuk Admin.</div></div>';const n=$("bcNavManagement");if(n)n.hidden=true}
+function bars(rows,key="count"){
+  rows=Array.isArray(rows)?rows:[];const max=Math.max(1,...rows.map(x=>Number(x[key]||0)));
+  return rows.length?'<div class="bcBars">'+rows.map(x=>'<div class="bcBarRow"><div class="bcBarLabel" title="'+esc(x.key)+'">'+esc(String(x.key||"").replaceAll("_"," "))+'</div><div class="bcBarTrack"><div class="bcBarFill" style="width:'+Math.max(2,100*Number(x[key]||0)/max)+'%"></div></div><b>'+Number(x[key]||0)+'</b></div>').join("")+'</div>':'<div class="bcMgmtEmpty">Belum ada data.</div>'
+}
+function render(){
+  const h=$("bcMgmtContent");if(!h)return;if(!isAdmin()){renderLocked();return}const n=$("bcNavManagement");if(n)n.hidden=false;
+  const t=data?.totals||{},feedback=data?.recent_feedback||[],stale=data?.stale||[],monthly=(data?.monthly||[]).map(x=>({key:x.month,count:x.count}));
+  h.innerHTML='<div class="bcMgmtKpis">'+kpi(t.projects,"Active Projects")+kpi(t.courts,"Total Courts")+kpi(t.approved,"Approved / Completed")+kpi(t.pending_client,"Pending Client")+kpi((t.share_conversion||0)+"%","Share Approval Rate")+kpi(t.avg_versions||0,"Avg Versions / Project")+'</div><div class="bcMgmtGrid"><section class="bcMgmtPanel"><h3>Project Status</h3>'+bars(data?.by_status||[])+'</section><section class="bcMgmtPanel"><h3>Projects by Sale</h3>'+bars(data?.by_sale||[])+'</section><section class="bcMgmtPanel"><h3>Sport Types</h3>'+bars(data?.by_court||[])+'</section><section class="bcMgmtPanel"><h3>Brand Usage</h3>'+bars(data?.by_brand||[])+'</section><section class="bcMgmtPanel bcMgmtWide"><h3>12-Month Project Trend</h3>'+bars(monthly)+'</section><section class="bcMgmtPanel bcMgmtWide"><h3>Needs Follow-up · No update for 7+ days</h3>'+staleTable(stale)+'</section><section class="bcMgmtPanel bcMgmtWide"><h3>Recent Client Feedback</h3>'+feedbackTable(feedback)+'</section></div>';
+  h.querySelectorAll("[data-open-project]").forEach(b=>b.onclick=()=>openProject(b.dataset.openProject))
+}
+function kpi(v,l){return'<div class="bcMgmtKpi"><b>'+esc(v??0)+'</b><span>'+esc(l)+'</span></div>'}
+function staleTable(rows){return rows.length?'<table class="bcMgmtTable"><thead><tr><th>Ref</th><th>Project</th><th>Sale</th><th>Status</th><th>Inactive</th><th></th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.reference_no)+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.sales_name)+'</td><td>'+esc(String(x.status||"").replaceAll("_"," "))+'</td><td>'+Number(x.days||0)+' days</td><td><button class="bcBtn" data-open-project="'+esc(x.id)+'">Open</button></td></tr>').join("")+'</tbody></table>':'<div class="bcMgmtEmpty">Tiada project tertunggak melebihi 7 hari.</div>'}
+function feedbackTable(rows){return rows.length?'<table class="bcMgmtTable"><thead><tr><th>Date</th><th>Project</th><th>Client</th><th>Decision</th><th>Option</th><th>Comment</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+fmt(x.created_at)+'</td><td>'+esc((x.reference_no||"")+" · "+(x.title||""))+'</td><td>'+esc(x.client_name||"-")+'</td><td><span class="bcMgmtBadge '+esc(x.decision)+'">'+esc(String(x.decision||"").replaceAll("_"," "))+'</span></td><td>'+esc(x.selected_group&&x.selected_option?("G"+x.selected_group+" / O"+x.selected_option):"-")+'</td><td>'+esc(x.comment||"-")+'</td></tr>').join("")+'</tbody></table>':'<div class="bcMgmtEmpty">Belum ada feedback client.</div>'}
+function fmt(v){try{return v?new Date(v).toLocaleDateString():"-"}catch(_){return"-"}}
+function openProject(id){const p=window.BinaCourtWorkflowV2?.projects?.find?.(x=>x.id===id);if(p)window.BinaCourtDashboard?.openProject(p);else alert("Project tidak ditemui. Refresh Senarai Projek dahulu.")}
+function exportCsv(){
+  const rows=window.BinaCourtWorkflowV2?.projects||[];if(!rows.length)return alert("Tiada project untuk export.");
+  const head=["Reference","Project","Sale","Status","Brand","Court Count","Year","Updated At"];
+  const q=v=>'"'+String(v??"").replaceAll('"','""')+'"';
+  const csv=[head.map(q).join(","),...rows.map(x=>[x.reference_no,x.title,x.sales_name,x.status,x.brand_system,x.court_count,x.project_year,x.updated_at].map(q).join(","))].join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="BinaCourt-Management-"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+}
+function showError(e){const h=$("bcMgmtContent");if(h)h.innerHTML='<div class="bcPanel"><div class="bcMgmtEmpty">'+esc(e?.message||e)+'</div></div>'}
+function role(){const n=$("bcNavManagement");if(n)n.hidden=!isAdmin();if(!isAdmin())renderLocked()}
+async function init(){for(let i=0;i<120&&!window.BinaCourtDashboard;i++)await new Promise(r=>setTimeout(r,60));inject();role();new MutationObserver(role).observe(document.body,{attributes:true,attributeFilter:["data-user-role"]})}
+window.BinaCourtManagement={load,get data(){return data}};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init()
+})();
+</script>
