@@ -1001,6 +1001,16 @@
     return "";
   }
 
+  async function ensureAdminWritePassword(){
+    if(adminWritePassword) return adminWritePassword;
+    const entered=window.prompt("Masukkan semula password Admin untuk perubahan cloud:");
+    if(entered===null) throw new Error("admin_relogin_required");
+    const digest=await sha256(entered);
+    if(digest!==ADMIN_PASSWORD_SHA256) throw new Error("admin_password_invalid");
+    adminWritePassword=String(entered);
+    return adminWritePassword;
+  }
+
   // Prepared now so future features can check Admin vs Guest without
   // changing the login flow again.
   window.BinaCourtAuth={
@@ -1009,7 +1019,7 @@
     get isGuest(){ return this.role==="guest"; },
     async manageSales(action,args={}){
       if(this.role!=="admin") throw new Error("admin_only");
-      if(!adminWritePassword) throw new Error("admin_relogin_required");
+      await ensureAdminWritePassword();
 
       const headers={
         "apikey":SUPABASE_PUBLISHABLE_KEY,
@@ -1061,7 +1071,7 @@
     },
     async manageCustomColours(action,args={}){
       if(this.role!=="admin") throw new Error("admin_only");
-      if(!adminWritePassword) throw new Error("admin_relogin_required");
+      await ensureAdminWritePassword();
 
       const color=String(args.color||"").trim().toLowerCase();
       const name=String(args.name||"").trim();
