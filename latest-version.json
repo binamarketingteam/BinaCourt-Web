@@ -1,6 +1,6 @@
 {
-  "versionCode": 19,
-  "versionName": "1.0.18",
+  "versionCode": 20,
+  "versionName": "1.0.19",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Project thumbnails now generate automatically after successful manual saves and refresh immediately in the project list. Duplicate preview generation is prevented while autosave stays lightweight."
+  "notes": "Project thumbnails auto-generate after successful manual saves and refresh immediately in Project List. Autosave remains lightweight and does not repeatedly upload preview JPEGs."
 }
