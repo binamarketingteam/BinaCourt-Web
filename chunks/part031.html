@@ -1,0 +1,414 @@
+<style>
+/* BinaCourt Project Workflow V2 */
+.bcV2Continue{margin:16px 0 0;background:linear-gradient(100deg,#fff,#edf6ff);border:1px solid #bdd8f4;border-radius:13px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 5px 15px #0f26420a}
+.bcV2Continue[hidden]{display:none!important}.bcV2Continue b{display:block;font-size:13px}.bcV2Continue span{display:block;font-size:10px;color:#667085;margin-top:3px}
+.bcV2Recent{margin-top:18px}.bcV2RecentHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.bcV2RecentHead h3{margin:0;font-size:14px}.bcV2RecentGrid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px}
+.bcV2RecentCard{border:1px solid #d9e2ec;background:#fff;border-radius:12px;overflow:hidden;cursor:pointer;text-align:left;padding:0;color:#152033;box-shadow:0 3px 10px #0f26420a}.bcV2RecentCard:hover{transform:translateY(-1px);box-shadow:0 7px 16px #0f264214}
+.bcV2RecentThumb{height:72px;background:linear-gradient(135deg,#0a3156,#165b91 65%,#2f8b57);overflow:hidden;position:relative}.bcV2RecentThumb img{width:100%;height:100%;object-fit:cover;display:block}.bcV2RecentBody{padding:9px}.bcV2RecentBody b{display:block;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bcV2RecentBody span{font-size:9px;color:#667085;display:block;margin-top:3px}
+.bcFilters.bcV2Filters{grid-template-columns:minmax(190px,1.4fr) 135px 135px 115px 130px 135px auto}.bcV2FilterSummary{grid-column:1/-1;font-size:9px;color:#667085;padding:0 2px}
+.bcCardBtns .bcV2Dup{flex:.85}.bcV2MetaChips{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.bcV2Chip{font-size:8px;padding:3px 5px;border-radius:99px;background:#f2f4f7;color:#475467;font-weight:800}
+.bcV2AdminBtn[hidden],.bcV2ActiveBtn[hidden]{display:none!important}.bcV2Danger{background:#fff5f5!important;border-color:#f3b8b4!important;color:#b42318!important}.bcV2Warn{background:#fffaeb!important;border-color:#fedf89!important;color:#b54708!important}
+.bcV2Health{margin-top:14px}.bcV2HealthRow{display:flex;align-items:center;justify-content:space-between;gap:12px}.bcV2HealthLog{margin-top:10px;border:1px solid #e4e7ec;border-radius:9px;background:#f8fafc;padding:9px;max-height:230px;overflow:auto;font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;color:#344054}.bcV2HealthLog:empty{display:none}
+.bcV2Pass{color:#027a48}.bcV2Fail{color:#b42318}.bcV2Skip{color:#667085}
+@media(max-width:1200px){.bcV2RecentGrid{grid-template-columns:repeat(3,1fr)}.bcFilters.bcV2Filters{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.bcV2Continue{align-items:flex-start;flex-direction:column}.bcV2RecentGrid{grid-template-columns:repeat(2,1fr)}.bcFilters.bcV2Filters{grid-template-columns:1fr 1fr}.bcFilters.bcV2Filters input:first-child{grid-column:1/-1}}
+</style>
+<script>
+(function setupBinaCourtWorkflowV2(){
+"use strict";
+const SB_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
+const SB_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
+const ADMIN_HASH="5b4cf17d4a8c94299cb6392ddbac76ae9c37755a5590d76773d6f023c3a0b1d2";
+const CURRENT_KEY="binaCourtRegistryCurrentV1";
+let projects=[],adminPassword="",gridTimer=null,enhancing=false;
+
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now=()=>new Date().toISOString();
+const isAdmin=()=>String(document.body.dataset.userRole||"")==="admin";
+const safeName=v=>String(v||"").replace(/[\\/]+/g," - ").replace(/[\u0000-\u001f\u007f]/g,"").replace(/\s+/g," ").trim().slice(0,120)||"Untitled Project";
+const driveUrl=id=>"https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(id);
+
+async function sb(path,opt={}){
+  const headers=Object.assign({apikey:SB_KEY,"Content-Type":"application/json"},opt.headers||{});
+  const r=await fetch(SB_URL+"/rest/v1/"+path,Object.assign({},opt,{headers}));
+  const txt=await r.text();
+  let body=null;try{body=txt?JSON.parse(txt):null}catch(_){body=txt}
+  if(!r.ok)throw new Error((body&&(body.message||body.details||body.error))||("HTTP "+r.status));
+  return body;
+}
+async function sha256(text){
+  const data=new TextEncoder().encode(text),hash=await crypto.subtle.digest("SHA-256",data);
+  return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function ensureAdminPassword(){
+  if(!isAdmin())throw new Error("Fungsi ini hanya untuk Admin.");
+  if(adminPassword && await sha256(adminPassword)===ADMIN_HASH)return adminPassword;
+  const entered=prompt("Masukkan password Admin untuk tindakan ini:");
+  if(!entered)throw new Error("Tindakan dibatalkan.");
+  if(await sha256(entered)!==ADMIN_HASH)throw new Error("Password Admin tidak sah.");
+  adminPassword=entered;
+  return adminPassword;
+}
+async function adminHeaders(){
+  return {"x-admin-password":await ensureAdminPassword()};
+}
+async function loadProjects(){
+  const rows=await sb("binacourt_projects?select=*&order=updated_at.desc&limit=500");
+  projects=Array.isArray(rows)?rows:[];
+  return projects;
+}
+function rowById(id){return projects.find(p=>p.id===id)||null}
+function currentId(){return window.BinaCourtDashboard?.currentProject?.id||localStorage.getItem(CURRENT_KEY)||""}
+function formatDate(v){try{return v?new Date(v).toLocaleString():"-"}catch(_){return"-"}}
+function courtTypes(row){
+  const v=row?.metadata?.court_types;
+  return Array.isArray(v)?v.filter(Boolean):[];
+}
+function preview(row){return row?.metadata?.preview||""}
+function statusLabel(s){return({draft:"Draft",internal_review:"Internal Review",sent_to_client:"Sent to Client",approved:"Approved",revised:"Revised",completed:"Completed",archived:"Archived"})[s]||s||"Draft"}
+
+function injectHome(){
+  const view=document.querySelector('#bcDash .bcView[data-view="home"]');
+  if(!view||$("bcV2Continue"))return;
+  const hero=view.querySelector(".bcHero");
+  const cont=document.createElement("div");
+  cont.id="bcV2Continue";cont.className="bcV2Continue";cont.hidden=true;
+  cont.innerHTML='<div><b id="bcV2ContinueTitle">Continue Last Project</b><span id="bcV2ContinueMeta"></span></div><button class="bcBtn primary" id="bcV2ContinueBtn">Continue</button>';
+  hero.insertAdjacentElement("afterend",cont);
+  const stats=view.querySelector(".bcStats");
+  const recent=document.createElement("section");
+  recent.className="bcV2Recent";recent.id="bcV2Recent";
+  recent.innerHTML='<div class="bcV2RecentHead"><h3>Recent Projects</h3><button class="bcBtn" id="bcV2ViewAll">View All</button></div><div class="bcV2RecentGrid" id="bcV2RecentGrid"></div>';
+  stats.insertAdjacentElement("afterend",recent);
+  $("bcV2ViewAll").onclick=()=>window.BinaCourtDashboard?.show("projects");
+}
+function lastProject(){
+  const active=rowById(currentId());
+  if(active&&!active.archived)return active;
+  return projects.filter(p=>!p.archived).sort((a,b)=>String(b.last_opened_at||b.updated_at||"").localeCompare(String(a.last_opened_at||a.updated_at||"")))[0]||null;
+}
+function renderHome(){
+  injectHome();
+  const last=lastProject(),box=$("bcV2Continue");
+  if(box){
+    box.hidden=!last;
+    if(last){
+      $("bcV2ContinueTitle").textContent="Continue: "+last.title;
+      $("bcV2ContinueMeta").textContent=[last.reference_no,last.sales_name,statusLabel(last.status),"Last "+formatDate(last.last_opened_at||last.updated_at)].filter(Boolean).join(" · ");
+      $("bcV2ContinueBtn").onclick=()=>{
+        if(window.BinaCourtDashboard?.currentProject?.id===last.id)window.BinaCourtDashboard.hide();
+        else window.BinaCourtDashboard?.openProject(last);
+      };
+    }
+  }
+  const grid=$("bcV2RecentGrid");if(!grid)return;
+  const recent=projects.filter(p=>!p.archived).sort((a,b)=>String(b.last_opened_at||b.updated_at||"").localeCompare(String(a.last_opened_at||a.updated_at||""))).slice(0,5);
+  grid.innerHTML=recent.length?recent.map(p=>{
+    const img=preview(p)?'<img alt="" src="'+esc(preview(p))+'">':'';
+    return '<button class="bcV2RecentCard" data-v2-open="'+esc(p.id)+'"><div class="bcV2RecentThumb">'+img+'</div><div class="bcV2RecentBody"><b>'+esc(p.title)+'</b><span>'+esc(p.reference_no||"No Ref")+' · '+esc(p.sales_name)+'</span></div></button>';
+  }).join(""):'<div style="font-size:10px;color:#667085">Belum ada recent project.</div>';
+  grid.querySelectorAll("[data-v2-open]").forEach(b=>b.onclick=()=>window.BinaCourtDashboard?.openProject(rowById(b.dataset.v2Open)));
+}
+
+function injectFilters(){
+  const f=document.querySelector('#bcDash .bcView[data-view="projects"] .bcFilters');
+  if(!f||$("bcV2Year"))return;
+  f.classList.add("bcV2Filters");
+  const year=document.createElement("select");year.id="bcV2Year";year.innerHTML='<option value="">Semua Tahun</option>';
+  const brand=document.createElement("select");brand.id="bcV2Brand";brand.innerHTML='<option value="">Semua Brand</option>';
+  const court=document.createElement("select");court.id="bcV2Court";court.innerHTML='<option value="">Semua Court</option>';
+  const sort=document.createElement("select");sort.id="bcV2Sort";sort.innerHTML='<option value="recent">Recent</option><option value="updated">Last Updated</option><option value="title">Nama A–Z</option><option value="sale">Sale A–Z</option><option value="ref">Reference</option><option value="courts">Court Terbanyak</option>';
+  const archived=f.querySelector("#bcShowArchived")?.closest("label");
+  if(archived){f.insertBefore(year,archived);f.insertBefore(brand,archived);f.insertBefore(court,archived);f.insertBefore(sort,archived)}
+  else{f.append(year,brand,court,sort)}
+  const sum=document.createElement("div");sum.id="bcV2FilterSummary";sum.className="bcV2FilterSummary";f.appendChild(sum);
+  [year,brand,court,sort].forEach(e=>e.addEventListener("change",applyGridEnhancements));
+}
+function populateFilters(){
+  injectFilters();
+  const year=$("bcV2Year"),brand=$("bcV2Brand"),court=$("bcV2Court");
+  if(!year)return;
+  const keep={y:year.value,b:brand.value,c:court.value};
+  const years=[...new Set(projects.map(p=>String(p.project_year||"")).filter(Boolean))].sort().reverse();
+  const brands=[...new Set(projects.map(p=>String(p.brand_system||"")).filter(Boolean))].sort();
+  const courts=[...new Set(projects.flatMap(courtTypes))].sort();
+  year.innerHTML='<option value="">Semua Tahun</option>'+years.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+  brand.innerHTML='<option value="">Semua Brand</option>'+brands.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+  court.innerHTML='<option value="">Semua Court</option>'+courts.map(v=>'<option value="'+esc(v)+'">'+esc(v.replaceAll("_"," "))+'</option>').join("");
+  year.value=keep.y;brand.value=keep.b;court.value=keep.c;
+}
+function cardRow(card){
+  const id=card.querySelector("[data-open]")?.dataset.open||"";
+  return rowById(id);
+}
+function addCardV2(card,row){
+  if(!row)return;
+  card.dataset.v2Id=row.id;
+  const body=card.querySelector(".bcCardBody"),buttons=card.querySelector(".bcCardBtns");
+  if(body&&!body.querySelector(".bcV2MetaChips")){
+    const chips=document.createElement("div");chips.className="bcV2MetaChips";
+    const types=courtTypes(row).slice(0,3);
+    chips.innerHTML='<span class="bcV2Chip">'+esc(String(row.project_year||""))+'</span><span class="bcV2Chip">'+esc(String(row.brand_system||"").toUpperCase())+'</span>'+types.map(t=>'<span class="bcV2Chip">'+esc(t.replaceAll("_"," "))+'</span>').join("");
+    body.insertBefore(chips,buttons||null);
+  }
+  if(buttons&&!buttons.querySelector(".bcV2Dup")){
+    const b=document.createElement("button");b.className="bcBtn bcV2Dup";b.textContent="Duplicate";b.onclick=e=>{e.stopPropagation();duplicateProject(row).catch(showError)};buttons.appendChild(b);
+  }
+}
+function applyGridEnhancements(){
+  if(enhancing)return;
+  const grid=$("bcProjectGrid");if(!grid)return;
+  enhancing=true;
+  try{
+    populateFilters();
+    const year=$("bcV2Year")?.value||"",brand=$("bcV2Brand")?.value||"",court=$("bcV2Court")?.value||"",sort=$("bcV2Sort")?.value||"recent";
+    let cards=[...grid.querySelectorAll(".bcCard")];
+    cards.forEach(card=>addCardV2(card,cardRow(card)));
+    const visible=cards.filter(card=>{
+      const r=cardRow(card);if(!r)return false;
+      const ok=(!year||String(r.project_year)===year)&&(!brand||String(r.brand_system)===brand)&&(!court||courtTypes(r).includes(court));
+      card.style.display=ok?"":"none";return ok;
+    });
+    const cmp={
+      recent:(a,b)=>String(b.last_opened_at||b.updated_at||"").localeCompare(String(a.last_opened_at||a.updated_at||"")),
+      updated:(a,b)=>String(b.updated_at||"").localeCompare(String(a.updated_at||"")),
+      title:(a,b)=>String(a.title||"").localeCompare(String(b.title||"")),
+      sale:(a,b)=>String(a.sales_name||"").localeCompare(String(b.sales_name||"")),
+      ref:(a,b)=>String(a.reference_no||"").localeCompare(String(b.reference_no||""),undefined,{numeric:true}),
+      courts:(a,b)=>Number(b.court_count||0)-Number(a.court_count||0)
+    }[sort]||(()=>0);
+    cards.sort((a,b)=>cmp(cardRow(a)||{},cardRow(b)||{})).forEach(c=>grid.appendChild(c));
+    const sum=$("bcV2FilterSummary");if(sum)sum.textContent="Paparan "+visible.length+" project · "+projects.filter(p=>!p.archived).length+" aktif · "+projects.filter(p=>p.archived).length+" archived";
+  }finally{enhancing=false}
+}
+function scheduleGrid(){
+  clearTimeout(gridTimer);gridTimer=setTimeout(applyGridEnhancements,60);
+}
+
+async function nextRefForSale(row){
+  const d=window.BinaCourtDrive;if(!d)throw new Error("Google Drive module tidak tersedia.");
+  if(!d.connected)await d.connect();
+  let root=d.root;if(!root){await d.selectRoot();root=d.root}
+  if(!root?.id)throw new Error("Pilih folder BINA COURT PROJECTS dahulu.");
+  const year=String(row.project_year||new Date().getFullYear());
+  const yearFolder=await d.getOrCreateFolder(year,root.id);
+  const saleFolder=await d.getOrCreateFolder(safeName(row.sales_name),yearFolder.id);
+  const folders=await d.listChildren(saleFolder.id,{foldersOnly:true});
+  let max=0,width=3;
+  folders.forEach(x=>{const m=String(x.name||"").match(/^\s*(\d{1,8})(?:\s*(?:-|–|—)|\s|$)/);if(m){max=Math.max(max,parseInt(m[1],10)||0);width=Math.max(width,m[1].length)}});
+  return {root,year,yearFolder,saleFolder,referenceNo:String(max+1).padStart(width,"0")};
+}
+async function duplicateProject(row){
+  if(!row?.drive_project_file_id)throw new Error("Project asal belum mempunyai Drive file.");
+  const title=prompt("Nama project duplicate:",row.title+" (Copy)");
+  if(title===null)return;
+  if(!title.trim())throw new Error("Nama project tidak boleh kosong.");
+  const d=window.BinaCourtDrive,structure=await nextRefForSale(row),ref=structure.referenceNo;
+  const job=await d.createFolder(ref+" - "+safeName(title),structure.saleFolder.id);
+  let created=null;
+  try{
+    const raw=await d.readFile(row.drive_project_file_id);
+    const source=raw?.project&&typeof raw.project==="object"?raw.project:raw;
+    const project=JSON.parse(JSON.stringify(source||{}));
+    project.projectTitle=title.trim();project.projectSalesName=row.sales_name;project.projectReferenceNo=ref;
+    project._binaCloud=Object.assign({},project._binaCloud||{},{
+      format:"binacourt",version:1,savedAt:now(),rootFolderId:structure.root.id,year:structure.year,
+      saleName:row.sales_name,referenceNo:ref,yearFolderId:structure.yearFolder.id,saleFolderId:structure.saleFolder.id,
+      jobFolderId:job.id,fileId:""
+    });
+    const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});
+    created=await d.createBinaryFile(job.id,ref+" - "+safeName(title)+".binacourt",blob,"application/json");
+    project._binaCloud.fileId=created.id;project._binaCloud.savedAt=now();
+    await d.updateBinaryFile(created.id,new Blob([JSON.stringify(project,null,2)],{type:"application/json"}),"application/json");
+    const sub={};for(const n of ["Site Photos","Proposal","Exports","Versions","Attachments","Preview"])sub[n]=(await d.getOrCreateFolder(n,job.id)).id;
+    const types=[...new Set((project.courts||[]).filter(c=>!c.hidden).map(c=>c.type).filter(Boolean))];
+    const meta=Object.assign({},row.metadata||{},{court_types:types,duplicated_from:row.id});
+    const payload={
+      project_year:Number(structure.year),reference_no:ref,title:title.trim(),sales_name:row.sales_name,status:"draft",
+      brand_system:project.brand||row.brand_system||"duracourt",court_count:(project.courts||[]).filter(c=>!c.hidden).length,
+      drive_root_folder_id:structure.root.id,drive_year_folder_id:structure.yearFolder.id,drive_sales_folder_id:structure.saleFolder.id,
+      drive_job_folder_id:job.id,drive_project_file_id:created.id,drive_preview_file_id:"",
+      drive_photos_folder_id:sub["Site Photos"],drive_proposals_folder_id:sub["Proposal"],drive_exports_folder_id:sub["Exports"],
+      drive_versions_folder_id:sub["Versions"],last_saved_at:now(),metadata:meta
+    };
+    const inserted=await sb("binacourt_projects",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(payload)});
+    const newRow=inserted?.[0];
+    if(newRow)await sb("binacourt_project_activity",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:newRow.id,action:"duplicated",detail:{source_project_id:row.id,source_reference:row.reference_no}})});
+    await refreshAll();
+    alert("Duplicate siap: "+ref+" - "+title.trim());
+  }catch(error){
+    try{await d.request(driveUrl(job.id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})})}catch(_){}
+    throw error;
+  }
+}
+async function archiveProject(row,restore=false){
+  if(!row)return;
+  const headers=await adminHeaders();
+  const meta=Object.assign({},row.metadata||{});
+  let status="archived",archived=true;
+  if(restore){status=meta.pre_archive_status&&meta.pre_archive_status!=="archived"?meta.pre_archive_status:"draft";archived=false;delete meta.pre_archive_status}
+  else meta.pre_archive_status=row.status&&row.status!=="archived"?row.status:"draft";
+  const out=await sb("binacourt_projects?id=eq."+encodeURIComponent(row.id),{method:"PATCH",headers:Object.assign({Prefer:"return=representation"},headers),body:JSON.stringify({status,archived,metadata:meta,updated_at:now()})});
+  await sb("binacourt_project_activity",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:row.id,action:restore?"restored_from_archive":"archived",detail:{}})});
+  await refreshAll();hideModalIfOpen();
+}
+async function deleteProject(row){
+  if(!row)return;
+  if(!confirm('Delete project "'+row.title+'"? Project akan dipindahkan ke Google Drive Trash.'))return;
+  if(!confirm("Pengesahan terakhir: tindakan ini akan buang registry, versions dan asset references. Teruskan?"))return;
+  const headers=await adminHeaders(),d=window.BinaCourtDrive;
+  let trashed=false;
+  try{
+    if(row.drive_job_folder_id&&d){
+      await d.request(driveUrl(row.drive_job_folder_id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})});
+      trashed=true;
+    }
+    await sb("binacourt_projects?id=eq."+encodeURIComponent(row.id),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)});
+    if(window.BinaCourtDashboard?.currentProject?.id===row.id){try{localStorage.removeItem(CURRENT_KEY)}catch(_){};try{d?.clearCurrent()}catch(_){}}
+    await refreshAll();hideModalIfOpen();alert("Project dipindahkan ke Trash dan registry telah dibuang.");
+  }catch(error){
+    if(trashed&&row.drive_job_folder_id){try{await d.request(driveUrl(row.drive_job_folder_id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:false})})}catch(_){}}
+    throw error;
+  }
+}
+async function refreshThumbnail(row){
+  if(!row||window.BinaCourtDashboard?.currentProject?.id!==row.id)throw new Error("Open project ini dalam Designer dahulu.");
+  await window.BinaCourtDashboard.save({reason:"thumbnail_refresh"});
+  await refreshAll();
+  alert("Thumbnail project dikemas kini.");
+}
+
+function injectModalButtons(){
+  const stack=document.querySelector("#bcProjectModal .bcStack");if(!stack||$("bcV2DuplicateModal"))return;
+  const dup=document.createElement("button");dup.id="bcV2DuplicateModal";dup.className="bcBtn";dup.textContent="Duplicate Project";
+  const thumb=document.createElement("button");thumb.id="bcV2ThumbModal";thumb.className="bcBtn bcV2ActiveBtn";thumb.textContent="Refresh Thumbnail";
+  const arc=document.createElement("button");arc.id="bcV2ArchiveModal";arc.className="bcBtn bcV2Warn bcV2AdminBtn";arc.textContent="Archive Project";
+  const del=document.createElement("button");del.id="bcV2DeleteModal";del.className="bcBtn bcV2Danger bcV2AdminBtn";del.textContent="Delete Project";
+  stack.append(dup,thumb,arc,del);
+  dup.onclick=()=>{const r=modalRow();if(r)duplicateProject(r).catch(showError)};
+  thumb.onclick=()=>{const r=modalRow();if(r)refreshThumbnail(r).catch(showError)};
+  arc.onclick=()=>{const r=modalRow();if(r)archiveProject(r,!!r.archived).catch(showError)};
+  del.onclick=()=>{const r=modalRow();if(r)deleteProject(r).catch(showError)};
+}
+function modalRow(){
+  const id=$("bcProjectModal")?.dataset.v2ProjectId||"";
+  return rowById(id);
+}
+function updateModal(){
+  injectModalButtons();
+  const r=modalRow();if(!r)return;
+  const adm=isAdmin(),active=currentId()===r.id;
+  const arc=$("bcV2ArchiveModal"),del=$("bcV2DeleteModal"),thumb=$("bcV2ThumbModal");
+  if(arc){arc.hidden=!adm;arc.textContent=r.archived?"Restore from Archive":"Archive Project"}
+  if(del)del.hidden=!adm;if(thumb)thumb.hidden=!active;
+  const archOpt=$("bcModalStatus")?.querySelector('option[value="archived"]');if(archOpt)archOpt.disabled=true;
+}
+function hideModalIfOpen(){const m=$("bcProjectModal");if(m&&!m.hidden)$("bcModalClose")?.click()}
+
+function injectHealth(){
+  const view=document.querySelector('#bcDash .bcView[data-view="settings"]');if(!view||$("bcV2Health"))return;
+  const panel=document.createElement("div");panel.id="bcV2Health";panel.className="bcPanel bcV2Health";
+  panel.innerHTML='<div class="bcV2HealthRow"><div><h3 style="margin:0">System Check</h3><p style="font-size:10px;color:#667085;margin:5px 0 0">Semak Supabase, Google Drive, recovery, material engine dan PDF engine. Admin menjalankan write-test sementara yang dibersihkan semula.</p></div><button class="bcBtn primary" id="bcV2RunCheck">Run System Check</button></div><div class="bcV2HealthLog" id="bcV2HealthLog"></div>';
+  view.appendChild(panel);$("bcV2RunCheck").onclick=()=>runSystemCheck().catch(showError);
+}
+function logCheck(lines,label,state,detail=""){lines.push((state==="pass"?"✓":state==="fail"?"✕":"•")+" "+label+(detail?" — "+detail:""))}
+async function testPdfEngine(){
+  if(typeof exportPdf!=="function")throw new Error("exportPdf tidak tersedia");
+  if(!window.BinaCourtDashboard?.currentProject)return {skip:true,detail:"Tiada project aktif"};
+  let captured=null,old=window.BinaCourtPdfSink;
+  window.BinaCourtPdfSink=async(blob,name)=>{captured={blob,name};return true};
+  try{await exportPdf()}finally{window.BinaCourtPdfSink=old}
+  if(!captured?.blob||captured.blob.size<1000)throw new Error("PDF blob kosong");
+  return {detail:captured.name+" · "+Math.round(captured.blob.size/1024)+" KB"};
+}
+async function runSystemCheck(){
+  const out=$("bcV2HealthLog"),btn=$("bcV2RunCheck");if(!out||!btn)return;
+  btn.disabled=true;out.textContent="Running checks…";const lines=[];let qaFolder=null,qaRow=null;
+  try{
+    const rows=await loadProjects();logCheck(lines,"Supabase registry read","pass",rows.length+" project");
+    try{localStorage.setItem("__bcqa","ok");if(localStorage.getItem("__bcqa")!=="ok")throw 0;localStorage.removeItem("__bcqa");logCheck(lines,"Local recovery storage","pass")}catch(_){logCheck(lines,"Local recovery storage","fail")}
+    const d=window.BinaCourtDrive;if(!d)throw new Error("Google Drive module tiada");
+    if(!d.connected){logCheck(lines,"Google Drive OAuth","skip","Belum connected");}
+    else{
+      const root=d.root;if(!root?.id)logCheck(lines,"Google Drive root","skip","Root belum dipilih");
+      else{
+        const kids=await d.listChildren(root.id,{foldersOnly:true});logCheck(lines,"Google Drive read","pass",kids.length+" folder");
+        if(isAdmin()){
+          const headers=await adminHeaders(),stamp=Date.now(),qaId=crypto.randomUUID(),qaDriveId="qa-"+stamp;
+          qaFolder=await d.createFolder("__BinaCourt QA "+stamp,root.id);
+          const blob=new Blob([JSON.stringify({qa:true,at:now()})],{type:"application/json"});
+          const file=await d.createBinaryFile(qaFolder.id,"qa.binacourt",blob,"application/json");
+          const read=await d.readFile(file.id);if(!read?.qa)throw new Error("Drive roundtrip mismatch");
+          await d.updateBinaryFile(file.id,new Blob([JSON.stringify({qa:true,updated:true})],{type:"application/json"}),"application/json");
+          logCheck(lines,"Google Drive write/read/update","pass","Temporary file verified");
+          const ins=await sb("binacourt_projects",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({id:qaId,project_year:new Date().getFullYear(),reference_no:"QA"+stamp,title:"BinaCourt QA",sales_name:"System QA",status:"draft",drive_project_file_id:qaDriveId,drive_job_folder_id:qaFolder.id,metadata:{qa:true}})});
+          qaRow=ins?.[0]||{id:qaId};
+          await sb("binacourt_project_versions",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,version_no:1,drive_file_id:file.id,drive_file_name:"qa.binacourt",reason:"qa"})});
+          await sb("binacourt_project_assets",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,asset_type:"attachment",drive_file_id:file.id+"-asset",drive_folder_id:qaFolder.id,name:"qa.json",mime_type:"application/json",size_bytes:blob.size})});
+          await sb("binacourt_project_activity",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({project_id:qaId,action:"qa_test",detail:{ok:true}})});
+          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"PATCH",headers:Object.assign({Prefer:"return=minimal"},headers),body:JSON.stringify({status:"archived",archived:true})});
+          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"PATCH",headers:Object.assign({Prefer:"return=minimal"},headers),body:JSON.stringify({status:"draft",archived:false})});
+          logCheck(lines,"Supabase CRUD + Admin archive guard","pass","Temporary row verified");
+          await sb("binacourt_projects?id=eq."+encodeURIComponent(qaId),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)});qaRow=null;
+          await d.request(driveUrl(qaFolder.id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})});qaFolder=null;
+          logCheck(lines,"QA cleanup","pass","Temporary data removed");
+        }else logCheck(lines,"Write / Admin tests","skip","Login Admin untuk full check");
+      }
+    }
+    if(typeof calculateVisibleColorAreas==="function"){
+      if(window.BinaCourtDashboard?.currentProject){const areas=await calculateVisibleColorAreas();logCheck(lines,"Material estimator engine","pass",(areas||[]).length+" colour area")}
+      else logCheck(lines,"Material estimator engine","skip","Tiada project aktif");
+    }else logCheck(lines,"Material estimator engine","fail","Function missing");
+    try{const pdf=await testPdfEngine();logCheck(lines,"PDF engine",pdf.skip?"skip":"pass",pdf.detail||"")}catch(e){logCheck(lines,"PDF engine","fail",e.message)}
+    logCheck(lines,"Network",navigator.onLine?"pass":"skip",navigator.onLine?"Online":"Offline");
+  }catch(error){logCheck(lines,"System Check","fail",error.message)}
+  finally{
+    try{
+      if(qaRow){const headers=await adminHeaders();await sb("binacourt_projects?id=eq."+encodeURIComponent(qaRow.id),{method:"DELETE",headers:Object.assign({Prefer:"return=minimal"},headers)})}
+    }catch(_){}
+    try{if(qaFolder)await window.BinaCourtDrive.request(driveUrl(qaFolder.id)+"?fields=id,trashed",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({trashed:true})})}catch(_){}
+    out.innerHTML=lines.map(x=>'<div class="'+(x.startsWith("✓")?"bcV2Pass":x.startsWith("✕")?"bcV2Fail":"bcV2Skip")+'">'+esc(x)+'</div>').join("");
+    btn.disabled=false;await refreshAll().catch(()=>{});
+  }
+}
+
+async function syncExtraMetadata(){
+  try{
+    const d=window.BinaCourtDrive,fileId=d?.current?.fileId;if(!fileId)return;
+    await new Promise(r=>setTimeout(r,700));await loadProjects();
+    const row=projects.find(p=>p.drive_project_file_id===fileId);if(!row)return;
+    const types=[...new Set((state.courts||[]).filter(c=>!c.hidden).map(c=>c.type).filter(Boolean))];
+    const meta=Object.assign({},row.metadata||{},{court_types:types,site_w:Number(state.siteW||0),site_h:Number(state.siteH||0),measurement_unit:state.measurementUnit||"m"});
+    await sb("binacourt_projects?id=eq."+encodeURIComponent(row.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({metadata:meta,brand_system:state.brand||row.brand_system,court_count:(state.courts||[]).filter(c=>!c.hidden).length,updated_at:now()})});
+    await refreshAll();
+  }catch(e){console.warn("V2 metadata sync",e)}
+}
+async function refreshAll(){
+  await loadProjects();renderHome();populateFilters();scheduleGrid();updateModal();
+}
+function showError(e){alert(e?.message||String(e||"Ralat tidak diketahui."))}
+
+function bindV2(){
+  injectHome();injectFilters();injectModalButtons();injectHealth();
+  const grid=$("bcProjectGrid");if(grid){
+    new MutationObserver(scheduleGrid).observe(grid,{childList:true,subtree:true});
+    grid.addEventListener("click",e=>{
+      const detail=e.target.closest("[data-detail]");if(detail){const m=$("bcProjectModal");if(m)m.dataset.v2ProjectId=detail.dataset.detail;setTimeout(updateModal,0)}
+    },true);
+  }
+  const modal=$("bcProjectModal");if(modal)new MutationObserver(()=>{if(!modal.hidden)updateModal()}).observe(modal,{attributes:true,attributeFilter:["hidden"]});
+  new MutationObserver(()=>{document.querySelectorAll(".bcV2AdminBtn").forEach(b=>b.hidden=!isAdmin());updateModal()}).observe(document.body,{attributes:true,attributeFilter:["data-user-role"]});
+  window.addEventListener("binacourt:drive-saved",syncExtraMetadata);
+  window.addEventListener("binacourt:drive-opened",()=>setTimeout(refreshAll,900));
+  const dash=$("bcDash");if(dash)new MutationObserver(()=>{if(!dash.hidden)refreshAll().catch(()=>{})}).observe(dash,{attributes:true,attributeFilter:["hidden"]});
+}
+async function init(){
+  let tries=0;while((!$("bcDash")||!window.BinaCourtDashboard||!window.BinaCourtDrive)&&tries<100){await new Promise(r=>setTimeout(r,80));tries++}
+  if(!$("bcDash")||!window.BinaCourtDashboard)return;
+  bindV2();await refreshAll();
+  window.BinaCourtWorkflowV2={refresh:refreshAll,duplicate:duplicateProject,archive:archiveProject,deleteProject,runSystemCheck,get projects(){return projects.slice()}};
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+})();
+</script>
