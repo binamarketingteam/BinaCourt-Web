@@ -911,14 +911,10 @@
   }
   .admin-login-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
   .admin-login-logo{
-    width:54px;height:54px;border-radius:15px;background:linear-gradient(145deg,#0D47A1,#08295f);
-    display:grid;place-items:center;position:relative;overflow:hidden;
-    box-shadow:0 8px 20px rgba(13,71,161,.22)
+    width:54px;height:54px;border-radius:15px;overflow:hidden;flex:0 0 auto;
+    box-shadow:0 8px 20px rgba(8,41,95,.22)
   }
-  .admin-login-logo .bc-b{font-size:30px;line-height:1;font-weight:950;color:#fff;letter-spacing:-4px;transform:translateX(-3px)}
-  .admin-login-logo .bc-c{position:absolute;right:8px;bottom:6px;font-size:25px;line-height:1;font-weight:950;color:#E53935}
-  .admin-login-logo:before{content:"";position:absolute;left:9px;right:9px;top:26px;height:2px;background:#fff;opacity:.95}
-  .admin-login-logo:after{content:"";position:absolute;top:9px;bottom:9px;left:26px;width:2px;background:#fff;opacity:.95}
+  .admin-login-logo .binacourt-app-logo{width:100%;height:100%;border-radius:inherit}
   .admin-login-title-brand{font-size:20px;font-weight:900;line-height:1;letter-spacing:-.4px}
   .admin-login-title-brand .bina{color:#0D47A1}
   .admin-login-title-brand .court{color:#E53935}
@@ -1011,7 +1007,13 @@
 <div id="adminLoginGate" role="dialog" aria-modal="true" aria-labelledby="adminLoginTitle">
   <form id="adminLoginForm" class="admin-login-card" autocomplete="off">
     <div class="admin-login-brand">
-      <div class="admin-login-logo" aria-hidden="true"><span class="bc-b">B</span><span class="bc-c">C</span></div>
+      <div class="admin-login-logo" aria-hidden="true"><svg class="binacourt-app-logo" viewBox="0 0 108 108" aria-hidden="true">
+  <path fill="#08295F" d="M0 0h108v108H0z"/>
+  <path fill="#FFFFFF" fill-rule="evenodd" d="M18 14h42c17 0 28 8 28 21 0 8-4 14-12 18 10 4 16 11 16 20 0 15-12 25-31 25H18z M36 30v17h22c7 0 11-3 11-8 0-6-4-9-11-9z M36 63v19h25c8 0 12-3 12-9 0-7-4-10-12-10z"/>
+  <path fill="#E53935" d="M71 44c19 0 33 11 33 27 0 17-14 28-33 28H60V84h11c10 0 17-5 17-13 0-7-7-12-17-12H60V44z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" d="M22 55H96M53 21V90"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" d="M62 55A9 9 0 1 1 44 55A9 9 0 1 1 62 55"/>
+</svg></div>
       <div>
         <div class="admin-login-title-brand"><span class="bina">Bina</span><span class="court">Court</span></div>
         <p>Sports-Court Planning Software · Bina Paint</p>
@@ -1051,7 +1053,13 @@
 
 <header>
   <div class="binacourt-brand" aria-label="BinaCourt">
-    <div class="admin-login-logo" aria-hidden="true" style="width:45px;height:45px;border-radius:12px;box-shadow:none"><span class="bc-b">B</span><span class="bc-c">C</span></div>
+    <div class="admin-login-logo" aria-hidden="true" style="width:45px;height:45px;border-radius:12px;box-shadow:none"><svg class="binacourt-app-logo" viewBox="0 0 108 108" aria-hidden="true">
+  <path fill="#08295F" d="M0 0h108v108H0z"/>
+  <path fill="#FFFFFF" fill-rule="evenodd" d="M18 14h42c17 0 28 8 28 21 0 8-4 14-12 18 10 4 16 11 16 20 0 15-12 25-31 25H18z M36 30v17h22c7 0 11-3 11-8 0-6-4-9-11-9z M36 63v19h25c8 0 12-3 12-9 0-7-4-10-12-10z"/>
+  <path fill="#E53935" d="M71 44c19 0 33 11 33 27 0 17-14 28-33 28H60V84h11c10 0 17-5 17-13 0-7-7-12-17-12H60V44z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" d="M22 55H96M53 21V90"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" d="M62 55A9 9 0 1 1 44 55A9 9 0 1 1 62 55"/>
+</svg></div>
     <div class="binacourt-brand-copy">
       <div class="binacourt-brand-name"><span class="bina">Bina</span><span class="court">Court</span></div>
       <small class="binacourt-brand-tagline">Sports-Court Planning Software</small>
