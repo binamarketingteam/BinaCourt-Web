@@ -43,14 +43,17 @@
   const SCOPE="https://www.googleapis.com/auth/drive.file";
   const ROOT_KEY="binaCourtDriveRootV1";
   const AUTH_KEY="binaCourtDriveAuthorizedV1";
+  const DEVICE_KEY="binaCourtDriveDeviceV1";
+  const AUTH_ENDPOINT="https://thvpxsqrkusxbmeaojiv.supabase.co/functions/v1/binacourt-google-auth";
   const FOLDER_MIME="application/vnd.google-apps.folder";
   const DRIVE_BASE="https://www.googleapis.com/drive/v3";
   const DRIVE_UPLOAD="https://www.googleapis.com/upload/drive/v3";
 
   let accessToken="";
   let tokenExpiry=0;
-  let tokenClient=null;
   let librariesPromise=null;
+  let persistentLinked=false;
+  let authRestorePromise=null;
   let currentCloud={};
   let newCloudPending=false;
   let busy=false;
@@ -72,6 +75,62 @@
     renderDriveUi();
   }
 
+  function getDeviceSecret(){
+    try{
+      let value=localStorage.getItem(DEVICE_KEY)||"";
+      if(value.length>=32) return value;
+      const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
+      value=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+      localStorage.setItem(DEVICE_KEY,value);
+      return value;
+    }catch(_){
+      const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
+      return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+    }
+  }
+
+  async function authBackend(action,payload={}){
+    const response=await fetch(AUTH_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Requested-With":"XmlHttpRequest"},
+      body:JSON.stringify({action,device_secret:getDeviceSecret(),...payload})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      const error=new Error(data?.error_description||data?.error||("Google auth HTTP "+response.status));
+      error.code=data?.error||"google_auth_failed";
+      error.reconnectRequired=!!data?.reconnect_required;
+      throw error;
+    }
+    return data;
+  }
+
+  function applyAccessToken(data){
+    if(!data?.access_token) throw new Error("Google tidak pulangkan access token");
+    accessToken=data.access_token;
+    tokenExpiry=Date.now()+(Number(data.expires_in)||3600)*1000;
+    persistentLinked=!!data.persistent;
+    try{localStorage.setItem(AUTH_KEY,"1");}catch(_){}
+    renderDriveUi();
+    return accessToken;
+  }
+
+  async function restorePersistentAuth(){
+    if(isTokenValid()) return accessToken;
+    if(authRestorePromise) return authRestorePromise;
+    authRestorePromise=(async()=>{
+      try{
+        const data=await authBackend("token");
+        return applyAccessToken(data);
+      }catch(error){
+        if(error?.reconnectRequired || error?.code==="reconnect_required") persistentLinked=false;
+        renderDriveUi();
+        return "";
+      }
+    })();
+    try{return await authRestorePromise}finally{authRestorePromise=null}
+  }
+
   function setStatus(message,type=""){
     const el=byId("driveCloudStatus");
     if(!el) return;
@@ -91,8 +150,8 @@
     const folder=byId("driveCloudFolder");
     const connect=byId("driveCloudConnect");
     if(dot) dot.classList.toggle("connected",connected);
-    if(subtitle) subtitle.textContent=connected?"Google Drive connected":"Belum connected untuk sesi ini";
-    if(connect) connect.textContent=connected?"↻ Refresh Login":"🔗 Connect";
+    if(subtitle) subtitle.textContent=connected?"Google Drive connected":persistentLinked?"Google Drive linked · token akan diperbaharui automatik":"Belum linked ke Google Drive";
+    if(connect) connect.textContent=connected||persistentLinked?"↻ Refresh Login":"🔗 Connect";
     if(folder){
       folder.innerHTML=root
         ? '<b>Project Folder</b>📁 '+escapeHtml(root.name||"BINA COURT PROJECTS")
@@ -144,37 +203,43 @@
           window.gapi.load("picker",{callback:resolve,onerror:()=>reject(new Error("Google Picker gagal dimuatkan"))});
         }catch(error){ reject(error); }
       });
-      tokenClient=window.google.accounts.oauth2.initTokenClient({
-        client_id:CLIENT_ID,
-        scope:SCOPE,
-        callback:()=>{}
-      });
       return true;
     })();
     return librariesPromise;
   }
 
-  async function ensureAuth({forceConsent=false}={}){
+  async function authorizePersistent({forceConsent=false}={}){
     await initLibraries();
-    if(isTokenValid() && !forceConsent) return accessToken;
-    const known=(()=>{try{return localStorage.getItem(AUTH_KEY)==="1";}catch(_){return false;}})();
     return await new Promise((resolve,reject)=>{
       let settled=false;
-      tokenClient.callback=response=>{
-        if(settled) return;
-        if(response?.error){settled=true;reject(new Error(response.error_description||response.error));return;}
-        if(!response?.access_token){settled=true;reject(new Error("Google tidak pulangkan access token"));return;}
-        settled=true;
-        accessToken=response.access_token;
-        tokenExpiry=Date.now()+(Number(response.expires_in)||3600)*1000;
-        try{localStorage.setItem(AUTH_KEY,"1");}catch(_){ }
-        renderDriveUi();
-        resolve(accessToken);
-      };
-      try{
-        tokenClient.requestAccessToken({prompt:forceConsent||!known?"consent":""});
-      }catch(error){settled=true;reject(error);}
+      const client=window.google.accounts.oauth2.initCodeClient({
+        client_id:CLIENT_ID,
+        scope:SCOPE,
+        ux_mode:"popup",
+        include_granted_scopes:true,
+        prompt:forceConsent?"consent":"",
+        callback:async response=>{
+          if(settled) return;
+          if(response?.error){settled=true;reject(new Error(response.error_description||response.error));return;}
+          if(!response?.code){settled=true;reject(new Error("Google tidak pulangkan authorization code"));return;}
+          try{
+            const data=await authBackend("exchange",{code:response.code});
+            settled=true;resolve(applyAccessToken(data));
+          }catch(error){settled=true;reject(error);}
+        }
+      });
+      try{client.requestCode();}catch(error){settled=true;reject(error);}
     });
+  }
+
+  async function ensureAuth({forceConsent=false,interactive=false}={}){
+    if(isTokenValid() && !forceConsent) return accessToken;
+    const restored=await restorePersistentAuth();
+    if(restored && !forceConsent) return restored;
+    if(interactive) return await authorizePersistent({forceConsent});
+    const error=new Error("Google Drive perlu disambung sekali. Tekan Connect Google Drive.");
+    error.code="reconnect_required";
+    throw error;
   }
 
   function clearToken(){
@@ -722,11 +787,13 @@
     if(busy) return;
     setBusy(true,"Connect ke Google Drive...");
     try{
-      await ensureAuth({forceConsent:false});
-      setStatus("✓ Google Drive connected untuk sesi ini.","success");
+      await ensureAuth({interactive:true,forceConsent:!persistentLinked});
+      setStatus("✓ Google Drive connected. Login akan dipulihkan automatik.","success");
     }catch(error){
       console.error("Google Drive auth:",error);
-      setStatus(error?.message||"Google Drive login gagal.","error");
+      setStatus(error?.code==="refresh_token_missing"
+        ?"Google tidak beri sesi kekal. Cuba Connect sekali lagi dan benarkan akses."
+        :(error?.message||"Google Drive login gagal."),"error");
     }finally{setBusy(false);renderDriveUi();}
   }
 
@@ -824,7 +891,14 @@
     get current(){return {...currentCloud};}
   };
 
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",injectUi,{once:true});
-  else injectUi();
+  function bootDrive(){
+    injectUi();
+    restorePersistentAuth().then(token=>{
+      if(token) setStatus("✓ Google Drive session dipulihkan automatik.","success");
+    }).catch(()=>{});
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bootDrive,{once:true});
+  else bootDrive();
 })();
 </script>
