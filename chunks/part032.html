@@ -1,0 +1,200 @@
+<style>
+body.bc-client-mode{background:#f4f7fb!important;overflow:auto!important}
+body.bc-client-mode>*:not(#bcClientShare){display:none!important}
+#bcClientShare{min-height:100vh;background:#f4f7fb;color:#152033;font-family:Inter,Arial,sans-serif}
+.bcClientTop{height:70px;background:linear-gradient(105deg,#092944,#123f6d);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:5;box-shadow:0 2px 12px #04203b33}
+.bcClientBrand{font-size:23px;font-weight:900;letter-spacing:-.6px}.bcClientBrand i{font-style:normal;color:#ffc400}.bcClientTop small{display:block;font-size:9px;letter-spacing:.14em;color:#dbe7f4;margin-top:3px}
+.bcClientWrap{width:min(1120px,94vw);margin:0 auto;padding:28px 0 60px}.bcClientHero{background:#fff;border:1px solid #d9e2ec;border-radius:16px;padding:22px;box-shadow:0 7px 22px #0f26420d}.bcClientHero h1{margin:0;font-size:26px}.bcClientHero p{margin:7px 0 0;color:#667085;font-size:12px}
+.bcClientStatus{display:inline-flex;margin-top:12px;padding:6px 10px;border-radius:99px;background:#eef4ff;color:#175cd3;font-size:10px;font-weight:900}.bcClientStatus.approved{background:#ecfdf3;color:#027a48}.bcClientStatus.revision_requested{background:#fff4ed;color:#b54708}
+.bcClientPages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}.bcClientPage{background:#fff;border:2px solid transparent;border-radius:15px;overflow:hidden;box-shadow:0 6px 18px #0f26420f;transition:.15s}.bcClientPage.selected{border-color:#0d5cab;box-shadow:0 0 0 3px #0d5cab1f}.bcClientPage img{width:100%;display:block;background:#eef2f6}.bcClientPageFoot{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}.bcClientPageFoot b{font-size:12px}.bcClientChoose{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;color:#0d5cab}.bcClientChoose input{width:17px;height:17px}
+.bcClientResponse{margin-top:18px;background:#fff;border:1px solid #d9e2ec;border-radius:15px;padding:18px}.bcClientResponse h3{margin:0 0 12px;font-size:16px}.bcClientForm{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bcClientForm label{font-size:10px;color:#475467;display:block;margin-bottom:5px}.bcClientForm input,.bcClientForm textarea{width:100%;box-sizing:border-box;border:1px solid #cfd8e3;border-radius:9px;padding:10px;font:12px Inter,Arial}.bcClientForm textarea{min-height:95px;resize:vertical}.bcClientForm .full{grid-column:1/-1}.bcClientButtons{display:flex;gap:8px;margin-top:13px}.bcClientButtons button{border:0;border-radius:9px;padding:11px 15px;font-weight:900;cursor:pointer}.bcClientApprove{background:#0d5cab;color:#fff}.bcClientRevise{background:#fff4ed;color:#b54708;border:1px solid #fed7aa!important}.bcClientMessage{padding:28px;background:#fff;border:1px solid #d9e2ec;border-radius:14px;text-align:center;color:#667085;margin-top:28px}
+.bcSharePanel{grid-column:1/-1;background:#f8fbff;border:1px solid #cfe0f1;border-radius:12px;padding:14px}.bcSharePanel h3{margin:0 0 5px;font-size:13px}.bcSharePanel p{margin:0 0 10px;font-size:10px;color:#667085}.bcShareActions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.bcShareActions select{height:36px;font-size:10px;padding:6px 8px}.bcShareList{margin-top:10px;display:flex;flex-direction:column;gap:6px}.bcShareRow{display:grid;grid-template-columns:1fr auto;gap:10px;border-top:1px solid #e6edf5;padding-top:8px;font-size:10px}.bcShareRow b{font-size:10px}.bcShareMeta{color:#667085;margin-top:3px}.bcShareRowBtns{display:flex;gap:5px;align-items:flex-start}.bcShareRowBtns button{padding:6px 8px!important;font-size:9px!important}
+@media(max-width:760px){.bcClientPages{grid-template-columns:1fr}.bcClientForm{grid-template-columns:1fr}.bcClientForm .full{grid-column:auto}.bcClientTop{padding:0 14px}.bcClientBrand{font-size:19px}}
+</style>
+<script>
+(function setupBinaCourtClientApproval(){
+"use strict";
+const SB_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
+const SB_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
+const ADMIN_HASH="5b4cf17d4a8c94299cb6392ddbac76ae9c37755a5590d76773d6f023c3a0b1d2";
+const TOKEN_STORE="binaCourtClientShareTokensV1";
+let adminPassword="";
+
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=v=>{try{return v?new Date(v).toLocaleString():"-"}catch(_){return"-"}};
+
+async function sha256(text){
+  const data=new TextEncoder().encode(text),hash=await crypto.subtle.digest("SHA-256",data);
+  return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function ensureAdminPassword(){
+  if(String(document.body.dataset.userRole||"")!=="admin")throw new Error("Hanya Admin boleh urus Client Share.");
+  if(adminPassword&&await sha256(adminPassword)===ADMIN_HASH)return adminPassword;
+  const p=prompt("Masukkan password Admin:");
+  if(!p)throw new Error("Tindakan dibatalkan.");
+  if(await sha256(p)!==ADMIN_HASH)throw new Error("Password Admin tidak sah.");
+  adminPassword=p;return p;
+}
+async function headersAdmin(){return {"x-admin-password":await ensureAdminPassword()}}
+async function rpc(name,args={},headers={}){
+  const r=await fetch(SB_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:Object.assign({apikey:SB_KEY,"Content-Type":"application/json"},headers),body:JSON.stringify(args)});
+  const t=await r.text();let b=null;try{b=t?JSON.parse(t):null}catch(_){b=t}
+  if(!r.ok)throw new Error((b&&(b.message||b.details||b.error))||("HTTP "+r.status));
+  return b;
+}
+function tokenMap(){try{return JSON.parse(localStorage.getItem(TOKEN_STORE)||"{}")||{}}catch(_){return{}}}
+function saveToken(id,token){const m=tokenMap();m[id]=token;localStorage.setItem(TOKEN_STORE,JSON.stringify(m))}
+function shareUrl(token){return location.origin+location.pathname+"?share="+encodeURIComponent(token)}
+function makeToken(){
+  const a=new Uint8Array(32);crypto.getRandomValues(a);
+  let s="";a.forEach(x=>s+=String.fromCharCode(x));
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function currentModalProject(){
+  const id=$("bcProjectModal")?.dataset.v2ProjectId||"";
+  return window.BinaCourtWorkflowV2?.projects?.find?.(p=>p.id===id)||null;
+}
+function currentProjectActive(row){return !!row&&window.BinaCourtDashboard?.currentProject?.id===row.id}
+
+function buildShareSnapshot(){
+  if(typeof saveCurrentGroupToStore==="function")saveCurrentGroupToStore();
+  if(typeof ensureOptionGroups==="function")ensureOptionGroups();
+  return {
+    format:"binacourt-client-share",
+    version:1,
+    projectTitle:String(state.projectTitle||""),
+    brand:String(state.brand||"duracourt"),
+    siteBrand:String(state.siteBrand||state.brand||"duracourt"),
+    measurementUnit:String(state.measurementUnit||"m"),
+    customColors:typeof cloneData==="function"?cloneData(state.customColors||[]):JSON.parse(JSON.stringify(state.customColors||[])),
+    pdfPageOrder:String(state.pdfPageOrder||"option_first"),
+    optionGroups:typeof cloneData==="function"?cloneData(state.optionGroups||[]):JSON.parse(JSON.stringify(state.optionGroups||[]))
+  };
+}
+async function createShare(){
+  const row=currentModalProject();
+  if(!row)throw new Error("Project tidak ditemui.");
+  if(!currentProjectActive(row))throw new Error("Open project ini dalam Designer dahulu supaya share menggunakan design terkini.");
+  if(window.BinaCourtDashboard?.dirty)await window.BinaCourtDashboard.save({reason:"client_share_snapshot",preview:false});
+  const days=Math.max(1,Math.min(180,Number($("bcShareExpiry")?.value||30)));
+  const token=makeToken(),expires=new Date(Date.now()+days*86400000).toISOString();
+  const res=await rpc("binacourt_admin_create_share",{p_project_id:row.id,p_token:token,p_snapshot:buildShareSnapshot(),p_expires_at:expires},await headersAdmin());
+  if(!res?.ok)throw new Error("Share tidak dapat dicipta.");
+  saveToken(res.id,token);
+  const link=shareUrl(token);
+  try{await navigator.clipboard.writeText(link)}catch(_){}
+  await renderSharePanel();
+  alert("Client Share Link siap dan telah disalin.\n\n"+link);
+}
+async function listShares(row){
+  if(!row)return[];
+  const out=await rpc("binacourt_admin_list_shares",{p_project_id:row.id},await headersAdmin());
+  return Array.isArray(out)?out:[];
+}
+async function revokeShare(id,revoked){
+  await rpc("binacourt_admin_revoke_share",{p_share_id:id,p_revoked:revoked},await headersAdmin());
+  await renderSharePanel();
+}
+async function copyShare(id){
+  const token=tokenMap()[id];
+  if(!token)throw new Error("Token link ini tidak disimpan pada browser ini. Generate share baru untuk mendapatkan link baru.");
+  const link=shareUrl(token);await navigator.clipboard.writeText(link);alert("Link disalin.");
+}
+function injectSharePanel(){
+  const body=document.querySelector("#bcProjectModal .bcModalBody");if(!body||$("bcSharePanel"))return;
+  const p=document.createElement("section");p.id="bcSharePanel";p.className="bcSharePanel";
+  p.innerHTML='<h3>Client Preview & Approval</h3><p>Generate read-only link untuk client semak option dan beri approval / revision request. Approved snapshot kekal sebagai rekod walaupun project diedit kemudian.</p><div class="bcShareActions"><select id="bcShareExpiry"><option value="7">7 hari</option><option value="14">14 hari</option><option value="30" selected>30 hari</option><option value="60">60 hari</option><option value="90">90 hari</option></select><button class="bcBtn primary" id="bcShareCreate">Generate Share Link</button><button class="bcBtn" id="bcShareRefresh">Refresh</button></div><div id="bcShareList" class="bcShareList"></div>';
+  body.appendChild(p);
+  $("bcShareCreate").onclick=()=>createShare().catch(e=>alert(e.message));
+  $("bcShareRefresh").onclick=()=>renderSharePanel().catch(e=>alert(e.message));
+}
+async function renderSharePanel(){
+  injectSharePanel();const panel=$("bcSharePanel");if(!panel)return;
+  const admin=String(document.body.dataset.userRole||"")==="admin";panel.hidden=!admin;if(!admin)return;
+  const row=currentModalProject(),list=$("bcShareList");if(!row){list.innerHTML="";return}
+  let shares=[];try{shares=await listShares(row)}catch(e){list.innerHTML='<div class="bcShareMeta">'+esc(e.message)+'</div>';return}
+  const tokens=tokenMap();
+  list.innerHTML=shares.length?shares.map(s=>{
+    const expired=new Date(s.expires_at)<=new Date(),status=s.revoked?"Revoked":expired?"Expired":s.decision==="approved"?"Approved":s.decision==="revision_requested"?"Revision Requested":"Pending";
+    const tokenKnown=!!tokens[s.id];
+    return '<div class="bcShareRow"><div><b>'+esc(status)+'</b><div class="bcShareMeta">Created '+fmt(s.created_at)+' · Expires '+fmt(s.expires_at)+' · '+Number(s.view_count||0)+' view'+(Number(s.view_count||0)===1?"":"s")+(s.client_name?' · '+esc(s.client_name):'')+'</div>'+(s.client_comment?'<div class="bcShareMeta">“'+esc(s.client_comment)+'”</div>':'')+'</div><div class="bcShareRowBtns">'+(tokenKnown?'<button class="bcBtn" data-copy="'+s.id+'">Copy Link</button>':'')+(!expired?'<button class="bcBtn" data-revoke="'+s.id+'" data-state="'+(!s.revoked)+'">'+(s.revoked?"Restore":"Revoke")+'</button>':'')+'</div></div>';
+  }).join(""):'<div class="bcShareMeta">Belum ada Client Share untuk project ini.</div>';
+  list.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyShare(b.dataset.copy).catch(e=>alert(e.message)));
+  list.querySelectorAll("[data-revoke]").forEach(b=>b.onclick=()=>revokeShare(b.dataset.revoke,b.dataset.state==="true").catch(e=>alert(e.message)));
+}
+function bindInternal(){
+  injectSharePanel();
+  const modal=$("bcProjectModal");
+  if(modal)new MutationObserver(()=>{if(!modal.hidden)setTimeout(()=>renderSharePanel().catch(()=>{}),80)}).observe(modal,{attributes:true,attributeFilter:["hidden"]});
+  new MutationObserver(()=>renderSharePanel().catch(()=>{})).observe(document.body,{attributes:true,attributeFilter:["data-user-role"]});
+  window.BinaCourtClientApproval={createShare,refresh:renderSharePanel};
+}
+
+async function waitCore(){
+  for(let i=0;i<150;i++){
+    if(typeof buildPdfPageSequence==="function"&&typeof applyOptionData==="function"&&typeof svgToCanvas==="function"&&typeof buildDrawingExportCanvas==="function")return;
+    await new Promise(r=>setTimeout(r,50));
+  }
+  throw new Error("Drawing engine tidak tersedia.");
+}
+function clientShell(){
+  document.body.classList.remove("admin-locked");document.body.classList.add("bc-client-mode");
+  const gate=$("adminLoginGate");if(gate)gate.hidden=true;
+  let root=$("bcClientShare");if(root)return root;
+  root=document.createElement("main");root.id="bcClientShare";
+  root.innerHTML='<div class="bcClientTop"><div><div class="bcClientBrand">Bina<i>Court</i></div><small>CLIENT PREVIEW & APPROVAL</small></div><div style="font-size:10px">Read-only project review</div></div><div class="bcClientWrap"><div id="bcClientContent" class="bcClientMessage">Loading project preview…</div></div>';
+  document.body.appendChild(root);return root;
+}
+async function renderClientPreview(token){
+  clientShell();const host=$("bcClientContent");
+  const res=await rpc("binacourt_client_preview",{p_token:token});
+  if(!res?.ok){
+    const msg={invalid_link:"Link tidak sah.",not_found:"Share link tidak ditemui.",revoked:"Share link telah dibatalkan.",expired:"Share link telah tamat tempoh."}[res?.error]||"Preview tidak dapat dibuka.";
+    host.className="bcClientMessage";host.textContent=msg;return;
+  }
+  await waitCore();
+  const snap=res.snapshot||{};
+  state.projectTitle=String(snap.projectTitle||"");
+  state.brand=String(snap.brand||"duracourt");state.siteBrand=String(snap.siteBrand||state.brand);
+  state.measurementUnit=String(snap.measurementUnit||"m");state.customColors=cloneData(snap.customColors||[]);
+  state.optionGroups=cloneData(snap.optionGroups||[]);state.optionPages=[];state.projectGroup=1;state.projectOption=1;
+  ensureOptionGroups();
+  const pages=buildPdfPageSequence(cloneData(state.optionGroups),snap.pdfPageOrder||"option_first");
+  host.className="";host.innerHTML='<section class="bcClientHero"><h1>'+esc(snap.projectTitle||"BinaCourt Project")+'</h1><p>Sila semak pilihan design di bawah. Pilih option yang dipersetujui sebelum tekan Approve.</p><span class="bcClientStatus '+esc(res.decision)+'" id="bcClientDecision">'+esc(res.decision==="pending"?"Pending Review":res.decision==="approved"?"Approved":"Revision Requested")+'</span></section><section class="bcClientPages" id="bcClientPages"></section><section class="bcClientResponse" id="bcClientResponse"><h3>Client Response</h3><div class="bcClientForm"><div><label>Nama</label><input id="bcClientName" maxlength="120" placeholder="Nama client / wakil"></div><div><label>Selected Option</label><input id="bcClientSelected" readonly placeholder="Pilih option di atas"></div><div class="full"><label>Komen</label><textarea id="bcClientComment" maxlength="1500" placeholder="Komen atau perubahan yang diperlukan"></textarea></div></div><div class="bcClientButtons"><button class="bcClientApprove" id="bcClientApprove">Approve Selected Option</button><button class="bcClientRevise" id="bcClientRevise">Request Revision</button></div></section>';
+  const pageHost=$("bcClientPages");let selected=null;
+  for(let i=0;i<pages.length;i++){
+    const p=pages[i];state.projectGroup=p.groupIndex;state.projectOption=p.optionNumber;applyOptionData(cloneData(p.optionData));render({preserveStagePosition:false});
+    const base=await svgToCanvas(1000),canvas=await buildDrawingExportCanvas(base,p.groupName,p.optionNumber),url=canvas.toDataURL("image/jpeg",0.72);
+    const card=document.createElement("label");card.className="bcClientPage";card.dataset.group=p.groupIndex;card.dataset.option=p.optionNumber;
+    card.innerHTML='<img alt="'+esc(p.groupName)+' Option '+p.optionNumber+'" src="'+url+'"><div class="bcClientPageFoot"><b>'+esc(p.groupName)+' — Option '+p.optionNumber+'</b><span class="bcClientChoose"><input type="radio" name="bcClientOption"> Choose</span></div>';
+    card.querySelector("input").onchange=()=>{selected={group:p.groupIndex,option:p.optionNumber,label:p.groupName+" — Option "+p.optionNumber};document.querySelectorAll(".bcClientPage").forEach(x=>x.classList.toggle("selected",x===card));$("bcClientSelected").value=selected.label};
+    pageHost.appendChild(card);
+  }
+  if(res.decision!=="pending"){
+    const response=$("bcClientResponse");response.innerHTML='<h3>Response Recorded</h3><p style="font-size:12px;color:#667085">This share has already been answered'+(res.client_name?" by "+esc(res.client_name):"")+' on '+fmt(res.responded_at)+'.</p>'+(res.client_comment?'<p style="font-size:12px">“'+esc(res.client_comment)+'”</p>':'');
+    if(res.selected_group&&res.selected_option){const card=[...document.querySelectorAll(".bcClientPage")].find(x=>Number(x.dataset.group)===Number(res.selected_group)&&Number(x.dataset.option)===Number(res.selected_option));if(card)card.classList.add("selected")}
+    return;
+  }
+  async function respond(decision){
+    const name=$("bcClientName").value.trim(),comment=$("bcClientComment").value.trim();
+    if(!name)return alert("Masukkan nama client / wakil.");
+    if(decision==="approved"&&!selected)return alert("Pilih option yang hendak diluluskan.");
+    if(decision==="revision_requested"&&!comment)return alert("Nyatakan perubahan yang diperlukan.");
+    const out=await rpc("binacourt_client_respond",{p_token:token,p_decision:decision,p_client_name:name,p_comment:comment,p_group:selected?.group||null,p_option:selected?.option||null});
+    if(!out?.ok)throw new Error("Response tidak dapat dihantar.");
+    await renderClientPreview(token);
+  }
+  $("bcClientApprove").onclick=()=>respond("approved").catch(e=>alert(e.message));
+  $("bcClientRevise").onclick=()=>respond("revision_requested").catch(e=>alert(e.message));
+}
+async function init(){
+  const token=new URLSearchParams(location.search).get("share");
+  if(token){clientShell();try{await renderClientPreview(token)}catch(e){const h=$("bcClientContent");h.className="bcClientMessage";h.textContent="Preview gagal: "+e.message}return}
+  for(let i=0;i<100&&!window.BinaCourtDashboard;i++)await new Promise(r=>setTimeout(r,60));
+  bindInternal();
+}
+window.BinaCourtAdminTools={ensurePassword:ensureAdminPassword,headers:headersAdmin,rpc};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+})();
+</script>
