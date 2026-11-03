@@ -557,7 +557,7 @@
     return {...uploaded,assetType:kind,folderId:folders[folderKey],folders};
   }
 
-  async function saveCloudProject(){
+  async function saveCloudProject(options={}){
     if(busy) return;
     setBusy(true,"Menyimpan project ke Google Drive...");
     try{
@@ -630,7 +630,7 @@
       state._binaCloud={...JSON.parse(cloudPayload(meta))._binaCloud};
       const now=new Date();
       setStatus(`✓ Saved: ${structure.year} / ${sale} / ${jobName} · ${now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`,"success");
-      try{window.dispatchEvent(new CustomEvent("binacourt:drive-saved",{detail:{current:{...currentCloud},jobName,fileName}}));}catch(_){}
+      if(options.emitEvent!==false){try{window.dispatchEvent(new CustomEvent("binacourt:drive-saved",{detail:{current:{...currentCloud},jobName,fileName}}));}catch(_){}}
       return {ok:true,current:{...currentCloud},jobName,fileName};
     }catch(error){
       console.error("Google Drive save:",error);
@@ -773,7 +773,7 @@
     byId("driveCloudConnect")?.addEventListener("click",event=>{event.preventDefault();connectDrive();});
     byId("driveCloudSelectRoot")?.addEventListener("click",event=>{event.preventDefault();selectRoot();});
     byId("driveCloudNew")?.addEventListener("click",event=>{event.preventDefault();newCloudProject();});
-    byId("driveCloudSave")?.addEventListener("click",event=>{event.preventDefault();saveCloudProject();});
+    byId("driveCloudSave")?.addEventListener("click",async event=>{event.preventDefault();try{if(window.BinaCourtDashboard&&typeof window.BinaCourtDashboard.save==="function")await window.BinaCourtDashboard.save({reason:"drive_menu"});else await saveCloudProject();}catch(error){console.error("Manual Drive save:",error);setStatus(error?.message||"Gagal simpan project.","error");}});
     byId("driveCloudOpen")?.addEventListener("click",event=>{event.preventDefault();loadCloudProject();});
     byId("projectSalesName")?.addEventListener("change",()=>handleSaleForNewProject());
 
