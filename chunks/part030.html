@@ -173,7 +173,7 @@ function restartAutosave(){clearInterval(autosaveTimer);var s=settings();if(!s.a
 function renderRecoveryBanner(){
   renderRecovery()
 }
-function restoreRecovery(){try{var r=JSON.parse(localStorage.getItem(RECOVERY_KEY)||"null");if(!r||!r.state)return;if(!confirm("Restore local recovery snapshot?"))return;window.restoreProjectSnapshot(r.state);if(window.initializeHistory)window.initializeHistory();dirty=true;hideDashboard();setSaveIndicator("Recovered · unsaved","warn")}catch(e){alert("Recovery gagal: "+e.message)}
+function restoreRecovery(){try{var r=JSON.parse(localStorage.getItem(RECOVERY_KEY)||"null");if(!r||!r.state)return;if(!confirm("Restore local recovery snapshot?"))return;window.restoreProjectSnapshot(r.state);if(window.initializeHistory)window.initializeHistory();dirty=true;hideDashboard();setSaveIndicator("Recovered · unsaved","warn")}catch(e){alert("Recovery gagal: "+e.message)}}
 function inject(){
   if($("bcDash"))return;
   var shell=document.createElement("div");shell.id="bcDash";shell.hidden=true;shell.innerHTML=
