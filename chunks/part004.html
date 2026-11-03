@@ -128,21 +128,34 @@ function getCustomPalette(){
 }
 
 function getDefaultPaletteForBrand(brand){
-  const brandName=productBrandName(brand);
-  const standard=activeDefaultPalette().map(item=>({
-    ...item,
-    name:item.name.replace(/^Duracourt\b/i, brandName)
-  }));
-  return [...standard,...getCustomPalette()];
+  const normalized=normalizeBrand(brand);
+  const brandName=productBrandName(normalized);
+  const cloud=window.BinaCourtBrandLibrary?.paletteForBrand?.(normalized);
+  const standard=Array.isArray(cloud) && cloud.length
+    ? cloud.map(item=>({...item}))
+    : activeDefaultPalette().map(item=>({
+        ...item,
+        name:item.name.replace(/^Duracourt\b/i, brandName)
+      }));
+  const standardHex=new Set(standard.map(item=>normalizeHexColor(item.color)));
+  return [...standard,...getCustomPalette().filter(item=>!standardHex.has(normalizeHexColor(item.color)))];
 }
 
 function getLinePaletteForBrand(brand){
-  const brandName=lineBrandName(brand);
-  const standard=activeDefaultPalette().map(item=>({
-    ...item,
-    name:item.name.replace(/^Duracourt\b/i, brandName)
-  }));
-  return [...standard,...getCustomPalette()];
+  const normalized=normalizeBrand(brand);
+  const brandName=lineBrandName(normalized);
+  const cloud=window.BinaCourtBrandLibrary?.paletteForBrand?.(normalized);
+  const standard=Array.isArray(cloud) && cloud.length
+    ? cloud.map(item=>({
+        ...item,
+        name:String(item.name||"").replace(/^(Duracourt|Primacourt|Terracourt)\b/i,brandName)
+      }))
+    : activeDefaultPalette().map(item=>({
+        ...item,
+        name:item.name.replace(/^Duracourt\b/i, brandName)
+      }));
+  const standardHex=new Set(standard.map(item=>normalizeHexColor(item.color)));
+  return [...standard,...getCustomPalette().filter(item=>!standardHex.has(normalizeHexColor(item.color)))];
 }
 
 function getDefaultPalette(){
