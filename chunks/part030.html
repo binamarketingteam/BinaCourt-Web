@@ -30,7 +30,7 @@
 var SB_URL="https://thvpxsqrkusxbmeaojiv.supabase.co";
 var SB_KEY="sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM";
 var CURRENT_KEY="binaCourtRegistryCurrentV1", SETTINGS_KEY="binaCourtDashboardSettingsV1", RECOVERY_KEY="binaCourtRecoveryV1";
-var projects=[],currentProject=null,dirty=false,initialized=false,autosaveTimer=null;
+var projects=[],currentProject=null,modalProject=null,dirty=false,initialized=false,autosaveTimer=null;
 var statusLabels={draft:"Draft",internal_review:"Internal Review",sent_to_client:"Sent to Client",approved:"Approved",revised:"Revised",completed:"Completed",archived:"Archived"};
 function $(id){return document.getElementById(id)}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
@@ -184,7 +184,13 @@ function showView(name){
 function showDashboard(view){var s=$("bcDash");if(!s)return;s.hidden=false;showView(view||"home");renderStats();renderRecovery()}
 function hideDashboard(){var s=$("bcDash");if(s)s.hidden=true}
 function templateApply(types){
-  if(!confirm("Apply preset ini? Drawing semasa akan di-reset."))return;hideDashboard();if(typeof resetProject==="function")resetProject();setTimeout(function(){types.forEach(function(t){if(typeof addCourt==="function")addCourt(t,{skipHistory:true})});if(typeof autoArrange==="function"&&types.length>1)autoArrange();if(typeof render==="function")render({preserveStagePosition:false});if(typeof commitHistory==="function")commitHistory()},100)
+  var beforeTitle=String(state.projectTitle||""),beforeCourts=Array.isArray(state.courts)?state.courts.length:0;
+  hideDashboard();
+  if(typeof resetProject==="function")resetProject();
+  var resetWorked=String(state.projectTitle||"")==="" && (!Array.isArray(state.courts)||state.courts.length===0);
+  if(!resetWorked && (beforeTitle||beforeCourts)){showDashboard("templates");return}
+  currentProject=null;try{localStorage.removeItem(CURRENT_KEY)}catch(_){}
+  setTimeout(function(){types.forEach(function(t){if(typeof addCourt==="function")addCourt(t,{skipHistory:true})});if(typeof autoArrange==="function"&&types.length>1)autoArrange();if(typeof render==="function")render({preserveStagePosition:false});if(typeof commitHistory==="function")commitHistory()},100)
 }
 async function renderMaterial(){
   var box=$("bcMaterialList"),summary=$("bcMaterialSummary");if(!box||!summary)return;box.innerHTML="Mengira…";
@@ -212,14 +218,14 @@ async function restoreVersion(v){
   if(!confirm("Restore version "+v.version_no+" ke editor? Save selepas semak untuk jadikan ia versi utama."))return;var main=currentProject.drive_project_file_id;await window.BinaCourtDrive.loadById(v.drive_file_id,{jobFolderId:currentProject.drive_job_folder_id,year:currentProject.project_year,saleName:currentProject.sales_name,referenceNo:currentProject.reference_no});window.BinaCourtDrive.setCurrent({fileId:main,jobFolderId:currentProject.drive_job_folder_id,year:String(currentProject.project_year),saleName:currentProject.sales_name,referenceNo:currentProject.reference_no,rootFolderId:currentProject.drive_root_folder_id,yearFolderId:currentProject.drive_year_folder_id,saleFolderId:currentProject.drive_sales_folder_id});dirty=true;hideDashboard();setSaveIndicator("Restored · unsaved","warn");await addActivity(currentProject.id,"version_restored",{version:v.version_no})
 }
 async function showProjectModal(row){
-  if(!row)return;currentProject=row;localStorage.setItem(CURRENT_KEY,row.id);$("bcProjectModal").hidden=false;$("bcModalTitle").textContent=row.title;$("bcModalSub").textContent=(row.reference_no||"")+" · "+row.sales_name+" · "+fmtDate(row.updated_at);$("bcModalStatus").value=row.status||"draft";$("bcAssetStatus").textContent="";
+  if(!row)return;modalProject=row;$("bcProjectModal").hidden=false;$("bcModalTitle").textContent=row.title;$("bcModalSub").textContent=(row.reference_no||"")+" · "+row.sales_name+" · "+fmtDate(row.updated_at);$("bcModalStatus").value=row.status||"draft";$("bcAssetStatus").textContent="";
   var data=await Promise.all([listAssets(row.id),listVersions(row.id),listActivity(row.id)]),assets=data[0]||[],versions=data[1]||[],activity=data[2]||[];
   $("bcAssetList").innerHTML=assets.length?assets.map(function(a){return'<div class="bcListItem"><span><b>'+esc(a.name)+'</b><br>'+esc(a.asset_type)+'</span><span>'+((Number(a.size_bytes||0)/1048576).toFixed(1))+' MB</span></div>'}).join(""):'<div class="bcListItem">Belum ada asset.</div>';
   $("bcVersionList").innerHTML=versions.length?versions.map(function(v){return'<div class="bcListItem"><span><b>Version '+v.version_no+'</b><br>'+esc(v.reason)+' · '+fmtDate(v.created_at)+'</span><button class="bcBtn" data-version="'+v.id+'">Restore</button></div>'}).join(""):'<div class="bcListItem">Belum ada version.</div>';
   $("bcVersionList").querySelectorAll("[data-version]").forEach(function(b){b.onclick=function(){restoreVersion(versions.find(function(v){return v.id===b.dataset.version}))}});
   $("bcActivityList").innerHTML=activity.length?activity.slice(0,30).map(function(a){return'<div class="bcListItem"><span><b>'+esc(a.action)+'</b><br>'+fmtDate(a.created_at)+'</span></div>'}).join(""):'<div class="bcListItem">Belum ada activity.</div>'
 }
-function hideModal(){if($("bcProjectModal"))$("bcProjectModal").hidden=true}
+function hideModal(){modalProject=null;if($("bcProjectModal"))$("bcProjectModal").hidden=true}
 function renderSettings(){
   var s=settings(),root=window.BinaCourtDrive&&window.BinaCourtDrive.root;$("bcDriveRoot").textContent=root?root.name:"Belum pilih folder";$("bcSettingsRegistry").textContent=currentProject?currentProject.title:"Tiada project aktif";$("bcAutosave").checked=!!s.autosave;$("bcAutosaveSec").value=s.seconds||120
 }
@@ -257,8 +263,8 @@ function bind(){
   $("bcProjectRefresh").onclick=refreshProjects;$("bcProjectScan").onclick=function(){scanDriveProjects().catch(function(e){alert("Drive scan gagal: "+e.message)})};["bcProjectSearch","bcProjectSale","bcProjectStatusFilter","bcShowArchived"].forEach(function(id){var e=$(id);if(e)e.addEventListener(id==="bcProjectSearch"?"input":"change",renderProjects)});
   document.querySelectorAll("[data-template]").forEach(function(b){b.onclick=function(){templateApply(b.dataset.template.split(","))}});
   $("bcMaterialRefresh").onclick=renderMaterial;["bcCoverage","bcCoats","bcAllowance"].forEach(function(id){$(id).onchange=renderMaterial});
-  $("bcModalClose").onclick=hideModal;$("bcProjectModal").onclick=function(e){if(e.target===e.currentTarget)hideModal()};$("bcModalOpen").onclick=function(){openProject(currentProject)};$("bcModalSave").onclick=function(){saveNow({reason:"manual"}).then(function(){showProjectModal(currentProject)}).catch(function(e){alert(e.message)})};$("bcModalVersion").onclick=function(){createVersion("manual").catch(function(e){alert(e.message)})};$("bcModalPdf").onclick=savePdfToDrive;$("bcModalDrive").onclick=function(){if(currentProject&&currentProject.drive_job_folder_id)window.open("https://drive.google.com/drive/folders/"+encodeURIComponent(currentProject.drive_job_folder_id),"_blank")};$("bcPhotoInput").onchange=function(e){uploadFiles([...e.target.files],"site_photo");e.target.value=""};$("bcAttachInput").onchange=function(e){uploadFiles([...e.target.files],"attachment");e.target.value=""};
-  $("bcModalStatus").onchange=async function(){if(!currentProject)return;currentProject=await patchProject(currentProject.id,{status:this.value,archived:this.value==="archived"});await addActivity(currentProject.id,"status_changed",{status:this.value});await refreshProjects()};
+  $("bcModalClose").onclick=hideModal;$("bcProjectModal").onclick=function(e){if(e.target===e.currentTarget)hideModal()};$("bcModalOpen").onclick=function(){if(modalProject)openProject(modalProject)};$("bcModalSave").onclick=function(){if(!modalProject||!currentProject||modalProject.id!==currentProject.id)return alert("Open project ini dalam Designer dahulu.");saveNow({reason:"manual"}).then(function(){showProjectModal(currentProject)}).catch(function(e){alert(e.message)})};$("bcModalVersion").onclick=function(){if(!modalProject||!currentProject||modalProject.id!==currentProject.id)return alert("Open project ini dalam Designer dahulu.");createVersion("manual").catch(function(e){alert(e.message)})};$("bcModalPdf").onclick=function(){if(!modalProject||!currentProject||modalProject.id!==currentProject.id)return alert("Open project ini dalam Designer dahulu.");savePdfToDrive()};$("bcModalDrive").onclick=function(){if(modalProject&&modalProject.drive_job_folder_id)window.open("https://drive.google.com/drive/folders/"+encodeURIComponent(modalProject.drive_job_folder_id),"_blank")};$("bcPhotoInput").onchange=function(e){if(!modalProject||!currentProject||modalProject.id!==currentProject.id){alert("Open project ini dalam Designer dahulu.");e.target.value="";return}uploadFiles([...e.target.files],"site_photo");e.target.value=""};$("bcAttachInput").onchange=function(e){if(!modalProject||!currentProject||modalProject.id!==currentProject.id){alert("Open project ini dalam Designer dahulu.");e.target.value="";return}uploadFiles([...e.target.files],"attachment");e.target.value=""};
+  $("bcModalStatus").onchange=async function(){if(!modalProject)return;modalProject=await patchProject(modalProject.id,{status:this.value,archived:this.value==="archived"});if(currentProject&&currentProject.id===modalProject.id)currentProject=modalProject;await addActivity(modalProject.id,"status_changed",{status:this.value});await refreshProjects()};
   $("bcDriveConnect").onclick=function(){window.BinaCourtDrive.connect()};$("bcDriveSelect").onclick=function(){window.BinaCourtDrive.selectRoot()};$("bcAutosave").onchange=function(){var s=settings();s.autosave=this.checked;saveSettings(s)};$("bcAutosaveSec").onchange=function(){var s=settings();s.seconds=Math.max(30,Number(this.value||120));saveSettings(s)};$("bcClearRecovery").onclick=recoveryClear;$("bcRecoveryRestore").onclick=restoreRecovery;$("bcRecoveryDismiss").onclick=recoveryClear
 }
 async function restoreRegistry(){try{var id=localStorage.getItem(CURRENT_KEY);if(id)currentProject=await fetchProject(id)}catch(_){}}
