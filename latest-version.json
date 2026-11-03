@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "1.0.11",
+  "versionCode": 13,
+  "versionName": "1.0.12",
   "apkUrl": "https://binamarketingteam.github.io/BinaCourt-Web/downloads/BinaCourt-latest.apk",
-  "notes": "Project Workflow V2: Continue Last Project, Recent Projects, advanced filters, duplicate project, Admin archive/restore/delete, real thumbnail refresh, transactional System Check, project metadata sync, dan offline Android fallback."
+  "notes": "V3 Client Preview & Approval, approved-project revision lock, V5 Admin Court Standard Manager, V6 brand-specific Colour Library with favourites/recent/pairing presets, V7 Management Dashboard and reporting."
 }
