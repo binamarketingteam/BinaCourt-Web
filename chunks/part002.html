@@ -960,6 +960,8 @@
   .sales-label-row label{margin:0!important}
   .admin-only-sales{display:none!important}
   body[data-user-role="admin"] .admin-only-sales{display:inline-flex!important}
+  body:not([data-user-role="admin"]) .admin-only-colour-controls{display:none!important}
+  body:not([data-user-role="admin"]) .custom-colour-delete{display:none!important}
   .sales-manage-btn{
     width:auto!important;height:24px!important;padding:3px 7px!important;margin:0!important;
     border-radius:6px!important;border:1px solid #b7cdf7!important;background:#eef4ff!important;
