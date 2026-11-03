@@ -237,13 +237,7 @@ function restoreRecovery(){try{var r=JSON.parse(localStorage.getItem(RECOVERY_KE
 function inject(){
   if($("bcDash"))return;
   var shell=document.createElement("div");shell.id="bcDash";shell.hidden=true;shell.innerHTML=
-  '<div class="bcTop"><div class="bcBrand"><svg class="bcMark binacourt-app-logo" viewBox="0 0 108 108" aria-hidden="true">
-  <path fill="#08295F" d="M0 0h108v108H0z"/>
-  <path fill="#FFFFFF" fill-rule="evenodd" d="M18 14h42c17 0 28 8 28 21 0 8-4 14-12 18 10 4 16 11 16 20 0 15-12 25-31 25H18z M36 30v17h22c7 0 11-3 11-8 0-6-4-9-11-9z M36 63v19h25c8 0 12-3 12-9 0-7-4-10-12-10z"/>
-  <path fill="#E53935" d="M71 44c19 0 33 11 33 27 0 17-14 28-33 28H60V84h11c10 0 17-5 17-13 0-7-7-12-17-12H60V44z"/>
-  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" d="M22 55H96M53 21V90"/>
-  <path fill="none" stroke="#FFFFFF" stroke-width="3.4" d="M62 55A9 9 0 1 1 44 55A9 9 0 1 1 62 55"/>
-</svg><div><div class="bcBrandName"><span>Bina</span><i>Court</i></div><small class="bcBrandTag">SPORTS COURT DESIGN SYSTEM</small></div></div><div class="bcTopRight"><span class="bcPill" id="bcRole">Guest</span><span class="bcPill bcSaveDot" id="bcSaveState">Ready</span><button class="bcTopBtn" id="bcOpenDesigner">Open Designer</button></div></div>'+
+  '<div class="bcTop"><div class="bcBrand"><svg class="bcMark binacourt-app-logo" viewBox="0 0 108 108" aria-hidden="true"><path fill="#08295F" d="M0 0h108v108H0z"/><path fill="#FFFFFF" fill-rule="evenodd" d="M18 14h42c17 0 28 8 28 21 0 8-4 14-12 18 10 4 16 11 16 20 0 15-12 25-31 25H18z M36 30v17h22c7 0 11-3 11-8 0-6-4-9-11-9z M36 63v19h25c8 0 12-3 12-9 0-7-4-10-12-10z"/><path fill="#E53935" d="M71 44c19 0 33 11 33 27 0 17-14 28-33 28H60V84h11c10 0 17-5 17-13 0-7-7-12-17-12H60V44z"/><path fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" d="M22 55H96M53 21V90"/><path fill="none" stroke="#FFFFFF" stroke-width="3.4" d="M62 55A9 9 0 1 1 44 55A9 9 0 1 1 62 55"/></svg><div><div class="bcBrandName"><span>Bina</span><i>Court</i></div><small class="bcBrandTag">SPORTS COURT DESIGN SYSTEM</small></div></div><div class="bcTopRight"><span class="bcPill" id="bcRole">Guest</span><span class="bcPill bcSaveDot" id="bcSaveState">Ready</span><button class="bcTopBtn" id="bcOpenDesigner">Open Designer</button></div></div>'+
   '<div class="bcBody"><aside class="bcSide"><nav class="bcNav">'+
   navButton("home","Dashboard","M3 12h18M5 10v11h5v-6h4v6h5V10L12 4z")+navButton("new","Projek Baharu","M12 5v14M5 12h14")+navButton("projects","Senarai Projek","M3 6h18v14H3zM7 3h10v3")+navButton("templates","Template / Preset","M4 6l8-3 8 3-8 3zM4 12l8 3 8-3M4 18l8 3 8-3")+navButton("material","Anggaran Bahan","M5 19V9M12 19V5M19 19V2")+navButton("settings","Tetapan","M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM4 12H2m20 0h-2M12 4V2m0 20v-2")+
   '</nav></aside><main class="bcMain">'+
