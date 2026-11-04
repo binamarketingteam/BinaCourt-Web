@@ -112,7 +112,9 @@ async function saveNow(opt){
   var out=await window.BinaCourtDrive.save({emitEvent:false});
   if(!out||!out.ok)throw new Error(out&&out.error||"Drive save gagal");
   var row=await upsertRegistry(out.current);if(!row)throw new Error("Project registry perlukan nama project dan Nama Sale.");
-  if(opt.preview!==false)row=await ensureAutoPreview(row);
+  var hasPreview=!!(row.drive_preview_file_id||(row.metadata&&row.metadata.preview));
+  var shouldPreview=opt.preview!==false||!hasPreview;
+  if(shouldPreview)row=await ensureAutoPreview(row);
   if(opt.version){
     var next=Number(row.current_version||0)+1;var vf=await window.BinaCourtDrive.createVersion(next,opt.reason||"manual");
     await addVersion(row.id,{version_no:next,drive_file_id:vf.id,drive_file_name:vf.name,reason:opt.reason||"manual"});row=await patchProject(row.id,{current_version:next,drive_versions_folder_id:vf.folderId||""})
