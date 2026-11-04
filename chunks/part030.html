@@ -277,8 +277,8 @@ function injectDesignerButton(){
   var wrap=document.querySelector("header .header-admin-wrap");if(!wrap||$("bcDashButton"))return;var b=document.createElement("button");b.id="bcDashButton";b.type="button";b.textContent="Dashboard";b.onclick=function(){showDashboard("home")};wrap.insertBefore(b,wrap.firstChild)
 }
 function bind(){
-  document.querySelectorAll("#bcDash [data-view]").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
-  $("bcOpenDesigner").onclick=hideDashboard;$("bcQuickNew").onclick=$("bcNewProjectBig").onclick=$("bcProjectNew").onclick=newProject;$("bcQuickOpen").onclick=function(){showView("projects")};$("bcQuickTemplates").onclick=function(){showView("templates")};$("bcQuickMaterial").onclick=function(){showView("material")};
+  document.querySelectorAll("#bcDash .bcNav button[data-view]").forEach(function(b){b.onclick=function(e){if(e)e.stopPropagation();showView(b.dataset.view)}});
+  $("bcOpenDesigner").onclick=hideDashboard;$("bcQuickNew").onclick=$("bcNewProjectBig").onclick=$("bcProjectNew").onclick=newProject;$("bcQuickOpen").onclick=function(e){if(e)e.stopPropagation();showView("projects")};$("bcQuickTemplates").onclick=function(e){if(e)e.stopPropagation();showView("templates")};$("bcQuickMaterial").onclick=function(e){if(e)e.stopPropagation();showView("material")};
   $("bcProjectRefresh").onclick=refreshProjects;$("bcProjectScan").onclick=function(){scanDriveProjects().catch(function(e){alert("Drive scan gagal: "+e.message)})};["bcProjectSearch","bcProjectSale","bcProjectStatusFilter","bcShowArchived"].forEach(function(id){var e=$(id);if(e)e.addEventListener(id==="bcProjectSearch"?"input":"change",renderProjects)});
   document.querySelectorAll("[data-template]").forEach(function(b){b.onclick=function(){templateApply(b.dataset.template.split(","))}});
   $("bcMaterialRefresh").onclick=renderMaterial;["bcCoverage","bcCoats","bcAllowance"].forEach(function(id){$(id).onchange=renderMaterial});
