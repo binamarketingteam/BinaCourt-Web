@@ -80,14 +80,19 @@ async function previewBlob(){
 }
 async function savePreview(row){
   try{
-    var blob=await previewBlob();if(!blob)return row;var d=window.BinaCourtDrive;if(!d)return row;var folders=await d.ensureProjectFolders();var file;
+    var blob=await previewBlob();
+    if(!blob){await addActivity(row&&row.id,"thumbnail_failed",{step:"capture",error:"preview_blob_empty"});return row}
+    var d=window.BinaCourtDrive;
+    if(!d){await addActivity(row&&row.id,"thumbnail_failed",{step:"drive",error:"drive_unavailable"});return row}
+    var folders=await d.ensureProjectFolders();var file;
     if(row.drive_preview_file_id)file=await d.updateBinaryFile(row.drive_preview_file_id,blob,"image/jpeg");
     else file=await d.createBinaryFile(folders.previews,"preview.jpg",blob,"image/jpeg");
     var dataUrl=await new Promise(function(res){var fr=new FileReader();fr.onload=function(){res(fr.result)};fr.readAsDataURL(blob)});
     row=await patchProject(row.id,{drive_preview_file_id:file.id,metadata:Object.assign({},row.metadata||{},{preview:dataUrl})});
     await addAsset(row.id,{asset_type:"thumbnail",drive_file_id:file.id,drive_folder_id:folders.previews,name:"preview.jpg",mime_type:"image/jpeg",size_bytes:Number(file.size||blob.size||0)});
+    await addActivity(row.id,"thumbnail_saved",{size_bytes:Number(file.size||blob.size||0)});
     return row
-  }catch(e){console.warn("Preview save",e);return row}
+  }catch(e){console.warn("Preview save",e);await addActivity(row&&row.id,"thumbnail_failed",{step:"exception",error:String(e&&e.message||e)});return row}
 }
 async function ensureAutoPreview(row){
   if(!row||!row.id)return row;
@@ -123,7 +128,22 @@ async function saveNow(opt){
 }
 async function openProject(row){
   if(!row||!row.drive_project_file_id)return alert("Project ini belum ada Drive file.");
-  try{setSaveIndicator("Opening…","warn");await window.BinaCourtDrive.loadById(row.drive_project_file_id,{rootFolderId:row.drive_root_folder_id,year:row.project_year,saleName:row.sales_name,referenceNo:row.reference_no,yearFolderId:row.drive_year_folder_id,saleFolderId:row.drive_sales_folder_id,jobFolderId:row.drive_job_folder_id});currentProject=await patchProject(row.id,{last_opened_at:now()});localStorage.setItem(CURRENT_KEY,row.id);dirty=false;await addActivity(row.id,"opened",{});hideDashboard();setSaveIndicator("Saved","ok")}catch(e){alert("Gagal buka project: "+e.message)}
+  try{
+    setSaveIndicator("Opening…","warn");
+    await window.BinaCourtDrive.loadById(row.drive_project_file_id,{rootFolderId:row.drive_root_folder_id,year:row.project_year,saleName:row.sales_name,referenceNo:row.reference_no,yearFolderId:row.drive_year_folder_id,saleFolderId:row.drive_sales_folder_id,jobFolderId:row.drive_job_folder_id});
+    currentProject=await patchProject(row.id,{last_opened_at:now()});
+    localStorage.setItem(CURRENT_KEY,row.id);
+    dirty=false;
+    await addActivity(row.id,"opened",{});
+    hideDashboard();
+    if(!currentProject.drive_preview_file_id&&!(currentProject.metadata&&currentProject.metadata.preview)){
+      await new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(resolve)})});
+      var beforeId=currentProject.id;
+      var withPreview=await ensureAutoPreview(currentProject);
+      if(withPreview&&withPreview.id===beforeId)currentProject=withPreview;
+    }
+    setSaveIndicator("Saved","ok");
+  }catch(e){alert("Gagal buka project: "+e.message)}
 }
 async function newProject(){
   try{var r=await window.BinaCourtDrive.newProject();if(r===false)return;currentProject=null;localStorage.removeItem(CURRENT_KEY);dirty=false;hideDashboard();setSaveIndicator("New project","")}catch(e){alert(e.message)}
