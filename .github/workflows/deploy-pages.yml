@@ -62,6 +62,8 @@ jobs:
           # Separate Bina Paint Colour Scheme Studio; leaves BinaCourt unchanged.
           mkdir -p _site/colour-studio
           cp colour-studio/index.html _site/colour-studio/index.html
+          mkdir -p _site/colour-studio/vendor
+          cp colour-studio/vendor/html2pdf.bundle.min.js _site/colour-studio/vendor/html2pdf.bundle.min.js
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
