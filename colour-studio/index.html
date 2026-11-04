@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="color-scheme" content="light" />
-<title>Bina Paint Colour Scheme Studio — V3.38</title>
+<title>Bina Paint Colour Scheme Studio — V3.39</title>
 <style>
 :root{--navy:#102844;--navy2:#173853;--blue:#1c5984;--sky:#e8f1f7;--yellow:#ffd05d;--red:#b9403b;--bg:#f3f6f8;--border:#d9e1e8;--txt:#152b3c;--muted:#647486;--white:#fff;--r:12px}
 *{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--txt);background:var(--bg)}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}.app{height:100dvh;min-height:530px;display:flex;flex-direction:column;overflow:hidden}.topbar{height:67px;background:var(--navy);color:white;display:flex;align-items:center;justify-content:space-between;padding:10px 17px;gap:12px;flex:none}.brand{display:flex;align-items:center;gap:11px;min-width:176px}.brand-mark{width:39px;height:39px;background:var(--yellow);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--navy);font-size:22px;font-weight:900}.brand strong{font-size:14px;letter-spacing:.09em}.brand small{font-size:11px;color:#aac2d6;display:block;margin-top:2px}.project-head{display:flex;align-items:center;gap:8px;min-width:0}.project-head input{background:rgba(255,255,255,.09);border:1px solid #4d6579;border-radius:7px;padding:9px 11px;color:#fff;min-width:90px;max-width:250px;width:20vw;outline:none}.project-head input:focus{border-color:var(--yellow)}.project-head select{padding:9px 8px;background:var(--navy2);border:1px solid #4d6579;color:#fff;border-radius:7px}.header-buttons{display:flex;gap:7px;align-items:center;flex-wrap:nowrap}.export-menu{position:relative}.export-submenu{position:absolute;right:0;top:calc(100% + 8px);min-width:154px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 28px rgba(17,31,46,.18);padding:7px;display:flex;flex-direction:column;gap:6px;z-index:40}.export-submenu[hidden]{display:none!important}.export-submenu .btn{width:100%;justify-content:flex-start;padding:9px 10px}.btn{border:1px solid var(--border);background:#fff;color:var(--txt);padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .15s}.btn:hover{background:#edf3f8}.btn.primary{background:var(--yellow);border-color:var(--yellow);color:#172a3a}.btn.primary:hover{background:#ffdf8d}.btn.outline-dark{color:#fff;background:transparent;border-color:#53718a}.btn.outline-dark:hover{background:#294a63}.btn.warn{color:var(--red);border-color:#e8cdcb}.btn.block{width:100%}.main{flex:1;min-height:0;display:grid;grid-template-columns:245px minmax(0,1fr) 266px;gap:0}.sidebar{background:#fff;min-height:0;overflow-y:auto;display:flex;flex-direction:column}.left{border-right:1px solid var(--border)}.right{border-left:1px solid var(--border)}.section{padding:17px;border-bottom:1px solid #e6ebef}.section .secttitle{font-size:11px;color:#7f8c99;letter-spacing:.09em;font-weight:850;text-transform:uppercase;margin-bottom:12px}.field{display:flex;flex-direction:column;gap:7px;margin:10px 0}.field label{font-size:12px;font-weight:700}.field input[type=text],.field input[type=number]{border:1px solid var(--border);padding:9px;border-radius:7px;width:100%;color:var(--txt)}.tiny{font-size:11px;color:var(--muted);line-height:1.5}.muted{color:var(--muted)}.scheme-list{display:flex;gap:6px;flex-wrap:wrap}.scheme-btn{background:#f4f7fa;color:#4a5d70;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:12px;font-weight:800}.scheme-btn.current{background:var(--navy);color:#fff;border-color:var(--navy)}.area-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}.area{width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--border);border-radius:9px;background:white;padding:9px}.area.active{border:2px solid var(--blue);background:#eef6fb;padding:8px}.area-color{height:24px;width:24px;flex:none;border:1px solid rgba(0,0,0,.12);border-radius:6px}.area-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:750}.area-visibility{padding:3px 1px 3px 8px;color:#789}.note{background:#f2f6f8;padding:11px;border-radius:9px;border:1px solid #e6eaf0}.note strong{display:block;color:var(--navy);font-size:12px;margin-bottom:4px}.center{min-width:0;min-height:0;display:flex;flex-direction:column;background:#dce4e9}.tools{display:flex;gap:7px;align-items:center;padding:10px 12px;background:#f9fbfc;border-bottom:1px solid #d5dee6;flex:none;overflow-x:auto}.tool-menu{position:relative;display:flex;align-items:center}#polygonToolBtn{touch-action:manipulation;-webkit-user-select:none;user-select:none}.tool{border:1px solid #cfdae3;background:white;border-radius:9px;padding:9px 11px;white-space:nowrap;font-size:12px;font-weight:700;color:#415264}.tool.active{background:var(--blue);color:#fff;border-color:var(--blue)}.tool:disabled{opacity:.4}.tool-menu.open>.tool{box-shadow:0 0 0 2px rgba(25,118,210,.12)}.tool-submenu{position:fixed;left:0;top:0;min-width:165px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 30px rgba(17,31,46,.18);padding:7px;display:flex;flex-direction:column;gap:6px;z-index:10000}.tool-submenu[hidden]{display:none!important}.tool-menu>.tool{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.tool-subitem{border:1px solid #d7e0e8;background:#fff;color:#385066;border-radius:9px;padding:9px 10px;text-align:left;font-size:12px;font-weight:800;display:flex;align-items:center;gap:8px}.tool-subitem:hover{background:#edf3f8}.tool-subitem.current{background:#eef6fb;border-color:#9fc3e6;color:#15486f}.tool-subitem small{display:block;font-size:10px;color:#6d8092;font-weight:700;margin-top:2px}.tool-subitem .label{display:flex;flex-direction:column;line-height:1.15}.microscope-toggle{color:#1b5680;border-color:#afc8da}.microscope-toggle.is-off{color:#7a8791;border-color:#d5dbe0;background:#eff2f5}.tool-group{display:flex;align-items:center;gap:7px;padding:0 8px;border-left:1px solid var(--border);white-space:nowrap}.tool-group label{font-size:11px;font-weight:700;color:#5d6e7f}.tool-group input[type=range]{width:78px;accent-color:var(--blue)}.workspace{position:relative;flex:1;min-height:0;overflow:hidden;background-color:#d8e0e6;background-image:linear-gradient(45deg,#ced8e0 25%,transparent 25%),linear-gradient(-45deg,#ced8e0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ced8e0 75%),linear-gradient(-45deg,transparent 75%,#ced8e0 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}.canvas-shell{position:absolute;left:0;top:0;transform-origin:0 0;background:white;box-shadow:0 10px 40px rgba(32,50,70,.28)}#editorCanvas{display:block;touch-action:none;cursor:crosshair;user-select:none}.canvas-overlay-message{position:absolute;left:50%;top:22px;transform:translateX(-50%);z-index:2;background:rgba(16,40,68,.88);padding:9px 14px;color:white;border-radius:10px;white-space:nowrap;font-size:12px;pointer-events:none;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}.empty-upload{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;border:1px solid #b5cbd9;border-radius:12px;background:#fff;color:#214762;padding:16px 25px;font-size:14px;font-weight:750;box-shadow:0 10px 35px #24394e24;cursor:pointer}.empty-upload[hidden]{display:none!important}.empty-upload:hover{background:#f0f7fc}.left .section:first-child .secttitle{margin-bottom:9px}
@@ -191,7 +191,7 @@
 @media(max-width:650px){.product-manager-row{grid-template-columns:95px minmax(0,1fr) 58px}.product-manager-brand{grid-row:1/3;grid-column:1;width:95px}.product-manager-row input[data-product-name]{grid-column:2/4;grid-row:1}.product-manager-row select[data-product-category]{grid-column:2;grid-row:2}.product-manager-row [data-product-save]{grid-column:3;grid-row:2}.product-manager-row [data-product-delete]{grid-column:2/4;justify-self:end;grid-row:3;width:95px}}
 
 
-/* V3.38: category editing controls in Product Manager */
+/* V3.39: category editing controls in Product Manager */
 .product-category-manager{border:1px solid #d6e1e9;border-radius:10px;background:#f6f9fc;padding:12px;margin:10px 0}
 .product-category-row{display:grid;grid-template-columns:minmax(0,1fr) 61px 63px;gap:7px;align-items:center;margin-top:7px}
 .product-category-row input,.product-category-add input{width:100%;min-width:0;padding:9px;border:1px solid #cbd8e3;border-radius:7px;font-size:12px}
@@ -205,7 +205,7 @@
 <body>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div class="brand-mark">B</div><div><strong>BINA PAINT</strong><small>COLOUR SCHEME STUDIO · V3.38</small></div></div>
+  <div class="brand"><div class="brand-mark">B</div><div><strong>BINA PAINT</strong><small>COLOUR SCHEME STUDIO · V3.39</small></div></div>
   <div class="project-head"><input aria-label="Nama projek" id="projectName" placeholder="Nama projek" value="Projek Baharu"/><span class="save-status" id="saveStatus">Belum disimpan</span></div>
   <div class="header-buttons"><button class="btn outline-dark" id="helpBtn" title="Cara guna sistem" aria-label="Cara guna sistem">? Bantuan</button><button class="btn outline-dark" id="newBtn">＋ Baru</button><button class="btn outline-dark" id="openBtn">📂 Buka</button><button class="btn outline-dark" id="fileSaveBtn">⇩ Fail Projek</button><div class="export-menu" id="exportMenuWrap"><button class="btn outline-dark" id="exportMenuBtn">⤓ Export</button><div class="export-submenu" id="exportSubmenu" hidden><button class="btn" id="layoutDesignerBtn">▦ Susun Gambar A3</button><button class="btn" id="proposalBtn">▣ Export A3</button><button class="btn" id="viewPdfBtn">◉ View PDF</button></div></div><button class="btn primary" id="saveBtn">💾 Simpan Lokal</button></div>
  </header>
@@ -2025,7 +2025,7 @@ async function loadProject(data){if(!data||data.app!=='Bina Colour Scheme Studio
  if(Array.isArray(data.palette)&&data.palette.length){updatePalette(data.palette,'add');}isDemo=false;resetMaskHistory();dirty=false;$('saveStatus').textContent='Projek dibuka';$('imageInfo').textContent='Gambar projek dimuatkan';refreshUI();fitView();if(normalizedSchemes.changed){setDirty();toast('Scheme lama telah diselaraskan ke nombor. Sila Simpan Lokal atau Fail Projek untuk kekalkan perubahan.');}else toast('Projek "'+data.name+'" berjaya dibuka')}
 $('projectFile').onchange=async ev=>{const file=ev.target.files[0];if(!file)return;try{const text=await file.text();await loadProject(JSON.parse(text));closeModal();}catch(err){toast('Tidak dapat buka projek: '+err.message)}ev.target.value=''};
 $('openBtn').onclick=async()=>{openModal(`<div class="modal-head"><h2>Buka Projek</h2><button class="btn" data-close>✕ Tutup</button></div><p>Buka projek yang tersimpan pada peranti ini, atau import fail projek <b>.bcsproj</b> daripada folder bersama staf.</p><button class="btn primary" id="importProject">↑ Import Fail Projek (.bcsproj)</button><div class="divider"></div><h3 style="font-size:14px">Projek Lokal</h3><div id="localList"><p>Memuatkan...</p></div>`);$('importProject').onclick=()=>$('projectFile').click();try{const list=await localList();const el=$('localList');if(!el)return;if(!list.length){el.innerHTML='<p>Tiada projek tersimpan pada pelayar ini.</p>';return;}list.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));el.innerHTML=list.map(p=>`<div class="local-project"><div><strong>${escapeText(p.name)}</strong><br/><small>${escapeText(p.type)} · ${new Date(p.updatedAt).toLocaleString('ms-MY')}</small></div><div style="display:flex;gap:5px"><button class="btn" data-load="${escapeText(p.id)}">Buka</button><button class="btn warn" data-delete="${escapeText(p.id)}">Padam</button></div></div>`).join('');el.querySelectorAll('[data-load]').forEach(b=>b.onclick=async()=>{try{await loadProject(list.find(x=>x.id===b.dataset.load));closeModal()}catch(err){toast(err.message)}});el.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Padam projek ini daripada peranti?'))return;await localDelete(b.dataset.delete);b.closest('.local-project').remove();toast('Projek lokal dipadam')});}catch(err){const el=$('localList');if(el)el.innerHTML='<p>Simpanan lokal tidak tersedia pada pelayar ini. Gunakan Import Fail Projek.</p>';}}
-updatePolygonToolButton();$('helpBtn').onclick=()=>openModal(`<div class="modal-head"><h2>Cara Menggunakan Colour Scheme Studio V3.38</h2><button class="btn" data-close>✕ Tutup</button></div><ol><li>Ikon tong sampah dalam senarai layer memadam layer yang dipilih selepas pengesahan. Layer terkunci mesti dibuka dahulu.</li><li><b>Palette Saya:</b> 120 warna daripada katalog telah dimasukkan mengikut kod dan nama. Cari kod/nama di ruangan carian. Klik Tambah / Urus untuk tambah warna sendiri, padam atau pulihkan 120 warna katalog. Eksport JSON untuk kongsi dengan staf. HEX diambil sebagai anggaran digital daripada swatch PDF; warna sebenar boleh berbeza.</li><li>Upload gambar projek. Gunakan <b>Crop Gambar</b> pada panel Foto untuk potong tepi yang tidak diperlukan. Seret empat penjuru atau bahagian dalam pilihan crop, kemudian klik Crop Gambar. Foto dan mask pada sudut aktif akan dicrop bersama supaya sejajar. Simpan fail projek untuk backup.</li><li>Klik <b>Tambah Area</b> dan namakan kawasan, misalnya "Dinding Utama".</li><li>Pilih <b>Polygon</b>, klik bucu kawasan, kemudian <b>Siap Polygon</b>. <b>Telefon:</b> sentuh dan tahan sekitar 0.25 saat pada gambar hingga Microscope Zoom muncul, seret untuk laraskan titik dan lepaskan jari untuk meletakkan titik. Ulang setiap bucu. Ketikan ringkas juga masih boleh. Tekan dua kali juga boleh untuk lengkapkan polygon menggunakan tetikus. <b>Tekan Backspace</b> untuk undur/buang titik Polygon terakhir, satu demi satu, sebelum menyiapkan polygon. Ia tidak mengubah kawasan yang sudah siap. <b>Klik di luar gambar juga dibenarkan</b>; titik akan automatik melekat pada tepi/hujung gambar.</li><li><b>Unselect</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Unselect</b>, atau tahan <b>ALT</b> semasa klik titik pertama. Klik bucu-bucu polygon dan tekan <b>Buang Kawasan</b> atau double-click. Hanya mask Area yang dipilih dipadam. <b>Ctrl+Z</b> untuk undo.</li><li><b>Isi kawasan kosong sahaja</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Isi Kosong</b>, atau tahan <b>Ctrl + Alt</b> semasa klik titik pertama. Apabila polygon siap, sistem hanya akan menambah bahagian yang <b>belum diwarnakan oleh mana-mana Area</b>. Sesuai untuk isi dinding besar tanpa menimpa beam, tiang atau kawasan yang telah siap diwarnakan.</li><li><b>Microscope:</b> Tekan <b>Zoom ON / OFF</b> untuk hidup atau matikan bulatan pembesar semasa Polygon. Touch Polygon masih menggunakan tahan, seret dan lepas walaupun microscope dimatikan.</li><li><b>Rename layer:</b> Double-click nama layer untuk lihat senarai cadangan (General Wall, Feature Wall, Coping, Ceiling, Beam, Column, Fence, Fascia, Door, Window Frame). Pilih cadangan atau taip nama sendiri.</li><li><b>Redo:</b> Klik Redo atau tekan Ctrl+Y / Ctrl+Shift+Z selepas Undo untuk pulihkan sapuan/mask yang dibatalkan. Langkah baharu selepas Undo akan mengosongkan Redo.</li><li><b>Brush/Eraser live preview:</b> Pada telefon, satu jari mewarna/memadam; apabila jari kedua masuk, sapuan sementara dibatalkan dan dua jari hanya menggerakkan atau mengezum gambar. Halakan cursor ke gambar; bulatan menunjukkan diameter sebenar mengikut zoom, tanpa mengubah hasil. Untuk ubah saiz, <b>tahan ALT + klik kanan, kemudian drag ke kiri/kanan</b>: kiri = kecil, kanan = besar. Lepaskan klik kanan untuk kembali kepada Brush/Eraser asal. Slider Saiz turut berubah secara langsung.</li><li>Pilih <b>Brush</b> untuk tambah mask atau <b>Eraser</b> untuk buang lebihan mask. Untuk menggerakkan gambar, <b>tahan Spacebar dan seret</b>; apabila dilepaskan, tool asal kembali secara automatik. Tool <b>Gerak</b> (H) masih boleh dipilih secara kekal. Scroll / dua jari untuk zoom-pan.</li><li>Masukkan warna HEX, pilih swatch, dan laraskan kekuatan warna. Tambah Area untuk bahagian lain. <b>Double-click pada nama layer di senarai kiri</b> untuk rename terus; <b>Enter</b> untuk simpan, <b>Esc</b> untuk batal, atau klik di luar untuk simpan. Nama layer turut tersimpan dalam fail projek. <b>Tarik layer naik/turun</b> untuk susun urutan warna bila kawasan bertindih (atas = depan). Pada telefon, tarik ikon ⠿. Tekan <b>Alt + ↑ / ↓</b> untuk ubah susunan menggunakan keyboard.</li><li><b>Hide / Show layer:</b> Ikon mata di kanan layer menyembunyikan atau menampilkan warna tanpa membuang mask. <b>Lock / Unlock:</b> Ikon mangga mengunci perubahan Polygon, Brush, Eraser, warna, opacity, rename, padam dan drag bagi layer itu. Klik mangga lagi untuk buka. Status tersimpan dalam projek.</li><li>Sistem bermula dengan <b>Scheme 1</b> sahaja. Klik <b>Duplikasi Scheme</b> untuk Scheme 2, 3 dan seterusnya tanpa masking semula. Projek lama yang masih ada Scheme A/B/C akan ditukar kepada nombor; salinan B/C default yang belum diubah dibuang, tetapi kombinasi warna lama yang berbeza dikekalkan.</li><li><b>Material Recolour V1:</b> Pilih layer dan tetapkan Jenis Kemasan sebagai Flat, Preserve Texture atau Metallic Tint. Kawalan Kekalkan Tekstur, Kurangkan Kesan Lama dan Kekalkan Highlight digunakan untuk gambar editor, Before/After serta semua Scheme dalam PDF A3. Clean-up ialah simulasi penurasan imej tanpa AI, bukan pemulihan gambar sebenar. Tetapan disimpan dalam fail .bcsproj bagi setiap layer; projek lama menggunakan Flat secara automatik.</li><li><b>Produk Cat:</b> Di Urus Produk Cat, kategori kini boleh ditambah, dinamakan semula atau dibuang jika tidak digunakan. MultiProof 5000 dipadankan ke Roof Coating. Di Property Area pilih Kategori Permukaan dan Produk Cat pada setiap layer. Pilih siri secara manual supaya projek lama tidak tersalah label. Gunakan <b>Urus Produk Cat</b> untuk tambah/edit/padam siri dan Export/Import katalog JSON bagi staf. Logo rasmi produk digunakan automatik dalam Colour Legend PDF A3. Produk tanpa logo rasmi masih dipaparkan sebagai teks. Logo boleh ditukar dalam Urus Produk Cat. Warna yang dikongsi dua produk akan disenaraikan berasingan. Jika kumpulan warna melebihi ruang footer, sistem jana halaman sambungan.</li><li><b>Simpan Lokal</b> hanya untuk pelayar/peranti semasa. Gunakan <b>Fail Projek</b> untuk menghantar fail kerja kepada staf melalui Google Drive. Staf gunakan <b>Buka → Import Fail Projek</b>.</li><li><b>Rujukan Dokumen:</b> CSBP kekal, tarikh Malaysia dijana automatik, dan staf isi Disediakan Oleh, Nama Sale dan No. Folder. Contoh: CSBP/18/10/26/FAEZI/SHAFIT/10. Rujukan penuh tertera pada PDF dan disimpan dalam fail projek.</li><li><b>Before / After:</b> Tekan butang Before / After pada toolbar untuk membandingkan foto asal (kiri) dengan hasil warna Scheme aktif (kanan). Tekan Kembali ke Editor untuk sambung masking. Perbandingan ialah pratonton sahaja dan tidak mengubah atau menyimpan apa-apa mask baharu.</li><li><b>Export</b> di bahagian atas kanan membuka submenu <b>Export A3</b> dan <b>View PDF</b>. Export A3 menjana dokumen A3 (cover + cadangan) dan membuka pilihan Print / Save as PDF. Susun Gambar A3 membuka Layout Designer untuk drag, resize dan crop gambar serta menggunakan layout sama bagi semua Scheme. View PDF membuka pratonton A3 tanpa dialog cetak automatik; gunakan butang Print / Save as PDF dalam pratonton apabila bersedia.</li></ol><p><b>Shortcut:</b> <span class="shortcut">P</span> Polygon · <span class="shortcut">B</span> Brush · <span class="shortcut">E</span> Eraser · <span class="shortcut">H</span> Gerak · <span class="shortcut">Tekan lama Polygon</span> Buka submenu Polygon / Unselect / Isi Kosong · <span class="shortcut">ALT + Polygon</span> Unselect kawasan · <span class="shortcut">Ctrl + Alt + Polygon</span> Isi kawasan kosong sahaja · <span class="shortcut">Klik luar gambar</span> Titik akan melekat pada tepi gambar · <span class="shortcut">SPACE + Drag</span> Gerak sementara · <span class="shortcut">Alt + Right Drag</span> Saiz Eraser/Brush · <span class="shortcut">Backspace</span> Undur titik Polygon · <span class="shortcut">Ctrl+Z</span> Undo mask · <span class="shortcut">Ctrl+Y / Ctrl+Shift+Z</span> Redo mask.</p><p><b>Had V1:</b> Masking masih manual; pengesanan dinding automatik, akaun staf dan sync automatik akan memerlukan pembangunan cloud.</p>`);
+updatePolygonToolButton();$('helpBtn').onclick=()=>openModal(`<div class="modal-head"><h2>Cara Menggunakan Colour Scheme Studio V3.39</h2><button class="btn" data-close>✕ Tutup</button></div><ol><li>Ikon tong sampah dalam senarai layer memadam layer yang dipilih selepas pengesahan. Layer terkunci mesti dibuka dahulu.</li><li><b>Palette Saya:</b> 120 warna daripada katalog telah dimasukkan mengikut kod dan nama. Cari kod/nama di ruangan carian. Klik Tambah / Urus untuk tambah warna sendiri, padam atau pulihkan 120 warna katalog. Eksport JSON untuk kongsi dengan staf. HEX diambil sebagai anggaran digital daripada swatch PDF; warna sebenar boleh berbeza.</li><li>Upload gambar projek. Gunakan <b>Crop Gambar</b> pada panel Foto untuk potong tepi yang tidak diperlukan. Seret empat penjuru atau bahagian dalam pilihan crop, kemudian klik Crop Gambar. Foto dan mask pada sudut aktif akan dicrop bersama supaya sejajar. Simpan fail projek untuk backup.</li><li>Klik <b>Tambah Area</b> dan namakan kawasan, misalnya "Dinding Utama".</li><li>Pilih <b>Polygon</b>, klik bucu kawasan, kemudian <b>Siap Polygon</b>. <b>Telefon:</b> sentuh dan tahan sekitar 0.25 saat pada gambar hingga Microscope Zoom muncul, seret untuk laraskan titik dan lepaskan jari untuk meletakkan titik. Ulang setiap bucu. Ketikan ringkas juga masih boleh. Tekan dua kali juga boleh untuk lengkapkan polygon menggunakan tetikus. <b>Tekan Backspace</b> untuk undur/buang titik Polygon terakhir, satu demi satu, sebelum menyiapkan polygon. Ia tidak mengubah kawasan yang sudah siap. <b>Klik di luar gambar juga dibenarkan</b>; titik akan automatik melekat pada tepi/hujung gambar.</li><li><b>Unselect</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Unselect</b>, atau tahan <b>ALT</b> semasa klik titik pertama. Klik bucu-bucu polygon dan tekan <b>Buang Kawasan</b> atau double-click. Hanya mask Area yang dipilih dipadam. <b>Ctrl+Z</b> untuk undo.</li><li><b>Isi kawasan kosong sahaja</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Isi Kosong</b>, atau tahan <b>Ctrl + Alt</b> semasa klik titik pertama. Apabila polygon siap, sistem hanya akan menambah bahagian yang <b>belum diwarnakan oleh mana-mana Area</b>. Sesuai untuk isi dinding besar tanpa menimpa beam, tiang atau kawasan yang telah siap diwarnakan.</li><li><b>Microscope:</b> Tekan <b>Zoom ON / OFF</b> untuk hidup atau matikan bulatan pembesar semasa Polygon. Touch Polygon masih menggunakan tahan, seret dan lepas walaupun microscope dimatikan.</li><li><b>Rename layer:</b> Double-click nama layer untuk lihat senarai cadangan (General Wall, Feature Wall, Coping, Ceiling, Beam, Column, Fence, Fascia, Door, Window Frame). Pilih cadangan atau taip nama sendiri.</li><li><b>Redo:</b> Klik Redo atau tekan Ctrl+Y / Ctrl+Shift+Z selepas Undo untuk pulihkan sapuan/mask yang dibatalkan. Langkah baharu selepas Undo akan mengosongkan Redo.</li><li><b>Brush/Eraser live preview:</b> Pada telefon, satu jari mewarna/memadam; apabila jari kedua masuk, sapuan sementara dibatalkan dan dua jari hanya menggerakkan atau mengezum gambar. Halakan cursor ke gambar; bulatan menunjukkan diameter sebenar mengikut zoom, tanpa mengubah hasil. Untuk ubah saiz, <b>tahan ALT + klik kanan, kemudian drag ke kiri/kanan</b>: kiri = kecil, kanan = besar. Lepaskan klik kanan untuk kembali kepada Brush/Eraser asal. Slider Saiz turut berubah secara langsung.</li><li>Pilih <b>Brush</b> untuk tambah mask atau <b>Eraser</b> untuk buang lebihan mask. Untuk menggerakkan gambar, <b>tahan Spacebar dan seret</b>; apabila dilepaskan, tool asal kembali secara automatik. Tool <b>Gerak</b> (H) masih boleh dipilih secara kekal. Scroll / dua jari untuk zoom-pan.</li><li>Masukkan warna HEX, pilih swatch, dan laraskan kekuatan warna. Tambah Area untuk bahagian lain. <b>Double-click pada nama layer di senarai kiri</b> untuk rename terus; <b>Enter</b> untuk simpan, <b>Esc</b> untuk batal, atau klik di luar untuk simpan. Nama layer turut tersimpan dalam fail projek. <b>Tarik layer naik/turun</b> untuk susun urutan warna bila kawasan bertindih (atas = depan). Pada telefon, tarik ikon ⠿. Tekan <b>Alt + ↑ / ↓</b> untuk ubah susunan menggunakan keyboard.</li><li><b>Hide / Show layer:</b> Ikon mata di kanan layer menyembunyikan atau menampilkan warna tanpa membuang mask. <b>Lock / Unlock:</b> Ikon mangga mengunci perubahan Polygon, Brush, Eraser, warna, opacity, rename, padam dan drag bagi layer itu. Klik mangga lagi untuk buka. Status tersimpan dalam projek.</li><li>Sistem bermula dengan <b>Scheme 1</b> sahaja. Klik <b>Duplikasi Scheme</b> untuk Scheme 2, 3 dan seterusnya tanpa masking semula. Projek lama yang masih ada Scheme A/B/C akan ditukar kepada nombor; salinan B/C default yang belum diubah dibuang, tetapi kombinasi warna lama yang berbeza dikekalkan.</li><li><b>Material Recolour V1:</b> Pilih layer dan tetapkan Jenis Kemasan sebagai Flat, Preserve Texture atau Metallic Tint. Kawalan Kekalkan Tekstur, Kurangkan Kesan Lama dan Kekalkan Highlight digunakan untuk gambar editor, Before/After serta semua Scheme dalam PDF A3. Clean-up ialah simulasi penurasan imej tanpa AI, bukan pemulihan gambar sebenar. Tetapan disimpan dalam fail .bcsproj bagi setiap layer; projek lama menggunakan Flat secara automatik.</li><li><b>Produk Cat:</b> Di Urus Produk Cat, kategori kini boleh ditambah, dinamakan semula atau dibuang jika tidak digunakan. MultiProof 5000 dipadankan ke Roof Coating. Di Property Area pilih Kategori Permukaan dan Produk Cat pada setiap layer. Pilih siri secara manual supaya projek lama tidak tersalah label. Gunakan <b>Urus Produk Cat</b> untuk tambah/edit/padam siri dan Export/Import katalog JSON bagi staf. Logo rasmi produk digunakan automatik dalam Colour Legend PDF A3. Produk tanpa logo rasmi masih dipaparkan sebagai teks. Logo boleh ditukar dalam Urus Produk Cat. Warna yang dikongsi dua produk akan disenaraikan berasingan. Jika kumpulan warna melebihi ruang footer, sistem jana halaman sambungan.</li><li><b>Simpan Lokal</b> hanya untuk pelayar/peranti semasa. Gunakan <b>Fail Projek</b> untuk menghantar fail kerja kepada staf melalui Google Drive. Staf gunakan <b>Buka → Import Fail Projek</b>.</li><li><b>Rujukan Dokumen:</b> CSBP kekal, tarikh Malaysia dijana automatik, dan staf isi Disediakan Oleh, Nama Sale dan No. Folder. Contoh: CSBP/18/10/26/FAEZI/SHAFIT/10. Rujukan penuh tertera pada PDF dan disimpan dalam fail projek.</li><li><b>Before / After:</b> Tekan butang Before / After pada toolbar untuk membandingkan foto asal (kiri) dengan hasil warna Scheme aktif (kanan). Tekan Kembali ke Editor untuk sambung masking. Perbandingan ialah pratonton sahaja dan tidak mengubah atau menyimpan apa-apa mask baharu.</li><li><b>Export</b> di bahagian atas kanan membuka submenu <b>Export A3</b> dan <b>View PDF</b>. Export A3 menjana dokumen A3 (cover + cadangan) dan membuka pilihan Print / Save as PDF. Susun Gambar A3 membuka Layout Designer untuk drag, resize dan crop gambar serta menggunakan layout sama bagi semua Scheme. View PDF membuka pratonton A3 tanpa dialog cetak automatik; gunakan butang Print / Save as PDF dalam pratonton apabila bersedia.</li></ol><p><b>Shortcut:</b> <span class="shortcut">P</span> Polygon · <span class="shortcut">B</span> Brush · <span class="shortcut">E</span> Eraser · <span class="shortcut">H</span> Gerak · <span class="shortcut">Tekan lama Polygon</span> Buka submenu Polygon / Unselect / Isi Kosong · <span class="shortcut">ALT + Polygon</span> Unselect kawasan · <span class="shortcut">Ctrl + Alt + Polygon</span> Isi kawasan kosong sahaja · <span class="shortcut">Klik luar gambar</span> Titik akan melekat pada tepi gambar · <span class="shortcut">SPACE + Drag</span> Gerak sementara · <span class="shortcut">Alt + Right Drag</span> Saiz Eraser/Brush · <span class="shortcut">Backspace</span> Undur titik Polygon · <span class="shortcut">Ctrl+Z</span> Undo mask · <span class="shortcut">Ctrl+Y / Ctrl+Shift+Z</span> Redo mask.</p><p><b>Had V1:</b> Masking masih manual; pengesanan dinding automatik, akaun staf dan sync automatik akan memerlukan pembangunan cloud.</p>`);
 function isTyping(ev){const e=ev.target;return ['input','textarea','select'].includes(e?.tagName?.toLowerCase())||e?.isContentEditable;}
 function resetTemporaryPan(){if(!spaceHeld)return;spaceHeld=false;syncToolVisuals();updateHint();}
 document.addEventListener('keydown',ev=>{
@@ -2042,6 +2042,189 @@ document.addEventListener('keyup',ev=>{if(ev.code==='Space'||ev.key===' '){if(!i
 window.addEventListener('blur',()=>{finishBrushStroke(false);clearTouchPolygonPress();activePointers.clear();pinch=null;touchGestureMulti=false;resetTemporaryPan();finishBrushSizeDrag(null);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){finishBrushStroke(false);clearTouchPolygonPress();activePointers.clear();pinch=null;touchGestureMulti=false;resetTemporaryPan();}});
 window.addEventListener('resize',()=>{if(!painting)fitView()});
+// Colour Scheme Studio V3.39: Direct PDF export via bundled html2pdf.js.
+// This script runs INSIDE the existing application closure; View PDF remains unchanged.
+const originalProposalOptionsV339 = proposalOptions;
+proposalOptions = function proposalOptionsWithDirectPdf() {
+  originalProposalOptionsV339();
+  const btn = $('buildProposalA3');
+  if (!btn) return;
+  btn.textContent = '⬇ Export Proposal A3 (PDF)';
+  const note = $('modalLayer')?.querySelector('.modal p.tiny');
+  if (note && note.textContent.includes('Save as PDF')) {
+    note.innerHTML = 'Export akan terus memuat turun <b>fail PDF A3 Landscape</b> tanpa dialog Print. <b>View PDF</b> kekal sebagai pratonton.';
+  }
+  btn.onclick = async () => {
+    const progress = $('pdfProgress');
+    const ids = [...$('pdfSchemeSelection').querySelectorAll('input:checked')].map(el => el.value);
+    if (!ids.length) return toast('Pilih sekurang-kurangnya satu cadangan.');
+    const name = $('pdfProjectName').value.trim() || $('projectName').value || 'Projek Baharu';
+    const p = makeProposalMeta({
+      ...proposalMeta,
+      preparedBy: $('pdfPrepared').value,
+      salesName: $('pdfSale').value,
+      folderNumber: $('pdfFolder').value
+    });
+    if (!p.preparedBy || !p.salesName || !p.folderNumber) {
+      toast('Isi Disediakan Oleh, Nama Sale dan Nombor Rujukan Folder dahulu.');
+      progress.textContent = 'Lengkapkan tiga maklumat rujukan dokumen terlebih dahulu.';
+      return;
+    }
+    const clientFile = $('pdfClientLogo').files?.[0];
+    if (clientFile) {
+      const url = URL.createObjectURL(clientFile);
+      try {
+        const im = await loadImage(url);
+        const c = document.createElement('canvas');
+        const scale = Math.min(1, 500 / Math.max(im.naturalWidth, im.naturalHeight));
+        c.width = Math.max(1, Math.round(im.naturalWidth * scale));
+        c.height = Math.max(1, Math.round(im.naturalHeight * scale));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        p.clientLogo = c.toDataURL('image/png');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    proposalMeta = p;
+    setDirty();
+    btn.disabled = true;
+    btn.textContent = 'Menjana PDF...';
+    progress.textContent = 'Menyediakan gambar dan layout A3...';
+    try {
+      syncActiveView();
+      await downloadProposalA3DirectV339(name, p, ids, message => { if (progress) progress.textContent = message; });
+      lastProposalSelection = { ids: [...ids] };
+      progress.textContent = 'PDF berjaya dijana dan muat turun telah dimulakan.';
+      toast('PDF A3 berjaya dijana. Semak Downloads.');
+    } catch (err) {
+      console.error('Direct PDF export failed', err);
+      progress.textContent = 'Gagal menjana PDF: ' + (err?.message || err);
+      toast('Export PDF gagal. ' + (err?.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬇ Export Proposal A3 (PDF)';
+    }
+  };
+};
+
+async function loadPdfScriptV339(doc, src) {
+  return new Promise((resolve, reject) => {
+    const script = doc.createElement('script');
+    let settled = false;
+    const finish = err => { if(settled) return; settled = true; clearTimeout(timer); err ? reject(err) : resolve(); };
+    const timer = setTimeout(() => finish(new Error('Enjin PDF tidak dapat dimuatkan. Sila cuba semula.')), 25000);
+    script.async = true;
+    script.onload = () => finish(null);
+    script.onerror = () => finish(new Error('Gagal memuatkan enjin PDF. Semak sambungan internet / fail vendor.'));
+    script.src = src;
+    doc.head.appendChild(script);
+  });
+}
+
+async function waitForPdfImagesV339(doc) {
+  await Promise.all(Array.from(doc.images).map(img => {
+    if (img.complete) return Promise.resolve();
+    return Promise.race([
+      new Promise(resolve => { img.onload = resolve; img.onerror = resolve; }),
+      new Promise(resolve => setTimeout(resolve, 15000))
+    ]);
+  }));
+  if (doc.fonts?.ready) {
+    await Promise.race([doc.fonts.ready.catch(() => {}), new Promise(resolve => setTimeout(resolve, 3500))]);
+  }
+}
+
+function downloadPdfBlobV339(blob, fileName) {
+  if (!blob || typeof blob.size !== 'number' || blob.size < 1000) throw new Error('Fail PDF yang dijana kosong atau rosak.');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Keep a retry link on the modal for mobile browsers that block an async download.
+  const progress = $('pdfProgress');
+  if (progress) {
+    const retry = document.createElement('a');
+    retry.href = url;
+    retry.download = fileName;
+    retry.textContent = 'Klik di sini jika PDF tidak dimuat turun secara automatik';
+    retry.style.cssText = 'display:block;margin-top:8px;color:#095887;text-decoration:underline;font-weight:700';
+    progress.insertAdjacentElement('afterend', retry);
+  }
+  // Do not revoke immediately: Safari/Android may need the URL after click.
+  setTimeout(() => { URL.revokeObjectURL(url); }, 180000);
+}
+
+async function downloadProposalA3DirectV339(name, meta, ids, onProgress) {
+  onProgress?.('Menjana kandungan halaman A3...');
+  const proposalHtml = await buildA3Html(name, meta, ids, onProgress, false);
+  const frame = document.createElement('iframe');
+  frame.setAttribute('title', 'Penjana PDF A3 sementara');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;left:-20000px;top:0;width:1600px;height:1130px;border:0;pointer-events:none;opacity:1;z-index:-10';
+  // srcdoc inherits this website's base URL; assets/data remain same-origin.
+  const frameLoaded = new Promise((resolve, reject) => {
+    frame.addEventListener('load', resolve, { once: true });
+    frame.addEventListener('error', () => reject(new Error('Pratonton A3 gagal disediakan.')), { once: true });
+  });
+  frame.srcdoc = proposalHtml;
+  document.body.appendChild(frame);
+  try {
+    await frameLoaded;
+    const doc = frame.contentDocument;
+    if (!doc) throw new Error('Tidak dapat membaca halaman A3 untuk eksport.');
+    // Prevent screen-only page margins/box shadows from shifting A3 page captures.
+    const fix = doc.createElement('style');
+    fix.textContent = '@media all {.page{margin:0!important;box-shadow:none!important;break-after:auto!important;page-break-after:auto!important}}';
+    doc.head.appendChild(fix);
+    await waitForPdfImagesV339(doc);
+    onProgress?.('Memuatkan enjin PDF...');
+    const vendorPath = new URL('vendor/html2pdf.bundle.min.js', document.baseURI).href;
+    await loadPdfScriptV339(doc, vendorPath);
+    const factory = frame.contentWindow?.html2pdf;
+    if (typeof factory !== 'function') throw new Error('Enjin PDF tidak tersedia.');
+    const pages = Array.from(doc.querySelectorAll('section.page'));
+    if (!pages.length) throw new Error('Tiada halaman A3 dihasilkan.');
+    const options = {
+      margin: 0,
+      image: { type: 'jpeg', quality: 0.92 },
+      html2canvas: { scale: 1.65, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', logging: false, imageTimeout: 18000, windowWidth: 1600, scrollX: 0, scrollY: 0 },
+      jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape', compress: true }
+    };
+    // html2pdf.bundle exposes jsPDF through Worker.get('pdf'). Start with one blank page,
+    // then paint one captured A3 canvas per sheet to prevent HTML auto page breaks.
+    const placeholder = doc.createElement('div');
+    placeholder.textContent = ' ';
+    placeholder.style.cssText = 'width:1px;height:1px;background:#fff';
+    doc.body.appendChild(placeholder);
+    let pdf;
+    try {
+      pdf = await factory().set(options).from(placeholder).toPdf().get('pdf');
+    } finally {
+      placeholder.remove();
+    }
+    for (let i = 0; i < pages.length; i++) {
+      onProgress?.(`Menjana PDF: halaman ${i + 1}/${pages.length}...`);
+      const worker = factory().set(options).from(pages[i]).toCanvas();
+      const canvas = await worker.get('canvas');
+      if (!canvas?.width || !canvas?.height) throw new Error(`Halaman ${i + 1} gagal dirender.`);
+      const jpeg = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) pdf.addPage('a3', 'landscape');
+      pdf.addImage(jpeg, 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
+    }
+    const pdfBlob = pdf.output('blob');
+    const ref = String(meta.documentRef || 'CSBP-Colour-Scheme').replace(/[\\/:*?"<>|]+/g, '-').replace(/-+/g, '-').replace(/^[.-]+|[.-]+$/g, '');
+    const fileName = (ref || 'Bina-Colour-Scheme') + '.pdf';
+    downloadPdfBlobV339(pdfBlob, fileName);
+    onProgress?.(`Siap: ${pages.length} halaman PDF A3.`);
+  } finally {
+    frame.remove();
+  }
+}
+
 // Mulakan dengan ruang kosong. Gambar demo dan butangnya tidak digunakan lagi.
 blankProject();requestAnimationFrame(fitView);
 })();
