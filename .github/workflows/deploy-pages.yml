@@ -12,6 +12,7 @@ on:
       - 'pickleball-live/**'
       - 'pickleball-manager/**'
       - 'request/**'
+      - 'colour-studio/**'
 
 permissions:
   contents: read
@@ -58,6 +59,9 @@ jobs:
           mkdir -p _site/request
           cp request/index.html _site/request/index.html
           cp request/admin.html _site/request/admin.html
+          # Separate Bina Paint Colour Scheme Studio; leaves BinaCourt unchanged.
+          mkdir -p _site/colour-studio
+          cp colour-studio/index.html _site/colour-studio/index.html
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
