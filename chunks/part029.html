@@ -51,6 +51,9 @@
   let tokenExpiry=0;
   let tokenClient=null;
   let librariesPromise=null;
+  let nativeAuthPromise=null;
+  let nativeAuthResolve=null;
+  let nativeAuthReject=null;
   let currentCloud={};
   let newCloudPending=false;
   let busy=false;
@@ -83,6 +86,30 @@
     return !!accessToken && Date.now()<tokenExpiry-60000;
   }
 
+  // The Android APK uses Google Play services authorization, never OAuth in WebView.
+  // The bridge is installed only by the trusted native BinaCourt application.
+  function isNativeDriveClient(){
+    return typeof window.AndroidBridge?.authorizeDrive==="function";
+  }
+
+  function receiveNativeAuth(token,error){
+    const resolve=nativeAuthResolve,reject=nativeAuthReject;
+    nativeAuthPromise=null;
+    nativeAuthResolve=null;
+    nativeAuthReject=null;
+    if(!resolve || !reject) return;
+    if(!token){
+      reject(new Error(error||"Kebenaran Google Drive tidak diperoleh pada tablet."));
+      return;
+    }
+    accessToken=String(token);
+    // Renew conservatively; the native identity client can issue fresh tokens.
+    tokenExpiry=Date.now()+45*60*1000;
+    try{localStorage.setItem(AUTH_KEY,"1");}catch(_){}
+    renderDriveUi();
+    resolve(accessToken);
+  }
+
   function renderDriveUi(){
     const root=loadRoot();
     const connected=isTokenValid();
@@ -106,7 +133,7 @@
 
   function setBusy(value,label=""){
     busy=!!value;
-    ["driveCloudConnect","driveCloudSelectRoot","driveCloudNew","driveCloudSave","driveCloudOpen"].forEach(id=>{
+    ["driveCloudConnect","driveCloudDisconnect","driveCloudSelectRoot","driveCloudNew","driveCloudSave","driveCloudOpen"].forEach(id=>{
       const el=byId(id); if(el) el.disabled=busy;
     });
     if(value && label) setStatus(label);
@@ -137,26 +164,42 @@
     librariesPromise=(async()=>{
       await Promise.all([
         loadScript("binaGoogleApiScript","https://apis.google.com/js/api.js",()=>!!window.gapi),
-        loadScript("binaGoogleGisScript","https://accounts.google.com/gsi/client",()=>!!window.google?.accounts?.oauth2)
+        isNativeDriveClient()
+          ? Promise.resolve()
+          : loadScript("binaGoogleGisScript","https://accounts.google.com/gsi/client",()=>!!window.google?.accounts?.oauth2)
       ]);
       await new Promise((resolve,reject)=>{
         try{
           window.gapi.load("picker",{callback:resolve,onerror:()=>reject(new Error("Google Picker gagal dimuatkan"))});
         }catch(error){ reject(error); }
       });
-      tokenClient=window.google.accounts.oauth2.initTokenClient({
-        client_id:CLIENT_ID,
-        scope:SCOPE,
-        callback:()=>{}
-      });
+      if(!isNativeDriveClient()){
+        tokenClient=window.google.accounts.oauth2.initTokenClient({
+          client_id:CLIENT_ID,
+          scope:SCOPE,
+          callback:()=>{}
+        });
+      }
       return true;
-    })();
+    })().catch(error=>{ librariesPromise=null; throw error; });
     return librariesPromise;
   }
 
   async function ensureAuth({forceConsent=false}={}){
-    await initLibraries();
     if(isTokenValid() && !forceConsent) return accessToken;
+    if(isNativeDriveClient()){
+      if(nativeAuthPromise) return await nativeAuthPromise;
+      nativeAuthPromise=new Promise((resolve,reject)=>{
+        nativeAuthResolve=resolve;
+        nativeAuthReject=reject;
+        try{ window.AndroidBridge.authorizeDrive(); }
+        catch(error){
+          receiveNativeAuth("",error?.message||"Google authorization gagal dimulakan.");
+        }
+      });
+      return await nativeAuthPromise;
+    }
+    await initLibraries();
     const known=(()=>{try{return localStorage.getItem(AUTH_KEY)==="1";}catch(_){return false;}})();
     return await new Promise((resolve,reject)=>{
       let settled=false;
@@ -179,6 +222,17 @@
 
   function clearToken(){
     accessToken="";tokenExpiry=0;renderDriveUi();
+  }
+
+  function disconnectDrive(){
+    if(isNativeDriveClient()){
+      try{window.AndroidBridge.clearDriveToken(accessToken||"");}catch(_){}
+    }else if(accessToken && window.google?.accounts?.oauth2?.revoke){
+      try{window.google.accounts.oauth2.revoke(accessToken,()=>{});}catch(_){}
+    }
+    clearToken();
+    try{localStorage.removeItem(AUTH_KEY);}catch(_){}
+    setStatus("Google Drive disconnected. Connect semula untuk mengakses fail.");
   }
 
   async function driveRequest(url,options={},retry=true){
@@ -759,6 +813,7 @@
         <div id="driveCloudFolder" class="drive-cloud-folder"></div>
         <div class="drive-cloud-grid">
           <button id="driveCloudConnect" class="secondary" type="button">🔗 Connect</button>
+          <button id="driveCloudDisconnect" class="secondary" type="button">Disconnect</button>
           <button id="driveCloudSelectRoot" class="secondary" type="button">📁 Select Folder</button>
           <button id="driveCloudNew" class="secondary" type="button">＋ New Cloud Project</button>
           <button id="driveCloudSave" type="button">☁ Save to Drive</button>
@@ -771,6 +826,7 @@
     else actions.appendChild(details);
 
     byId("driveCloudConnect")?.addEventListener("click",event=>{event.preventDefault();connectDrive();});
+    byId("driveCloudDisconnect")?.addEventListener("click",event=>{event.preventDefault();disconnectDrive();});
     byId("driveCloudSelectRoot")?.addEventListener("click",event=>{event.preventDefault();selectRoot();});
     byId("driveCloudNew")?.addEventListener("click",event=>{event.preventDefault();newCloudProject();});
     byId("driveCloudSave")?.addEventListener("click",async event=>{event.preventDefault();try{if(window.BinaCourtDashboard&&typeof window.BinaCourtDashboard.save==="function")await window.BinaCourtDashboard.save({reason:"drive_menu"});else await saveCloudProject();}catch(error){console.error("Manual Drive save:",error);setStatus(error?.message||"Gagal simpan project.","error");}});
@@ -790,7 +846,9 @@
   }
 
   window.BinaCourtDrive={
+    receiveNativeAuth,
     connect:connectDrive,
+    disconnect:disconnectDrive,
     selectRoot,
     save:saveCloudProject,
     open:loadCloudProject,
