@@ -37,7 +37,7 @@ function setAllCourtSurfaceColours(court,inner){
     "kitchenFill",
     "pickleballCrossA","pickleballCrossB",
     "zoneFill","keyFill","centerFill",
-    "takrawAccentFill",
+    "takrawAccentFill","takrawCircleFill","takrawServeFill",
     "netballAccentFill","netballGoalFill","netballCenterFill","netballMiddleFill",
     "volleyballAccentFill",
     "futsalCenterFill","futsalDFill",
@@ -46,7 +46,7 @@ function setAllCourtSurfaceColours(court,inner){
   ].forEach(key=>{
     if(key in court || [
       "kitchenFill","zoneFill","keyFill","centerFill",
-      "takrawAccentFill","netballAccentFill","netballGoalFill","netballCenterFill","netballMiddleFill",
+      "takrawAccentFill","takrawCircleFill","takrawServeFill","netballAccentFill","netballGoalFill","netballCenterFill","netballMiddleFill",
       "volleyballAccentFill","futsalCenterFill","futsalDFill","handballDFill"
     ].includes(key)){
       court[key]=inner;

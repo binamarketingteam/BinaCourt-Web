@@ -574,8 +574,11 @@
             </div>
 
             <div id="selTakrawWrap" style="display:none">
-              <label>Warna bulatan & serve</label>
-              <input id="selTakraw" type="color">
+              <div class="row">
+                <div><label>Warna Bulatan (2 bulatan kecil)</label><input id="selTakrawCircle" type="color"></div>
+                <div><label>Warna Serve (2 separuh bulatan)</label><input id="selTakrawServe" type="color"></div>
+              </div>
+              <div class="hint" style="margin-top:6px">Bulatan kecil dan kawasan Semi-D boleh ditetapkan warna berasingan.</div>
             </div>
 
             <div id="selNetballWrap" style="display:none">
@@ -751,10 +754,15 @@
                 <div id="selPickleballCrossBPalette" class="palette"></div>
               </div>
 
-              <div id="selTakrawPaletteGroup" class="palette-group" style="display:none">
-                <div class="palette-heading">3. Warna bulatan & serve</div>
-                <small>Khas untuk court Sepak Takraw</small>
-                <div id="selTakrawPalette" class="palette"></div>
+              <div id="selTakrawCirclePaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">3. Warna Bulatan</div>
+                <small>Dua bulatan kecil Sepak Takraw</small>
+                <div id="selTakrawCirclePalette" class="palette"></div>
+              </div>
+              <div id="selTakrawServePaletteGroup" class="palette-group" style="display:none">
+                <div class="palette-heading">4. Warna Serve / Semi-D</div>
+                <small>Dua separuh bulatan berhampiran garisan tengah</small>
+                <div id="selTakrawServePalette" class="palette"></div>
               </div>
 
               <div id="selNetballPaletteGroup" class="palette-group" style="display:none">
