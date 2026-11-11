@@ -321,6 +321,15 @@
         <input id="showWalkwaySizes" type="checkbox">
         <span>View ukuran walkway (antara court & tepi kawasan)</span>
       </div>
+      <div class="inline" style="margin-top:8px">
+        <input id="walkwayRoundCorners" type="checkbox">
+        <span>Bucu kawasan / walkway bundar</span>
+      </div>
+      <div id="walkwayCornerRadiusWrap" style="display:none;max-width:220px;margin:6px 0 8px 24px">
+        <label for="walkwayCornerRadius">Radius bucu (m)</label>
+        <input id="walkwayCornerRadius" type="number" min="0.05" max="5" step="0.05" value="0.3" inputmode="decimal">
+        <div class="hint">OFF: bucu petak. ON: bucu dibundarkan mengikut radius.</div>
+      </div>
       <div class="hint" style="margin-top:5px">
         Klik nombor walkway untuk set ukuran tepat. Gunakan 🔒 untuk kekalkan ukuran sebagai constraint. Saiz tapak kekal; gap yang belum dikunci akan melaras bila perlu.
       </div>

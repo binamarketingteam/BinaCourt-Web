@@ -28,7 +28,9 @@ function captureCurrentOptionData(){
     nextLineId:state.nextLineId,
     artworkLayerOrder:cloneData(state.artworkLayerOrder || []),
     walkwayConstraints:cloneData(state.walkwayConstraints || {}),
-    walkwayDisplayUnits:cloneData(state.walkwayDisplayUnits || {})
+    walkwayDisplayUnits:cloneData(state.walkwayDisplayUnits || {}),
+    walkwayRoundCorners:!!state.walkwayRoundCorners,
+    walkwayCornerRadius:Number(state.walkwayCornerRadius)||0.3
   };
 }
 
@@ -111,6 +113,8 @@ function normalizeOptionData(option){
       : [],
     walkwayConstraints:normalizeWalkwayConstraints(data.walkwayConstraints),
     walkwayDisplayUnits:normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits),
+    walkwayRoundCorners:!!data.walkwayRoundCorners,
+    walkwayCornerRadius:Math.max(0.05,Math.min(5,Number(data.walkwayCornerRadius)||0.3)),
     nextId:Math.max(
       parseInt(data.nextId || 1,10) || 1,
       ...((data.courts || []).map(c=>(parseInt(c.id,10) || 0)+1)),
@@ -201,6 +205,8 @@ function applyOptionData(optionData){
   state.artworkLayerOrder=cloneData(data.artworkLayerOrder || []);
   state.walkwayConstraints=normalizeWalkwayConstraints(data.walkwayConstraints);
   state.walkwayDisplayUnits=normalizeWalkwayDisplayUnits(data.walkwayDisplayUnits);
+  state.walkwayRoundCorners=!!data.walkwayRoundCorners;
+  state.walkwayCornerRadius=Math.max(0.05,Math.min(5,Number(data.walkwayCornerRadius)||0.3));
   state.nextId=data.nextId;
   state.nextMeasureId=data.nextMeasureId;
   state.nextTextId=data.nextTextId;
@@ -470,6 +476,9 @@ function syncProjectInputs(){
   if($("futsalToggleCornerArc")) $("futsalToggleCornerArc").checked=!!state.showFutsalCornerArcSize;
   $("showColorUsageAreas").checked=!!state.showColorUsageAreas;
   $("showWalkwaySizes").checked=!!state.showWalkwaySizes;
+  if($("walkwayRoundCorners")) $("walkwayRoundCorners").checked=!!state.walkwayRoundCorners;
+  if($("walkwayCornerRadius")) $("walkwayCornerRadius").value=String(state.walkwayCornerRadius||0.3);
+  if($("walkwayCornerRadiusWrap")) $("walkwayCornerRadiusWrap").style.display=state.walkwayRoundCorners?"block":"none";
   if($("includeMeasurementsInExport")) $("includeMeasurementsInExport").checked=!!state.includeMeasurementsInExport;
   if($("showCustomSiteEdgeSizes")) $("showCustomSiteEdgeSizes").checked=state.showCustomSiteEdgeSizes!==false;
 }
