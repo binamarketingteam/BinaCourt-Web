@@ -123,14 +123,14 @@
 .sidebar-collapse-control:hover{background:#eaf5fc;border-color:#88b9d8}
 .sidebar-collapse-control:focus-visible{outline:3px solid #f6c44d;outline-offset:2px}
 @media(min-width:761px){
-  .main{--left-side:245px;--right-side:266px;grid-template-columns:var(--left-side) minmax(0,1fr) var(--right-side)}
+  .main{--left-side:var(--left-user,245px);--right-side:var(--right-user,266px);grid-template-columns:var(--left-side) minmax(0,1fr) var(--right-side)}
   .main.left-collapsed{--left-side:28px}
   .main.right-collapsed{--right-side:28px}
   .main.left-collapsed>.sidebar.left,.main.right-collapsed>.sidebar.right{visibility:hidden;overflow:hidden;pointer-events:none}
   .sidebar-collapse-left{left:calc(var(--left-side) - 13px)}
   .sidebar-collapse-right{right:calc(var(--right-side) - 13px)}
 }
-@media(min-width:761px) and (max-width:1050px){.main{--left-side:200px;--right-side:226px}}
+@media(min-width:761px) and (max-width:1050px){.main{--left-side:var(--left-user,200px);--right-side:var(--right-user,226px)}}
 /* Smaller phone screens use a stacked editor; offer controls at the section edges. */
 @media(max-width:760px){
   .sidebar-collapse-control{position:fixed;top:auto;bottom:14px;height:37px;width:37px;border-radius:12px;transform:none;z-index:22}
@@ -142,6 +142,23 @@
   .main.left-collapsed.right-collapsed{grid-template-rows:minmax(200px,1fr)}
 }
 
+
+/* V3.42 - draggable sidebar divider; collapse arrows stay available. */
+@media(min-width:761px){
+ .sidebar-resizer{position:absolute;top:0;bottom:0;width:12px;z-index:21;cursor:col-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+ .sidebar-resizer::before{content:"";position:absolute;top:0;bottom:0;left:5px;width:2px;background:transparent;transition:background .12s}
+ .sidebar-resizer::after{content:"⋮";position:absolute;top:22%;left:-1px;width:14px;height:51px;border-radius:8px;background:#fff;border:1px solid #a5c4d8;color:#1c5984;font-size:20px;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 7px #102f482b}
+ .sidebar-resizer:hover::before,.sidebar-resizer:focus-visible::before,.sidebar-resizer.is-resizing::before{background:#3498c1}
+ .sidebar-resizer:hover::after,.sidebar-resizer:focus-visible::after,.sidebar-resizer.is-resizing::after{background:#e9f6fc;border-color:#3f96c2}
+ .sidebar-resizer:focus-visible{outline:2px solid #35a3da;outline-offset:-3px}
+ #leftSidebarResize{left:calc(var(--left-side) - 6px)}
+ #rightSidebarResize{right:calc(var(--right-side) - 6px)}
+ .main.left-collapsed #leftSidebarResize,.main.right-collapsed #rightSidebarResize{display:none}
+ .main.left-wide .view-switch{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.35}
+ .main.left-wide .area-name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.35}
+ body.sidebar-resize-in-progress,body.sidebar-resize-in-progress *{cursor:col-resize!important;user-select:none!important}
+}
+@media(max-width:760px){.sidebar-resizer{display:none!important}}
 /* V3.32 A3 free layout designer (kept separate from main masking canvas) */
 .a3d-overlay[hidden],.a3d-properties[hidden],#a3dProperties[hidden],#a3dNoSelection[hidden]{display:none!important}
 .a3d-overlay{position:fixed;inset:0;background:rgba(9,21,34,.80);z-index:120;display:flex;align-items:center;justify-content:center;padding:12px;color:#21384d}
@@ -245,6 +262,8 @@
   </aside>
   <button type="button" class="sidebar-collapse-control sidebar-collapse-left" id="toggleLeftSidebar" aria-label="Sembunyikan panel kiri" aria-controls="leftSidebar" aria-expanded="true" title="Minimize panel Foto / Layer">❮</button>
   <button type="button" class="sidebar-collapse-control sidebar-collapse-right" id="toggleRightSidebar" aria-label="Sembunyikan panel kanan" aria-controls="rightSidebar" aria-expanded="true" title="Minimize panel Property / Palette">❯</button>
+   <div id="leftSidebarResize" class="sidebar-resizer" role="separator" tabindex="0" aria-label="Laraskan lebar panel Foto dan Layer" aria-orientation="vertical" title="Tarik kiri atau kanan untuk ubah lebar Foto / Layer"></div>
+   <div id="rightSidebarResize" class="sidebar-resizer" role="separator" tabindex="0" aria-label="Laraskan lebar panel Property dan Palette" aria-orientation="vertical" title="Tarik kiri atau kanan untuk ubah lebar Property / Palette"></div>
  </div>
 </div>
 <div id="a3Designer" class="a3d-overlay" hidden aria-label="A3 Layout Designer" role="dialog" aria-modal="true">
@@ -915,6 +934,83 @@ try{
 }catch{}
 refreshSidebarToggle('left');refreshSidebarToggle('right');
 
+/* Resizable Foto/Layer and Property panels. Widths are local UI prefs, NOT project data. */
+const SIDEBAR_WIDTH_KEY='bina-colour-studio-panel-widths-v342';
+const resizeHandles={left:$('leftSidebarResize'),right:$('rightSidebarResize')};
+const desiredWidths={left:null,right:null},minimumWidths={left:185,right:205};
+function actualSidebarWidth(side){return $(side==='left'?'leftSidebar':'rightSidebar').getBoundingClientRect().width;}
+function clampSidebarWidth(side,width){
+ const min=minimumWidths[side],other=side==='left'?'right':'left';
+ const otherWidth=studioMain.classList.contains(other+'-collapsed')?28:actualSidebarWidth(other);
+ const max=Math.max(min,Math.min(600,studioMain.clientWidth-otherWidth-300));
+ return Math.round(Math.max(min,Math.min(max,Number(width)||min)));
+}
+function updateResizeA11y(side,width){
+ const h=resizeHandles[side];if(!h)return;
+ h.setAttribute('aria-valuemin',String(minimumWidths[side]));
+ h.setAttribute('aria-valuemax',String(clampSidebarWidth(side,9999)));
+ h.setAttribute('aria-valuenow',String(Math.round(width)));
+ h.setAttribute('aria-valuetext',Math.round(width)+' piksel');
+}
+function applySidebarWidth(side,requested,preserve=true){
+ const width=clampSidebarWidth(side,requested);
+ const reflow=()=>{
+  studioMain.style.setProperty('--'+side+'-user',width+'px');
+  if(side==='left')studioMain.classList.toggle('left-wide',width>=335);
+ };
+ if(preserve)preservePhotoViewportDuring(reflow);else reflow();
+ updateResizeA11y(side,width);return width;
+}
+function persistSidebarWidths(){try{localStorage.setItem(SIDEBAR_WIDTH_KEY,JSON.stringify(desiredWidths));}catch(e){}}
+for(const side of ['left','right']){
+ const grip=resizeHandles[side];if(!grip)continue;
+ let drag=null;
+ grip.addEventListener('pointerdown',ev=>{
+  if(ev.button!==0||window.innerWidth<=760||studioMain.classList.contains(side+'-collapsed'))return;
+  ev.preventDefault();ev.stopPropagation();
+  drag={id:ev.pointerId};
+  grip.setPointerCapture(ev.pointerId);
+  grip.classList.add('is-resizing');
+  document.body.classList.add('sidebar-resize-in-progress');
+ });
+ grip.addEventListener('pointermove',ev=>{
+  if(!drag||drag.id!==ev.pointerId)return;
+  const r=studioMain.getBoundingClientRect();
+  const next=side==='left'?ev.clientX-r.left:r.right-ev.clientX;
+  desiredWidths[side]=applySidebarWidth(side,next);
+ });
+ const stop=ev=>{
+  if(!drag||drag.id!==ev.pointerId)return;
+  drag=null;grip.classList.remove('is-resizing');
+  document.body.classList.remove('sidebar-resize-in-progress');
+  if(grip.hasPointerCapture?.(ev.pointerId))grip.releasePointerCapture(ev.pointerId);
+  persistSidebarWidths();
+ };
+ grip.addEventListener('pointerup',stop);
+ grip.addEventListener('pointercancel',stop);
+ grip.addEventListener('lostpointercapture',stop);
+ grip.addEventListener('keydown',ev=>{
+  if(!['ArrowLeft','ArrowRight','Home'].includes(ev.key))return;
+  ev.preventDefault();
+  const delta=ev.shiftKey?30:12;
+  const current=actualSidebarWidth(side);
+  const requested=ev.key==='Home'?(side==='left'?245:266):current+
+   (ev.key==='ArrowRight'?(side==='left'?delta:-delta):(side==='left'?-delta:delta));
+  desiredWidths[side]=applySidebarWidth(side,requested);persistSidebarWidths();
+ });
+}
+try{
+ const widths=JSON.parse(localStorage.getItem(SIDEBAR_WIDTH_KEY)||'{}');
+ for(const side of ['left','right'])if(Number.isFinite(widths?.[side])){
+  desiredWidths[side]=widths[side];applySidebarWidth(side,widths[side],false);
+ }
+}catch(e){}
+window.addEventListener('resize',()=>{
+ if(window.innerWidth<=760)return;
+ for(const side of ['left','right'])if(desiredWidths[side]!==null)
+  applySidebarWidth(side,desiredWidths[side],false);
+});
+
 function mapPoint(ev){const rect=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
 function mapPointClampedToImage(ev){const rect=shell.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
 function handlePolygonPoint(ev,pt){if(historyBusy)return;if(selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}if(ev.altKey)ev.preventDefault();if(polygon.length===0)polygonMode=polygonPresetMode==='transfer'?'transfer':((ev.altKey&&(ev.ctrlKey||ev.metaKey))?'add-empty':(ev.altKey?'subtract':polygonPresetMode));polygon.push(pt);updatePolygonControls();updateHint();requestRender();}
@@ -1128,7 +1224,7 @@ function renderAreaList(){
  const lockOpen='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0"/></svg>';
  const trashIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
  const duplicateIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
- list.innerHTML=areas.slice().reverse().map(a=>`<div class="area ${a.id===selectedId?'active':''} ${a.visible?'':'is-hidden'} ${a.locked?'is-locked':''}" role="button" tabindex="0" data-area="${a.id}" title="Drag untuk susun · Double-click nama untuk rename"><span class="area-drag-handle" title="Tarik untuk susun layer">⠿</span><span class="area-color" style="background:${getColor(a)};opacity:${a.visible?1:.3}"></span><span class="area-name">${escapeText(a.name)}</span><span class="area-actions"><button type="button" class="area-action area-eye ${a.visible?'':'is-off'}" aria-label="${a.visible?'Hide':'Show'} ${escapeText(a.name)}" title="${a.visible?'Hide / Sembunyikan':'Show / Tunjukkan'} layer">${a.visible?eyeOpen:eyeOff}</button><button type="button" class="area-action area-lock ${a.locked?'is-locked':''}" aria-label="${a.locked?'Unlock':'Lock'} ${escapeText(a.name)}" title="${a.locked?'Unlock / Buka Kunci':'Lock / Kunci'} layer">${a.locked?lockClosed:lockOpen}</button><button type="button" class="area-action area-duplicate" aria-label="Duplicate ${escapeText(a.name)}" title="Duplicate Layer">${duplicateIcon}</button><button type="button" class="area-action area-delete" aria-label="Padam ${escapeText(a.name)}" title="${a.locked?'Buka kunci layer sebelum padam':'Padam layer'}" ${a.locked?'disabled':''}>${trashIcon}</button></span></div>`).join('');
+ list.innerHTML=areas.slice().reverse().map(a=>`<div class="area ${a.id===selectedId?'active':''} ${a.visible?'':'is-hidden'} ${a.locked?'is-locked':''}" role="button" tabindex="0" data-area="${a.id}" title="Drag untuk susun · Double-click nama untuk rename"><span class="area-drag-handle" title="Tarik untuk susun layer">⠿</span><span class="area-color" style="background:${getColor(a)};opacity:${a.visible?1:.3}"></span><span class="area-name" title="${escapeText(a.name)}">${escapeText(a.name)}</span><span class="area-actions"><button type="button" class="area-action area-eye ${a.visible?'':'is-off'}" aria-label="${a.visible?'Hide':'Show'} ${escapeText(a.name)}" title="${a.visible?'Hide / Sembunyikan':'Show / Tunjukkan'} layer">${a.visible?eyeOpen:eyeOff}</button><button type="button" class="area-action area-lock ${a.locked?'is-locked':''}" aria-label="${a.locked?'Unlock':'Lock'} ${escapeText(a.name)}" title="${a.locked?'Unlock / Buka Kunci':'Lock / Kunci'} layer">${a.locked?lockClosed:lockOpen}</button><button type="button" class="area-action area-duplicate" aria-label="Duplicate ${escapeText(a.name)}" title="Duplicate Layer">${duplicateIcon}</button><button type="button" class="area-action area-delete" aria-label="Padam ${escapeText(a.name)}" title="${a.locked?'Buka kunci layer sebelum padam':'Padam layer'}" ${a.locked?'disabled':''}>${trashIcon}</button></span></div>`).join('');
  list.querySelectorAll('[data-area]').forEach(row=>{
   const area=areas.find(a=>a.id===row.dataset.area);
   row.querySelector('.area-eye').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();area.visible=!area.visible;setDirty();renderAreaList();refreshProperties();requestRender();});
@@ -1812,7 +1908,7 @@ function syncActiveView(){
  v.masks={};for(const a of areas)v.masks[a.id]=a.mask.toDataURL('image/png');
 }
 function renderViewList(){const box=$('viewList');if(!box)return;
- box.innerHTML=views.map((v,i)=>`<div class="view-row ${v.id===activeViewId?'active':''}"><button class="view-switch" title="Buka sudut ini" data-switch-view="${escapeText(v.id)}">${i+1}. ${escapeText(v.name||'Sudut '+(i+1))}</button>${views.length>1?`<button class="view-del" title="Buang sudut" data-delete-view="${escapeText(v.id)}">✕</button>`:''}</div>`).join('');
+ box.innerHTML=views.map((v,i)=>`<div class="view-row ${v.id===activeViewId?'active':''}"><button class="view-switch" title="Buka sudut: ${escapeText(v.name||'Sudut '+(i+1))}" data-switch-view="${escapeText(v.id)}">${i+1}. ${escapeText(v.name||'Sudut '+(i+1))}</button>${views.length>1?`<button class="view-del" title="Buang sudut" data-delete-view="${escapeText(v.id)}">✕</button>`:''}</div>`).join('');
  box.querySelectorAll('[data-switch-view]').forEach(b=>b.onclick=()=>switchView(b.dataset.switchView));
  box.querySelectorAll('[data-delete-view]').forEach(b=>b.onclick=()=>deleteView(b.dataset.deleteView));
 }
