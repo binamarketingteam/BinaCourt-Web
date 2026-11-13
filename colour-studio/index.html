@@ -1220,6 +1220,7 @@ moveMenuButton.innerHTML='<span>⇄</span><span class="label"><span>Pindah Layer
 polygonSubmenu.appendChild(moveMenuButton);
 const updateMoveBtnState=()=>{
  moveModeButton.classList.toggle('active',tool==='polygon'&&polygonPresetMode==='transfer');
+ polygonToolBtn.classList.toggle('active',tool==='polygon'&&polygonPresetMode!=='transfer');
 };
 const oldUpdatePolygonToolButton=updatePolygonToolButton;
 updatePolygonToolButton=function(){oldUpdatePolygonToolButton();updateMoveBtnState();};
@@ -1232,9 +1233,10 @@ transferLayerModal.setAttribute('role','dialog');transferLayerModal.setAttribute
 transferLayerModal.innerHTML='<div class="modal"><div class="modal-head"><h2>⇄ Pindahkan Kawasan</h2><button type="button" class="btn" id="transferClose">✕ Batal</button></div><p class="transfer-subtitle" id="transferSummary">Kawasan terpilih akan dipindah, bukan disalin.</p><div class="transfer-choices"><div class="transfer-choice"><strong>① Buat Layer Baharu</strong><input id="transferNewName" type="text" placeholder="Nama layer baharu" maxlength="80"/><button type="button" class="btn primary" id="transferNew">＋ Cipta &amp; Pindah</button></div><div class="transfer-choice"><strong>② Gabung ke Layer Sedia Ada</strong><select id="transferDestination" aria-label="Layer destinasi"></select><button type="button" class="btn primary" id="transferMerge">⇄ Pindah ke Layer Dipilih</button></div></div><p class="transfer-subtitle">Hanya bahagian mask yang dipilih akan dialihkan. Kawasan dipadam daripada layer asal, warna ikut layer destinasi, Undo/Redo memulihkan kedua-duanya.</p></div>';
 document.body.appendChild(transferLayerModal);
 let pendingLayerMove=null;
-function closeLayerTransfer(){transferLayerModal.hidden=true;pendingLayerMove=null;}
+function closeLayerTransfer(){transferLayerModal.hidden=true;pendingLayerMove=null;cancelPolygon();}
 $('transferClose').onclick=closeLayerTransfer;
 transferLayerModal.addEventListener('pointerdown',ev=>{if(ev.target===transferLayerModal)closeLayerTransfer();});
+transferLayerModal.addEventListener('keydown',ev=>{if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();closeLayerTransfer();}});
 $('transferNew').onclick=()=>commitLayerMove('new');
 $('transferMerge').onclick=()=>commitLayerMove('existing');
 function moveBounds(points){
@@ -1272,6 +1274,7 @@ function openLayerTransfer(){
  const first=opts.find(a=>!a.locked);if(first)sel.value=first.id;
  $('transferMerge').disabled=!first;
  transferLayerModal.hidden=false;
+ $('transferLayerNewName').focus();
 }
 function commitLayerMove(mode){
  const info=pendingLayerMove;if(!info||historyBusy)return;
