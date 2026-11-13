@@ -2177,6 +2177,198 @@ async function loadProject(data){if(!data||data.app!=='Bina Colour Scheme Studio
  if(Array.isArray(data.palette)&&data.palette.length){updatePalette(data.palette,'add');}isDemo=false;resetMaskHistory();dirty=false;$('saveStatus').textContent='Projek dibuka';$('imageInfo').textContent='Gambar projek dimuatkan';refreshUI();fitView();if(normalizedSchemes.changed){setDirty();toast('Scheme lama telah diselaraskan ke nombor. Sila Simpan Lokal atau Fail Projek untuk kekalkan perubahan.');}else toast('Projek "'+data.name+'" berjaya dibuka')}
 $('projectFile').onchange=async ev=>{const file=ev.target.files[0];if(!file)return;try{const text=await file.text();await loadProject(JSON.parse(text));closeModal();}catch(err){toast('Tidak dapat buka projek: '+err.message)}ev.target.value=''};
 $('openBtn').onclick=async()=>{openModal(`<div class="modal-head"><h2>Buka Projek</h2><button class="btn" data-close>✕ Tutup</button></div><p>Buka projek yang tersimpan pada peranti ini, atau import fail projek <b>.bcsproj</b> daripada folder bersama staf.</p><button class="btn primary" id="importProject">↑ Import Fail Projek (.bcsproj)</button><div class="divider"></div><h3 style="font-size:14px">Projek Lokal</h3><div id="localList"><p>Memuatkan...</p></div>`);$('importProject').onclick=()=>$('projectFile').click();try{const list=await localList();const el=$('localList');if(!el)return;if(!list.length){el.innerHTML='<p>Tiada projek tersimpan pada pelayar ini.</p>';return;}list.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));el.innerHTML=list.map(p=>`<div class="local-project"><div><strong>${escapeText(p.name)}</strong><br/><small>${escapeText(p.type)} · ${new Date(p.updatedAt).toLocaleString('ms-MY')}</small></div><div style="display:flex;gap:5px"><button class="btn" data-load="${escapeText(p.id)}">Buka</button><button class="btn warn" data-delete="${escapeText(p.id)}">Padam</button></div></div>`).join('');el.querySelectorAll('[data-load]').forEach(b=>b.onclick=async()=>{try{await loadProject(list.find(x=>x.id===b.dataset.load));closeModal()}catch(err){toast(err.message)}});el.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('Padam projek ini daripada peranti?'))return;await localDelete(b.dataset.delete);b.closest('.local-project').remove();toast('Projek lokal dipadam')});}catch(err){const el=$('localList');if(el)el.innerHTML='<p>Simpanan lokal tidak tersedia pada pelayar ini. Gunakan Import Fail Projek.</p>';}}
+
+/* V3.41: NEW | OPEN | SAVE | EXPORT; isolated private Supabase cloud projects.
+   The publishable API key is public by design. Storage and metadata use per-user RLS. */
+const cloudEndpoint='https://thvpxsqrkusxbmeaojiv.supabase.co';
+const cloudPublishableKey='sb_publishable_damFcLVhqwglcU8tJWlfBA_ZYb15BrM';
+const cloudProjectTable='colour_studio_cloud_projects';
+const cloudProjectBucket='colour-studio-projects';
+let cloudClientReady=null;
+function getCloudClient(){
+ if(cloudClientReady)return cloudClientReady;
+ cloudClientReady=new Promise((resolve,reject)=>{
+  const init=()=>{
+   if(!window.supabase||typeof window.supabase.createClient!=='function')throw Error('Library cloud tidak dapat dimuatkan.');
+   return window.supabase.createClient(cloudEndpoint,cloudPublishableKey,{
+     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'bina-colour-studio-cloud-auth-v341'}
+   });
+  };
+  if(window.supabase?.createClient){try{resolve(init());}catch(err){reject(err);}return;}
+  const script=document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0';
+  script.async=true;
+  script.onload=()=>{try{resolve(init());}catch(err){reject(err);}};
+  script.onerror=()=>reject(new Error('Sambungan ke library cloud gagal. Semak internet.'));
+  document.head.appendChild(script);
+ }).catch(err=>{cloudClientReady=null;throw err;});
+ return cloudClientReady;
+}
+const menuSets=[
+ {wrap:$('openMenuWrap'),btn:$('openMenuBtn'),sub:$('openSubmenu')},
+ {wrap:$('saveMenuWrap'),btn:$('saveMenuBtn'),sub:$('saveSubmenu')}
+];
+function collapseHeaderMenus(){
+ for(const entry of menuSets){entry.sub.hidden=true;entry.btn.setAttribute('aria-expanded','false');}
+}
+for(const entry of menuSets){
+ entry.btn.addEventListener('click',ev=>{
+  ev.stopPropagation();
+  const open=entry.sub.hidden;
+  collapseHeaderMenus();toggleExportMenu(false);
+  entry.sub.hidden=!open;entry.btn.setAttribute('aria-expanded',String(open));
+ });
+}
+exportMenuBtn.addEventListener('click',()=>collapseHeaderMenus());
+document.addEventListener('pointerdown',ev=>{
+ if(!menuSets.some(m=>m.wrap.contains(ev.target)))collapseHeaderMenus();
+});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')collapseHeaderMenus();});
+function headerAction(btn,action){
+ btn.addEventListener('click',async()=>{collapseHeaderMenus();try{await action();}catch(err){toast('Operasi gagal: '+(err?.message||err));}});
+}
+headerAction($('openLocalBtn'),()=>{$('openBtn').click();});
+headerAction($('openWebBtn'),()=>cloudUserAction('open'));
+headerAction($('saveWebBtn'),()=>cloudUserAction('save'));
+headerAction($('saveLocalBtn'),async()=>{
+ if(!hasProjectPhoto){toast('Upload gambar sebelum menyimpan projek.');return;}
+ // Chrome supports native Save As; other browsers use a .bcsproj download.
+ try{
+  const data=JSON.stringify(projectObject());
+  if(typeof window.showSaveFilePicker==='function'){
+   let handle;
+   try{
+    handle=await window.showSaveFilePicker({
+      suggestedName:fileName()+'.bcsproj',
+      types:[{description:'Fail Projek Bina Paint',accept:{'application/json':['.bcsproj']}}]
+    });
+   }catch(err){if(err.name==='AbortError')return;throw err;}
+   const writable=await handle.createWritable();
+   await writable.write(new Blob([data],{type:'application/json'}));
+   await writable.close();
+  }else downloadBlob(new Blob([data],{type:'application/json'}),fileName()+'.bcsproj');
+  // Preserve existing browser-local project listing as a second on-device backup.
+  await localSave();
+  toast('Projek disimpan sebagai fail .bcsproj di komputer dan dalam browser.');
+ }catch(err){toast('Save Local gagal: '+(err?.message||err));}
+});
+async function currentCloudUser(client){
+ const {data,error}=await client.auth.getUser();
+ if(error)return null;
+ return data?.user||null;
+}
+async function cloudUserAction(kind){
+ if(kind==='save'&&!hasProjectPhoto)return toast('Upload gambar dahulu sebelum Save Web.');
+ const client=await getCloudClient();
+ const user=await currentCloudUser(client);
+ if(!user){cloudLoginDialog(kind,client);return;}
+ if(kind==='save')await saveProjectOnWeb(client,user);
+ else await listWebProjects(client,user);
+}
+function cloudLoginDialog(kind,client){
+ const task=kind==='save'?'Save Web':'Open Web';
+ openModal('<div class="modal-head"><h2>☁ '+task+' · Akaun Cloud</h2><button class="btn" data-close>✕ Tutup</button></div>'+
+ '<p>Log masuk untuk mengakses projek Web peribadi dari komputer lain. Akaun cloud disimpan dalam pelayar ini supaya tidak perlu log masuk setiap kali.</p>'+
+ '<div class="field"><label for="cloudEmail">Email</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="Email anda" /></div>'+
+ '<div class="field"><label for="cloudPassword">Password</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Minima 8 aksara untuk pendaftaran" /></div>'+
+ '<div class="split" style="margin-top:12px"><button class="btn primary wide" id="cloudSignIn">Log Masuk</button><button class="btn wide" id="cloudSignUp">Daftar Akaun</button></div>'+
+ '<p id="cloudLoginInfo" class="tiny" style="margin-top:10px" aria-live="polite">Projek Web hanya boleh dilihat oleh akaun yang menyimpannya.</p>');
+ const info=$('cloudLoginInfo'),btns=[$('cloudSignIn'),$('cloudSignUp')];
+ async function authorize(mode){
+  const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return info.textContent='Sila masukkan email yang sah.';
+  if(!password||password.length<6)return info.textContent='Masukkan password. Untuk akaun baharu, gunakan minimum 8 aksara.';
+  if(mode==='signup'&&password.length<8)return info.textContent='Password akaun baharu perlu sekurang-kurangnya 8 aksara.';
+  btns.forEach(b=>b.disabled=true);info.textContent='Menghubungi sistem cloud…';
+  try{
+   const response=mode==='signup'
+     ?await client.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}})
+     :await client.auth.signInWithPassword({email,password});
+   if(response.error)throw response.error;
+   if(!response.data?.session){
+    info.textContent='Pendaftaran diterima. Sila semak email pengesahan, kemudian buka laman ini semula dan Log Masuk.';
+    return;
+   }
+   closeModal();
+   await cloudUserAction(kind);
+  }catch(err){info.textContent='Gagal log masuk: '+(err?.message||err);}
+  finally{btns.forEach(b=>b.disabled=false);}
+ }
+ $('cloudSignIn').onclick=()=>authorize('signin');
+ $('cloudSignUp').onclick=()=>authorize('signup');
+ $('cloudPassword').addEventListener('keydown',ev=>{if(ev.key==='Enter')authorize('signin');});
+}
+async function saveProjectOnWeb(client,user){
+ if(!hasProjectPhoto)return toast('Tiada gambar projek untuk disimpan.');
+ const cleanId=String(projectId||'').trim();
+ if(!/^[A-Za-z0-9_-]{1,120}$/.test(cleanId))
+  return toast('ID projek tidak sah untuk Save Web. Simpan fail projek dahulu.');
+ const data=projectObject();
+ const content=JSON.stringify(data);
+ const blob=new Blob([content],{type:'application/json'});
+ if(blob.size>50*1024*1024)return toast('Fail melebihi 50 MB. Sila kurangkan saiz foto dahulu.');
+ const path=user.id+'/'+cleanId+'.bcsproj';
+ const oldSave=$('saveWebBtn').textContent;
+ $('saveWebBtn').disabled=true;$('saveWebBtn').textContent='☁ Saving…';
+ try{
+  const {error:uploadError}=await client.storage.from(cloudProjectBucket).upload(
+   path,blob,{upsert:true,contentType:'application/json',cacheControl:'0'}
+  );
+  if(uploadError)throw uploadError;
+  const {error:metaError}=await client.from(cloudProjectTable).upsert({
+    user_id:user.id,project_id:cleanId,
+    title:($('projectName').value.trim()||'Projek Baharu').slice(0,180),
+    storage_path:path,updated_at:new Date().toISOString()
+  },{onConflict:'user_id,project_id'});
+  if(metaError)throw metaError;
+  dirty=false;
+  $('saveStatus').textContent='Disimpan di Web';
+  $('saveStatus').style.display='inline';
+  toast('Projek berjaya disimpan di Web. Boleh dibuka dari peranti lain dengan akaun sama.');
+ }catch(err){
+  toast('Save Web gagal: '+(err?.message||err));
+  throw err;
+ }finally{
+  $('saveWebBtn').disabled=false;$('saveWebBtn').textContent=oldSave;
+ }
+}
+async function listWebProjects(client,user){
+ openModal('<div class="modal-head"><h2>☁ Open Web</h2><button type="button" class="btn" data-close>✕ Tutup</button></div>'+
+ '<p class="tiny">Akaun: <b>'+escapeText(user.email||'')+'</b>. Projek Web disimpan secara peribadi mengikut akaun.</p>'+
+ '<div id="cloudProjectList"><p>Memuatkan projek Web…</p></div>'+
+ '<div class="split" style="margin-top:12px"><button type="button" class="btn" id="cloudRefreshProjects">↻ Refresh</button><button type="button" class="btn warn" id="cloudSignOut">Log Keluar Cloud</button></div>');
+ $('cloudRefreshProjects').onclick=()=>listWebProjects(client,user);
+ $('cloudSignOut').onclick=async()=>{
+  const {error}=await client.auth.signOut();
+  if(error)return toast('Log keluar gagal: '+error.message);
+  closeModal();toast('Telah log keluar daripada Cloud.');
+ };
+ const {data,error}=await client.from(cloudProjectTable)
+   .select('project_id,title,storage_path,updated_at').order('updated_at',{ascending:false}).limit(100);
+ const el=$('cloudProjectList');
+ if(!el)return;
+ if(error){el.innerHTML='<p class="danger">Gagal memuatkan projek Web: '+escapeText(error.message)+'</p>';return;}
+ if(!data?.length){el.innerHTML='<p class="tiny">Belum ada projek di Web. Pilih SAVE → Save Web untuk simpan projek pertama.</p>';return;}
+ el.innerHTML=data.map(row=>'<div class="local-project"><div><strong>'+
+   escapeText(row.title||'Projek')+'</strong><br/><small>'+
+   escapeText(new Date(row.updated_at).toLocaleString('ms-MY'))+
+   '</small></div><button class="btn" data-cloud-open="'+escapeText(row.project_id)+'">Buka</button></div>').join('');
+ el.querySelectorAll('[data-cloud-open]').forEach(btn=>btn.onclick=async()=>{
+  const item=data.find(row=>row.project_id===btn.dataset.cloudOpen);
+  if(!item)return;
+  if(dirty&&hasProjectPhoto&&!confirm('Buka projek Web ini? Perubahan projek semasa yang belum disimpan akan hilang.'))return;
+  btn.disabled=true;btn.textContent='Membuka…';
+  try{
+   const {data:file,error:downloadError}=await client.storage.from(cloudProjectBucket).download(item.storage_path);
+   if(downloadError)throw downloadError;
+   if(!file)throw Error('Fail projek Web kosong.');
+   await loadProject(JSON.parse(await file.text()));
+   if(!dirty){$('saveStatus').textContent='Dibuka dari Web';$('saveStatus').style.display='inline';}
+   closeModal();toast('Projek Web berjaya dibuka.');
+  }catch(err){toast('Open Web gagal: '+(err?.message||err));btn.disabled=false;btn.textContent='Buka';}
+ });
+}
+
 updatePolygonToolButton();$('helpBtn').onclick=()=>openModal(`<div class="modal-head"><h2>Cara Menggunakan Colour Scheme Studio V3.40</h2><button class="btn" data-close>✕ Tutup</button></div><ol><li>Ikon tong sampah dalam senarai layer memadam layer yang dipilih selepas pengesahan. Layer terkunci mesti dibuka dahulu.</li><li><b>Palette Saya:</b> 120 warna daripada katalog telah dimasukkan mengikut kod dan nama. Cari kod/nama di ruangan carian. Klik Tambah / Urus untuk tambah warna sendiri, padam atau pulihkan 120 warna katalog. Eksport JSON untuk kongsi dengan staf. HEX diambil sebagai anggaran digital daripada swatch PDF; warna sebenar boleh berbeza.</li><li>Upload gambar projek. Gunakan <b>Crop Gambar</b> pada panel Foto untuk potong tepi yang tidak diperlukan. Seret empat penjuru atau bahagian dalam pilihan crop, kemudian klik Crop Gambar. Foto dan mask pada sudut aktif akan dicrop bersama supaya sejajar. Simpan fail projek untuk backup.</li><li>Klik <b>Tambah Area</b> dan namakan kawasan, misalnya "Dinding Utama".</li><li>Pilih <b>Polygon</b>, klik bucu kawasan, kemudian <b>Siap Polygon</b>. <b>Telefon:</b> sentuh dan tahan sekitar 0.25 saat pada gambar hingga Microscope Zoom muncul, seret untuk laraskan titik dan lepaskan jari untuk meletakkan titik. Ulang setiap bucu. Ketikan ringkas juga masih boleh. Tekan dua kali juga boleh untuk lengkapkan polygon menggunakan tetikus. <b>Tekan Backspace</b> untuk undur/buang titik Polygon terakhir, satu demi satu, sebelum menyiapkan polygon. Ia tidak mengubah kawasan yang sudah siap. <b>Klik di luar gambar juga dibenarkan</b>; titik akan automatik melekat pada tepi/hujung gambar.</li><li><b>Unselect</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Unselect</b>, atau tahan <b>ALT</b> semasa klik titik pertama. Klik bucu-bucu polygon dan tekan <b>Buang Kawasan</b> atau double-click. Hanya mask Area yang dipilih dipadam. <b>Ctrl+Z</b> untuk undo.</li><li><b>Isi kawasan kosong sahaja</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Isi Kosong</b>, atau tahan <b>Ctrl + Alt</b> semasa klik titik pertama. Apabila polygon siap, sistem hanya akan menambah bahagian yang <b>belum diwarnakan oleh mana-mana Area</b>. Sesuai untuk isi dinding besar tanpa menimpa beam, tiang atau kawasan yang telah siap diwarnakan.</li><li><b>⇄ Pindah Layer:</b> Pilih layer sumber, gunakan butang Pindah Layer atau submenu Polygon, klik titik untuk pilih kawasan berwarna. Klik Pilih Destinasi, kemudian pilih layer baharu atau sedia ada. Kawasan pindah dipadam automatik daripada layer asal. Undo/Redo mengembalikan kedua-dua mask.</li><li><b>Microscope:</b> Tekan <b>Zoom ON / OFF</b> untuk hidup atau matikan bulatan pembesar semasa Polygon. Touch Polygon masih menggunakan tahan, seret dan lepas walaupun microscope dimatikan.</li><li><b>Rename layer:</b> Double-click nama layer untuk lihat senarai cadangan (General Wall, Feature Wall, Coping, Ceiling, Beam, Column, Fence, Fascia, Door, Window Frame). Pilih cadangan atau taip nama sendiri.</li><li><b>Redo:</b> Klik Redo atau tekan Ctrl+Y / Ctrl+Shift+Z selepas Undo untuk pulihkan sapuan/mask yang dibatalkan. Langkah baharu selepas Undo akan mengosongkan Redo.</li><li><b>Brush/Eraser live preview:</b> Pada telefon, satu jari mewarna/memadam; apabila jari kedua masuk, sapuan sementara dibatalkan dan dua jari hanya menggerakkan atau mengezum gambar. Halakan cursor ke gambar; bulatan menunjukkan diameter sebenar mengikut zoom, tanpa mengubah hasil. Untuk ubah saiz, <b>tahan ALT + klik kanan, kemudian drag ke kiri/kanan</b>: kiri = kecil, kanan = besar. Lepaskan klik kanan untuk kembali kepada Brush/Eraser asal. Slider Saiz turut berubah secara langsung.</li><li>Pilih <b>Brush</b> untuk tambah mask atau <b>Eraser</b> untuk buang lebihan mask. Untuk menggerakkan gambar, <b>tahan Spacebar dan seret</b>; apabila dilepaskan, tool asal kembali secara automatik. Tool <b>Gerak</b> (H) masih boleh dipilih secara kekal. Scroll / dua jari untuk zoom-pan.</li><li>Masukkan warna HEX, pilih swatch, dan laraskan kekuatan warna. Tambah Area untuk bahagian lain. <b>Double-click pada nama layer di senarai kiri</b> untuk rename terus; <b>Enter</b> untuk simpan, <b>Esc</b> untuk batal, atau klik di luar untuk simpan. Nama layer turut tersimpan dalam fail projek. <b>Tarik layer naik/turun</b> untuk susun urutan warna bila kawasan bertindih (atas = depan). Pada telefon, tarik ikon ⠿. Tekan <b>Alt + ↑ / ↓</b> untuk ubah susunan menggunakan keyboard.</li><li><b>Hide / Show layer:</b> Ikon mata di kanan layer menyembunyikan atau menampilkan warna tanpa membuang mask. <b>Lock / Unlock:</b> Ikon mangga mengunci perubahan Polygon, Brush, Eraser, warna, opacity, rename, padam dan drag bagi layer itu. Klik mangga lagi untuk buka. Status tersimpan dalam projek.</li><li>Sistem bermula dengan <b>Scheme 1</b> sahaja. Klik <b>Duplikasi Scheme</b> untuk Scheme 2, 3 dan seterusnya tanpa masking semula. Projek lama yang masih ada Scheme A/B/C akan ditukar kepada nombor; salinan B/C default yang belum diubah dibuang, tetapi kombinasi warna lama yang berbeza dikekalkan.</li><li><b>Material Recolour V1:</b> Pilih layer dan tetapkan Jenis Kemasan sebagai Flat, Preserve Texture atau Metallic Tint. Kawalan Kekalkan Tekstur, Kurangkan Kesan Lama dan Kekalkan Highlight digunakan untuk gambar editor, Before/After serta semua Scheme dalam PDF A3. Clean-up ialah simulasi penurasan imej tanpa AI, bukan pemulihan gambar sebenar. Tetapan disimpan dalam fail .bcsproj bagi setiap layer; projek lama menggunakan Flat secara automatik.</li><li><b>Produk Cat:</b> Di Urus Produk Cat, kategori kini boleh ditambah, dinamakan semula atau dibuang jika tidak digunakan. MultiProof 5000 dipadankan ke Roof Coating. Di Property Area pilih Kategori Permukaan dan Produk Cat pada setiap layer. Pilih siri secara manual supaya projek lama tidak tersalah label. Gunakan <b>Urus Produk Cat</b> untuk tambah/edit/padam siri dan Export/Import katalog JSON bagi staf. Logo rasmi produk digunakan automatik dalam Colour Legend PDF A3. Produk tanpa logo rasmi masih dipaparkan sebagai teks. Logo boleh ditukar dalam Urus Produk Cat. Warna yang dikongsi dua produk akan disenaraikan berasingan. Jika kumpulan warna melebihi ruang footer, sistem jana halaman sambungan.</li><li><b>Simpan Lokal</b> hanya untuk pelayar/peranti semasa. Gunakan <b>Fail Projek</b> untuk menghantar fail kerja kepada staf melalui Google Drive. Staf gunakan <b>Buka → Import Fail Projek</b>.</li><li><b>Rujukan Dokumen:</b> CSBP kekal, tarikh Malaysia dijana automatik, dan staf isi Disediakan Oleh, Nama Sale dan No. Folder. Contoh: CSBP/18/10/26/FAEZI/SHAFIT/10. Rujukan penuh tertera pada PDF dan disimpan dalam fail projek.</li><li><b>Before / After:</b> Tekan butang Before / After pada toolbar untuk membandingkan foto asal (kiri) dengan hasil warna Scheme aktif (kanan). Tekan Kembali ke Editor untuk sambung masking. Perbandingan ialah pratonton sahaja dan tidak mengubah atau menyimpan apa-apa mask baharu.</li><li><b>Export</b> di bahagian atas kanan membuka submenu <b>Export A3</b> dan <b>View PDF</b>. Export A3 menjana dokumen A3 (cover + cadangan) dan membuka pilihan Print / Save as PDF. Susun Gambar A3 membuka Layout Designer untuk drag, resize dan crop gambar serta menggunakan layout sama bagi semua Scheme. View PDF membuka pratonton A3 tanpa dialog cetak automatik; gunakan butang Print / Save as PDF dalam pratonton apabila bersedia.</li></ol><p><b>Shortcut:</b> <span class="shortcut">V</span> Polygon · <span class="shortcut">C</span> Unselect · <span class="shortcut">X</span> Isi Kosong · <span class="shortcut">B</span> Brush · <span class="shortcut">E</span> Eraser · <span class="shortcut">H</span> Gerak · <span class="shortcut">Tekan lama Polygon</span> Buka submenu Polygon / Unselect / Isi Kosong · <span class="shortcut">ALT + Polygon</span> Unselect kawasan · <span class="shortcut">Ctrl + Alt + Polygon</span> Isi kawasan kosong sahaja · <span class="shortcut">Klik luar gambar</span> Titik akan melekat pada tepi gambar · <span class="shortcut">SPACE + Drag</span> Gerak sementara · <span class="shortcut">Alt + Right Drag</span> Saiz Eraser/Brush · <span class="shortcut">Backspace</span> Undur titik Polygon · <span class="shortcut">Ctrl+Z</span> Undo mask · <span class="shortcut">Ctrl+Y / Ctrl+Shift+Z</span> Redo mask.</p><p><b>Had V1:</b> Masking masih manual; pengesanan dinding automatik, akaun staf dan sync automatik akan memerlukan pembangunan cloud.</p>`);
 function isTyping(ev){const e=ev.target;return ['input','textarea','select'].includes(e?.tagName?.toLowerCase())||e?.isContentEditable;}
 function resetTemporaryPan(){if(!spaceHeld)return;spaceHeld=false;syncToolVisuals();updateHint();}
