@@ -43,6 +43,7 @@
 .area-action:focus-visible{outline:2px solid #1c5984;outline-offset:1px}
 .area-action.is-off{color:#9aa7b5}
 .area-action.is-locked{color:#b56c25;background:#fff2da}
+.area-action.area-duplicate{color:#326b94}.area-action.area-duplicate:hover{background:#e4f4fb;border-color:#c6deeb;color:#155b85}
 .area-action.area-delete{color:#ab6570}
 .area-action.area-delete:hover{background:#fdebed;border-color:#f3d2d6;color:#b52d40}
 .area-action.area-delete:disabled{opacity:.35;cursor:not-allowed;color:#a9b1ba;background:transparent;border-color:transparent}
@@ -226,7 +227,7 @@
    <section class="section"><div class="secttitle">01 · Foto</div><button id="uploadBtn" class="btn block primary">↑ Upload Gambar</button><button id="cropPhotoBtn" class="btn block" style="margin-top:7px" title="Crop gambar / sudut aktif">✂ Crop Gambar</button><input id="photoFile" type="file" accept="image/*" hidden/><span id="imageInfo" hidden></span>
      <div class="secttitle" style="margin-top:14px">Sudut Bangunan</div><div id="viewList" class="view-list"></div><button class="btn block" id="addViewBtn" style="margin-top:7px">＋ Tambah Sudut / Gambar</button><input id="extraViewFile" type="file" accept="image/*" hidden/></section>
    <section class="section"><div class="secttitle">02 · Colour Scheme</div><div class="scheme-list" id="schemeList"></div><button class="btn block" style="margin-top:9px" id="addScheme">＋ Duplikasi Scheme</button></section>
-   <section class="section" style="flex:1"><div class="secttitle">03 · Kawasan / Layer</div><div class="area-list" id="areaList"></div><button class="btn block primary" id="addArea">＋ Tambah Area</button></section>
+   <section class="section" style="flex:1"><div class="secttitle">03 · Kawasan / Layer</div><div class="area-list" id="areaList"></div><div class="split" style="margin-top:7px"><button class="btn wide primary" id="addArea">＋ Tambah Area</button><button class="btn wide" id="duplicateSelectedArea" title="Duplicate mask, warna dan tetapan layer dipilih">⧉ Duplicate</button></div></section>
   </aside>
   <main class="center">
    <div class="tools"><div class="tool-menu" id="polygonToolMenu"><button class="tool active" id="polygonToolBtn" data-tool="polygon" title="Polygon (V)">⬡ Polygon</button><div class="tool-submenu" id="polygonSubmenu" hidden><button type="button" class="tool-subitem" data-polygon-mode="add"><span>⬡</span><span class="label"><span>Polygon</span><small>Tambah kawasan</small></span></button><button type="button" class="tool-subitem" data-polygon-mode="subtract"><span>◌</span><span class="label"><span>Unselect</span><small>Buang kawasan · C</small></span></button><button type="button" class="tool-subitem" data-polygon-mode="add-empty"><span>◫</span><span class="label"><span>Isi Kosong</span><small>Hanya ruang belum berwarna · X</small></span></button></div></div><button class="tool" data-tool="brush" title="Brush (B)">🖌 Brush</button><button class="tool" data-tool="eraser" title="Eraser (E)">◇ Eraser</button><button class="tool" data-tool="hand" title="Gerak (H) · Tahan Spacebar + Drag untuk gerak sementara">✥ Gerak</button><button class="btn" id="finishPolygon" disabled>✓ Siap Polygon</button><button class="btn" id="cancelPolygon" disabled>✕ Batal</button><button class="btn microscope-toggle" id="microscopeToggle" type="button" aria-pressed="true" title="Hidup atau matikan Microscope Zoom">🔍 Zoom ON</button><div class="tool-group"><label for="brushSize">Saiz</label><input id="brushSize" type="range" min="3" max="600" value="32"/><span id="brushVal" style="font-size:11px;width:35px">32</span></div><div class="tool-group"><button class="btn" id="undoBtn" title="Undo mask (Ctrl+Z)">↶ Undo</button><button class="btn" id="redoBtn" title="Redo mask (Ctrl+Y / Ctrl+Shift+Z)" disabled>↷ Redo</button><button class="btn" id="fitBtn">⛶ Fit</button></div><div class="tool-group"><button type="button" class="btn compare-toggle" id="compareBtn" aria-pressed="false" title="Lihat gambar asal di sebelah hasil Colour Scheme">◧ Before / After</button></div></div>
@@ -1090,6 +1091,35 @@ function deleteAreaById(areaId){
  toast('Layer "'+a.name+'" telah dipadam.');
  return true;
 }
+// Duplicate a layer into an independent editable copy, across ALL image angles and ALL colour schemes.
+function duplicateAreaById(sourceId){
+ if(viewSwitching||historyBusy)return toast('Tunggu pertukaran sudut atau Undo/Redo selesai dahulu.');
+ const src=areas.find(a=>a.id===sourceId);
+ if(!src)return toast('Pilih layer yang mahu diduplikasi dahulu.');
+ if(!hasProjectPhoto)return toast('Upload gambar dahulu.');
+ const id=makeId(),mask=makeMask();
+ mask.getContext('2d').drawImage(src.mask,0,0);
+ const root=String(src.name||'Area').replace(/\s*\(Copy(?:\s+\d+)?\)$/i,'');
+ let name=root+' (Copy)',counter=2;
+ const names=new Set(areas.map(a=>a.name.toLowerCase()));
+ while(names.has(name.toLowerCase()))name=root+' (Copy '+(counter++)+')';
+ const clone={id,name,mask,opacity:src.opacity,visible:src.visible,locked:false,dirty:true,
+  category:src.category,productId:src.productId||'',material:normalMaterial(src.material)};
+ const i=areas.findIndex(a=>a.id===src.id);
+ areas.splice(i+1,0,clone); // immediately above original in composition
+ for(const scheme of schemes)scheme.colors[id]=scheme.colors[src.id]||'#E5DED2';
+ // Immutable PNG dataURLs keep each angle independent once masks are edited.
+ const currentPNG=src.mask.toDataURL('image/png');
+ for(const v of views){
+  if(!v.masks)v.masks={};
+  if(v.id===activeViewId){v.masks[src.id]=currentPNG;v.masks[id]=currentPNG;}
+  else if(v.masks[src.id])v.masks[id]=v.masks[src.id];
+  else delete v.masks[id];
+ }
+ selectedId=id;cancelPolygon();setDirty();refreshUI();
+ toast('Duplicate siap: '+name+'. Layer asal tidak berubah.');
+ return true;
+}
 function renderAreaList(){
  const list=$('areaList');
  const eyeOpen='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -1097,12 +1127,14 @@ function renderAreaList(){
  const lockClosed='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
  const lockOpen='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0"/></svg>';
  const trashIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
- list.innerHTML=areas.slice().reverse().map(a=>`<div class="area ${a.id===selectedId?'active':''} ${a.visible?'':'is-hidden'} ${a.locked?'is-locked':''}" role="button" tabindex="0" data-area="${a.id}" title="Drag untuk susun · Double-click nama untuk rename"><span class="area-drag-handle" title="Tarik untuk susun layer">⠿</span><span class="area-color" style="background:${getColor(a)};opacity:${a.visible?1:.3}"></span><span class="area-name">${escapeText(a.name)}</span><span class="area-actions"><button type="button" class="area-action area-eye ${a.visible?'':'is-off'}" aria-label="${a.visible?'Hide':'Show'} ${escapeText(a.name)}" title="${a.visible?'Hide / Sembunyikan':'Show / Tunjukkan'} layer">${a.visible?eyeOpen:eyeOff}</button><button type="button" class="area-action area-lock ${a.locked?'is-locked':''}" aria-label="${a.locked?'Unlock':'Lock'} ${escapeText(a.name)}" title="${a.locked?'Unlock / Buka Kunci':'Lock / Kunci'} layer">${a.locked?lockClosed:lockOpen}</button><button type="button" class="area-action area-delete" aria-label="Padam ${escapeText(a.name)}" title="${a.locked?'Buka kunci layer sebelum padam':'Padam layer'}" ${a.locked?'disabled':''}>${trashIcon}</button></span></div>`).join('');
+ const duplicateIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+ list.innerHTML=areas.slice().reverse().map(a=>`<div class="area ${a.id===selectedId?'active':''} ${a.visible?'':'is-hidden'} ${a.locked?'is-locked':''}" role="button" tabindex="0" data-area="${a.id}" title="Drag untuk susun · Double-click nama untuk rename"><span class="area-drag-handle" title="Tarik untuk susun layer">⠿</span><span class="area-color" style="background:${getColor(a)};opacity:${a.visible?1:.3}"></span><span class="area-name">${escapeText(a.name)}</span><span class="area-actions"><button type="button" class="area-action area-eye ${a.visible?'':'is-off'}" aria-label="${a.visible?'Hide':'Show'} ${escapeText(a.name)}" title="${a.visible?'Hide / Sembunyikan':'Show / Tunjukkan'} layer">${a.visible?eyeOpen:eyeOff}</button><button type="button" class="area-action area-lock ${a.locked?'is-locked':''}" aria-label="${a.locked?'Unlock':'Lock'} ${escapeText(a.name)}" title="${a.locked?'Unlock / Buka Kunci':'Lock / Kunci'} layer">${a.locked?lockClosed:lockOpen}</button><button type="button" class="area-action area-duplicate" aria-label="Duplicate ${escapeText(a.name)}" title="Duplicate Layer">${duplicateIcon}</button><button type="button" class="area-action area-delete" aria-label="Padam ${escapeText(a.name)}" title="${a.locked?'Buka kunci layer sebelum padam':'Padam layer'}" ${a.locked?'disabled':''}>${trashIcon}</button></span></div>`).join('');
  list.querySelectorAll('[data-area]').forEach(row=>{
   const area=areas.find(a=>a.id===row.dataset.area);
   row.querySelector('.area-eye').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();area.visible=!area.visible;setDirty();renderAreaList();refreshProperties();requestRender();});
   row.querySelector('.area-lock').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();area.locked=!area.locked;if(area.locked&&selectedId===area.id)cancelPolygon();setDirty();renderAreaList();refreshProperties();updateHint();toast(area.name+(area.locked?' dikunci.':' dibuka kunci.'));});
   row.querySelector('.area-delete').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();deleteAreaById(area.id);});
+  row.querySelector('.area-duplicate').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();duplicateAreaById(area.id);});
   let drag=null;
   function clearTarget(){list.querySelectorAll('.drop-before,.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));}
   function locateTarget(clientX,clientY){
@@ -1183,7 +1215,7 @@ $('materialMode').addEventListener('change',ev=>{
 });
 function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();refreshMaterialControls();const color=getColor(a);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=color;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(color)?'#fff':'#253645';$('opacityInput').value=Math.round(a.opacity*100);$('opacityVal').textContent=Math.round(a.opacity*100)+'%';$('toggleArea').textContent=a.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
 function isDark(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return .2126*r+.7152*g+.0722*b<155}
-function refreshUI(){refreshSchemes();renderAreaList();refreshProperties();refreshProductCount();updatePolygonControls();updateHint();requestRender()}
+function refreshUI(){refreshSchemes();renderAreaList();$('duplicateSelectedArea').disabled=!hasProjectPhoto||!selectedArea()||viewSwitching;refreshProperties();refreshProductCount();updatePolygonControls();updateHint();requestRender()}
 function updateHistoryButtons(){
  $('undoBtn').disabled=historyBusy||undoStack.length===0;
  $('redoBtn').disabled=historyBusy||redoStack.length===0;
@@ -1514,7 +1546,7 @@ workspace.addEventListener('wheel',ev=>{ev.preventDefault();if(compareActive)ret
 compareBtn.onclick=()=>toggleComparison();
 $('finishPolygon').onclick=finishPolygon;$('cancelPolygon').onclick=cancelPolygon;
 document.querySelectorAll('[data-tool]').forEach(b=>{if(b.id==='polygonToolBtn')return;b.onclick=()=>selectTool(b.dataset.tool)});polygonToolBtn.onclick=ev=>{if(polygonMenuIgnoreClick){polygonMenuIgnoreClick=false;ev.preventDefault();ev.stopPropagation();return;}setPolygonPresetMode(polygonPresetMode);selectTool('polygon')};polygonToolBtn.addEventListener('pointerdown',startPolygonMenuPress);polygonToolBtn.addEventListener('pointermove',trackPolygonMenuPress);['pointerup','pointercancel','pointerleave'].forEach(evt=>polygonToolBtn.addEventListener(evt,finishPolygonMenuPress));polygonToolBtn.addEventListener('contextmenu',ev=>{ev.preventDefault();openPolygonSubmenu()});polygonSubmenu.querySelectorAll('[data-polygon-mode]').forEach(btn=>btn.onclick=ev=>{ev.preventDefault();setPolygonPresetMode(btn.dataset.polygonMode);selectTool('polygon');closePolygonSubmenu();});document.addEventListener('pointerdown',ev=>{if(!polygonToolMenu.contains(ev.target)&&!polygonSubmenu.contains(ev.target))closePolygonSubmenu();});document.querySelector('.tools')?.addEventListener('scroll',()=>closePolygonSubmenu(),{passive:true});window.addEventListener('resize',()=>closePolygonSubmenu());$('brushSize').oninput=()=>{$('brushVal').textContent=$('brushSize').value;updateBrushCursor()};$('fitBtn').onclick=fitView;$('undoBtn').onclick=undoMask;$('redoBtn').onclick=redoMask;updateHistoryButtons();
-$('addArea').onclick=()=>{if(!hasProjectPhoto)return toast('Upload gambar dahulu.');addArea();};$('addScheme').onclick=()=>{const base=currentScheme();if(schemes.length>=10){toast('Maksimum 10 scheme dalam V1');return;}const n=schemes.length+1;const next={id:makeId(),name:'Scheme '+n,colors:{...base.colors}};schemes.push(next);schemeId=next.id;invalidateAll();refreshUI();setDirty();toast(next.name+' dicipta daripada '+base.name);};
+$('addArea').onclick=()=>{if(!hasProjectPhoto)return toast('Upload gambar dahulu.');addArea();};$('duplicateSelectedArea').onclick=()=>duplicateAreaById(selectedId);$('addScheme').onclick=()=>{const base=currentScheme();if(schemes.length>=10){toast('Maksimum 10 scheme dalam V1');return;}const n=schemes.length+1;const next={id:makeId(),name:'Scheme '+n,colors:{...base.colors}};schemes.push(next);schemeId=next.id;invalidateAll();refreshUI();setDirty();toast(next.name+' dicipta daripada '+base.name);};
 $('areaName').onchange=ev=>{if(!selectedArea()||selectedArea().locked)return;selectedArea().name=ev.target.value.trim()||'Area';renderAreaList();updateHint();setDirty()};
 $('colorInput').oninput=ev=>setColor(ev.target.value);$('hexInput').onchange=ev=>{const s=ev.target.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(s))setColor(s);else{toast('Masukkan warna HEX seperti #E5DED2');refreshProperties();}};
 $('opacityInput').oninput=ev=>{const a=selectedArea();if(!a||a.locked)return;a.opacity=Number(ev.target.value)/100;$('opacityVal').textContent=ev.target.value+'%';setDirty();requestRender()};
