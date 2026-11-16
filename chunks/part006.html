@@ -682,6 +682,7 @@ function clearMeasureTool({deactivate=false}={}){
 const textToolState={active:false};
 let selectedTextId=null;
 let activeTextInlineEditor=null;
+let lastTextTap=null;
 
 function normalizeTextAngle(value){
   let angle=Number(value);
@@ -707,8 +708,17 @@ function normalizeTextAnnotation(item,index=0){
 }
 
 function normalizeTextAnnotations(){
+  // Keep live object references stable. Rebuilding them on each render made
+  // edited text write to a detached object and silently discarded renames.
   state.textAnnotations=Array.isArray(state.textAnnotations)
-    ? state.textAnnotations.map((item,index)=>normalizeTextAnnotation(item,index)) : [];
+    ? state.textAnnotations.map((item,index)=>{
+        const normalized=normalizeTextAnnotation(item,index);
+        if(item && typeof item==="object" && !Array.isArray(item)){
+          Object.assign(item,normalized);
+          return item;
+        }
+        return normalized;
+      }) : [];
   const used=new Set();
   state.textAnnotations.forEach(item=>{while(used.has(item.id)) item.id++;used.add(item.id);});
   state.nextTextId=Math.max(parseInt(state.nextTextId||1,10)||1,...state.textAnnotations.map(item=>item.id+1),1);
@@ -724,11 +734,14 @@ function closeTextInlineEditor(commit=false){
 
 function openTextInlineEditor(point,item=null){
   closeTextInlineEditor(false);
+  const editingId=item?.id ?? null;
+  const existing=editingId!==null ? textAnnotationById(editingId) : null;
+  if(editingId!==null && (!existing || existing.locked)) return;
   const input=document.createElement("input");
   input.type="text";
   input.className="text-inline-editor";
   input.placeholder="Taip text…";
-  input.value=item?.text || "";
+  input.value=existing?.text || "";
   input.maxLength=500;
   input.style.left=`${Math.min(window.innerWidth-250,Math.max(8,point.clientX))}px`;
   input.style.top=`${Math.min(window.innerHeight-52,Math.max(8,point.clientY))}px`;
@@ -740,8 +753,12 @@ function openTextInlineEditor(point,item=null){
     input.remove(); activeTextInlineEditor=null;
     if(!value){ render(); return; }
     normalizeTextAnnotations();
-    if(item){ item.text=value; selectedTextId=item.id; selectedImageId=null; }
-    else{
+    if(editingId!==null){
+      // Find by ID at commit time: renders/undo/selection can replace objects.
+      const current=state.textAnnotations.find(t=>t.id===editingId);
+      if(!current || current.locked){ render(); return; }
+      current.text=value; selectedTextId=current.id; selectedImageId=null;
+    }else{
       const annotation=normalizeTextAnnotation({id:state.nextTextId++,x:point.x,y:point.y,text:value},state.textAnnotations.length);
       state.textAnnotations.push(annotation); selectedTextId=annotation.id; selectedImageId=null;
     }
@@ -872,11 +889,49 @@ function deleteTextAnnotation(id){
   render(); commitHistory();
 }
 
+function highlightSelectedTextNode(group,item){
+  if(!group || !item || !svg) return;
+  // Update the selection outline without destroying the SVG nodes.
+  // A render between the two clicks prevents a browser dblclick event.
+  svg.querySelectorAll(".text-selection-outline").forEach(node=>node.remove());
+  const textEl=group.querySelector(".text-content");
+  const approxW=Math.max(item.fontSize*1.2,item.text.length*item.fontSize*.58);
+  group.insertBefore(ns("rect",{
+    class:"editing-only text-selection-outline",
+    x:-.16,y:-item.fontSize*.95,width:approxW+.32,height:item.fontSize*1.25,
+    fill:"none",stroke:"#2563eb","stroke-width":.045,
+    "stroke-dasharray":".16 .10","pointer-events":"none"
+  }),textEl||null);
+}
+
 function bindTextDrag(hit,item){
   hit.addEventListener("pointerdown",event=>{
     if(item.locked || event.button!==0) return;
     event.preventDefault();
     event.stopPropagation();
+
+    // Android WebView/tablet double taps do not reliably emit dblclick.
+    // Open the same text editor on a second quick tap without requiring
+    // a mouse or deleting and recreating the annotation.
+    const touchLike=event.pointerType==="touch" || event.pointerType==="pen";
+    const now=Date.now();
+    if(touchLike && lastTextTap?.id===item.id &&
+       now-lastTextTap.at<460 &&
+       Math.hypot(event.clientX-lastTextTap.x,event.clientY-lastTextTap.y)<28){
+      lastTextTap=null;
+      event.stopImmediatePropagation?.();
+      const current=textAnnotationById(item.id);
+      if(current && !current.locked){
+        openTextInlineEditor({
+          x:current.x,y:current.y,
+          clientX:event.clientX,clientY:event.clientY
+        },current);
+      }
+      return;
+    }
+    lastTextTap=touchLike
+      ? {id:item.id,at:now,x:event.clientX,y:event.clientY}
+      : null;
 
     const textId=item.id;
     selectedTextId=textId;
@@ -906,6 +961,7 @@ function bindTextDrag(hit,item){
       const current=state.textAnnotations.find(t=>t.id===textId);
       if(!current) return;
       if(Math.abs(nx-current.x)>.001 || Math.abs(ny-current.y)>.001) moved=true;
+      if(moved) lastTextTap=null;
       current.x=nx;
       current.y=ny;
 
@@ -920,8 +976,15 @@ function bindTextDrag(hit,item){
       window.removeEventListener("pointerup",end);
       window.removeEventListener("pointercancel",end);
       try{ hit.releasePointerCapture?.(pid); }catch(_){ }
-      render();
-      if(moved) commitHistory();
+      if(moved){
+        render();
+        commitHistory();
+      }else{
+        // Preserve DOM between taps to let native dblclick fire on desktop.
+        const current=state.textAnnotations.find(t=>t.id===textId);
+        if(current) highlightSelectedTextNode(group,current);
+        updateTextFormatToolbar();
+      }
     };
 
     window.addEventListener("pointermove",move,{passive:false});
@@ -957,9 +1020,11 @@ function createTextAnnotationGroup(item){
 
   const openEditor=event=>{
     event.preventDefault();event.stopPropagation();
+    const current=textAnnotationById(item.id);
+    if(!current || current.locked) return;
     const pt=svg.getScreenCTM();
-    const screen=pt && typeof DOMPoint!=="undefined" ? new DOMPoint(item.x,item.y).matrixTransform(pt) : {x:event.clientX,y:event.clientY};
-    openTextInlineEditor({x:item.x,y:item.y,clientX:screen.x,clientY:screen.y},item);
+    const screen=pt && typeof DOMPoint!=="undefined" ? new DOMPoint(current.x,current.y).matrixTransform(pt) : {x:event.clientX,y:event.clientY};
+    openTextInlineEditor({x:current.x,y:current.y,clientX:screen.x,clientY:screen.y},current);
   };
   textEl.addEventListener("dblclick",openEditor);
   hit.addEventListener("dblclick",openEditor);
@@ -969,4 +1034,4 @@ function createTextAnnotationGroup(item){
   bindTextDrag(textEl,item);
 
   if(item.id===selectedTextId){
-    group.insertBefore(ns("rect",{class:"editing-only",x:-.16,y:-item.fontSize*.95,width:approxW+.32,height:item.fontSize*1.25,fill:"none",stroke:"#2563eb","stroke-width":.045,"stroke-dasharray":".16 .10","pointer-events":"none"}),textEl);
+    group.insertBefore(ns("rect",{class:"editing-only text-selection-outline",x:-.16,y:-item.fontSize*.95,width:approxW+.32,height:item.fontSize*1.25,fill:"none",stroke:"#2563eb","stroke-width":.045,"stroke-dasharray":".16 .10","pointer-events":"none"}),textEl);
