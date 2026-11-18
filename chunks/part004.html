@@ -608,6 +608,32 @@ function isFeetUnit(unit=state.measurementUnit){
 function displayLengthDecimals(){
   return 3;
 }
+// BinaCourt Select/Move snapping (metres; independent of display unit).
+// Hold Shift during a drag to lock the first movement axis and snap
+// the moved anchor to a 0.10m grid. Release Shift for normal free movement.
+const SHIFT_MOVE_SNAP_METERS=0.1;
+function snapShiftGrid(value){
+  if(!Number.isFinite(Number(value))) return value;
+  return Number((Math.round(Number(value)/SHIFT_MOVE_SNAP_METERS)*SHIFT_MOVE_SNAP_METERS).toFixed(6));
+}
+function snapShiftDrag(startX,startY,dx,dy,shiftKey,lock=null){
+  const x=Number(startX),y=Number(startY);
+  const deltaX=Number(dx),deltaY=Number(dy);
+  if(![x,y,deltaX,deltaY].every(Number.isFinite)) return {x:startX,y:startY};
+  if(!shiftKey){
+    if(lock) lock.axis=null;
+    return {x:x+deltaX,y:y+deltaY};
+  }
+  if(lock && !lock.axis && Math.max(Math.abs(deltaX),Math.abs(deltaY))>0.0001){
+    lock.axis=Math.abs(deltaX)>=Math.abs(deltaY)?"x":"y";
+  }
+  const axis=lock?.axis||(Math.abs(deltaX)>=Math.abs(deltaY)?"x":"y");
+  return {
+    x:axis==="y" ? x : snapShiftGrid(x+deltaX),
+    y:axis==="x" ? y : snapShiftGrid(y+deltaY)
+  };
+}
+
 function formatSpatialNumber(value,maxDecimals=3){
   const n=Number(value);
   if(!Number.isFinite(n)) return "0";

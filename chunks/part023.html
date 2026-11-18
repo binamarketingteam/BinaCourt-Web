@@ -119,11 +119,13 @@
     const start=stagePointFromClient(event.clientX,event.clientY);
     const x0=l.x,y0=l.y,pid=event.pointerId;
     let moved=false;
+    const shiftLock={axis:null};
     const move=e=>{
       if(e.pointerId!==pid || l.locked)return;
       e.preventDefault?.();
       const p=stagePointFromClient(e.clientX,e.clientY);
-      l.x=x0+p.x-start.x;l.y=y0+p.y-start.y;
+      const pos=snapShiftDrag(x0,y0,p.x-start.x,p.y-start.y,e.shiftKey,shiftLock);
+      l.x=pos.x;l.y=pos.y;
       g.setAttribute("transform",lampTransform(l));
       moved=true;
     };

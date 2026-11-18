@@ -176,9 +176,11 @@
     const origin=stagePointFromClient(e.clientX,e.clientY);
     const startX=f.x,startY=f.y;
     let moved=false;
+    const shiftLock={axis:null};
     trackPointer(e,event=>{
       const point=stagePointFromClient(event.clientX,event.clientY);
-      f.x=startX+point.x-origin.x;f.y=startY+point.y-origin.y;
+      const pos=snapShiftDrag(startX,startY,point.x-origin.x,point.y-origin.y,event.shiftKey,shiftLock);
+      f.x=pos.x;f.y=pos.y;
       group.setAttribute("transform",getTransform(f));
       moved=true;
     },()=>{

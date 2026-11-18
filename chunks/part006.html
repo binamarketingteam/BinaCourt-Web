@@ -949,6 +949,7 @@ function bindTextDrag(hit,item){
     const pid=event.pointerId;
     const group=hit.closest?.("[data-text-id]") || hit.parentNode;
     let moved=false;
+    const shiftLock={axis:null};
 
     try{ hit.setPointerCapture?.(pid); }catch(_){ }
 
@@ -956,8 +957,9 @@ function bindTextDrag(hit,item){
       if(e.pointerId!==pid) return;
       e.preventDefault?.();
       const p=stagePointFromClient(e.clientX,e.clientY);
-      const nx=x0+(p.x-start.x);
-      const ny=y0+(p.y-start.y);
+      const pos=snapShiftDrag(x0,y0,p.x-start.x,p.y-start.y,e.shiftKey,shiftLock);
+      const nx=pos.x;
+      const ny=pos.y;
       const current=state.textAnnotations.find(t=>t.id===textId);
       if(!current) return;
       if(Math.abs(nx-current.x)>.001 || Math.abs(ny-current.y)>.001) moved=true;

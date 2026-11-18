@@ -234,6 +234,7 @@
       // pixels from touch jitter while its settings panel is opening.
       const dragThresholdPx=event.pointerType==="touch" ? 7 : 3;
       let moved=false;
+      const shiftLock={axis:null};
       try{target.setPointerCapture?.(pid);}catch(_){ }
 
       const move=e=>{
@@ -244,7 +245,8 @@
         const p=stagePointFromClient(e.clientX,e.clientY);
         const current=shapeAnnotationById(id);
         if(!current) return;
-        const nextX=x0+(p.x-start.x),nextY=y0+(p.y-start.y);
+        const snapped=snapShiftDrag(x0,y0,p.x-start.x,p.y-start.y,e.shiftKey,shiftLock);
+        const nextX=snapped.x,nextY=snapped.y;
         if(Math.abs(nextX-current.x)<.000001 && Math.abs(nextY-current.y)<.000001) return;
         current.x=nextX;
         current.y=nextY;
@@ -796,7 +798,7 @@
     const button=document.createElement("button");
     button.id="selectMoveTool";
     button.type="button";
-    button.title="Select / Move (V) - keluar daripada tool aktif untuk pilih atau gerakkan item";
+    button.title="Select / Move (V). Tahan Shift semasa drag untuk kunci arah dan snap 0.1m.";
     button.innerHTML='<span class="tool-icon">&#8598;</span><span>Select / Move (V)</span>';
     toolsDropdown.insertBefore(button,toolsDropdown.firstChild);
   }
