@@ -253,8 +253,11 @@
     }
     if(action==="duplicate"){
       const theta=f.angle*Math.PI/180;
+      // Visual horizontal bounds include the end posts; Y stays identical.
+      const width=(f.length+.44)*Math.abs(Math.cos(theta))+
+        .78*Math.abs(Math.sin(theta));
       const copy=normalizePartition({...cloneData(f),id:state.nextPartitionId++,
-        x:f.x-.7*Math.sin(theta),y:f.y+.7*Math.cos(theta),
+        x:f.x+width+.3,y:f.y,
         hidden:false,locked:false},state.partitionAnnotations.length);
       state.partitionAnnotations.push(copy);
       normalizeArtworkLayerOrder();
