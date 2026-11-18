@@ -20,7 +20,11 @@
     end:null,
     role:"walkway",
     brand:normalizeBrand(state.brand,"duracourt"),
-    color:""
+    color:"",
+    normalColor:"",
+    decorative:false,
+    freeColor:"#a53531",
+    freeColourDirty:false
   };
 
   function normalizeShapeRole(value){
@@ -49,12 +53,17 @@
 
   function normalizeShapeAnnotation(item,index=0){
     const raw=item && typeof item==="object" ? item : {};
-    const brand=normalizeBrand(raw.brand,state.brand||"duracourt");
-    const palette=shapePalette(brand);
+    const decorative=raw.decorative===true;
+    // Decoration is just visual SVG artwork; never assign a product,
+    // palette or surface function to it.
+    const brand=decorative ? null : normalizeBrand(raw.brand,state.brand||"duracourt");
+    const palette=decorative ? [] : shapePalette(brand);
     const requested=normalizeHexColor(raw.color);
-    const color=requested && palette.some(entry=>normalizeHexColor(entry.color)===requested)
-      ? requested
-      : shapeDefaultColor(brand);
+    const color=decorative
+      ? (requested||"#a53531")
+      : (requested && palette.some(entry=>normalizeHexColor(entry.color)===requested)
+          ? requested
+          : shapeDefaultColor(brand));
     let w=Number(raw.w), h=Number(raw.h);
     if(!Number.isFinite(w) || w<=0) w=4;
     if(!Number.isFinite(h) || h<=0) h=3;
@@ -65,8 +74,9 @@
       w:Math.max(.15,w),
       h:Math.max(.15,h),
       angle:normalizeShapeAngle(raw.angle),
-      role:normalizeShapeRole(raw.role),
+      role:decorative ? "decorative" : normalizeShapeRole(raw.role),
       brand,
+      decorative,
       color,
       hidden:!!raw.hidden,
       locked:!!raw.locked
@@ -355,7 +365,9 @@
   }
 
   function createShapeAnnotationGroup(item){
-    const attrs={class:"shape-annotation","data-shape-id":item.id,"data-shape-role":item.role,"data-shape-brand":item.brand};
+    const attrs={class:"shape-annotation","data-shape-id":item.id,"data-shape-role":item.role};
+    if(item.decorative) attrs["data-shape-decorative"]="true";
+    else attrs["data-shape-brand"]=item.brand;
     const transform=shapeGroupTransform(item);
     if(transform) attrs.transform=transform;
     const group=ns("g",attrs);
@@ -365,6 +377,9 @@
       x:item.x,y:item.y,width:item.w,height:item.h,
       fill:item.color,
       stroke:"none",
+      // Exclude free decorative artwork from colour-area pixel counting,
+      // even if it happens to match a court/site catalogue HEX.
+      "data-surface-ignore":item.decorative?"1":"0",
       "shape-rendering":"geometricPrecision"
     });
     group.appendChild(rect);
@@ -512,12 +527,26 @@
     bar.hidden=!show;
     if(!show) return;
 
+    const decorative=!!(item ? item.decorative : shapeToolState.decorative);
     const role=item?.role || shapeToolState.role;
-    const brand=item?.brand || shapeToolState.brand || normalizeBrand(state.brand);
-    const color=item?.color || shapeToolState.color || shapeDefaultColor(brand);
-    if($("shapeRole")) $("shapeRole").value=normalizeShapeRole(role);
-    if($("shapeBrand")) $("shapeBrand").value=normalizeBrand(brand,state.brand);
-    populateShapeColourOptions(brand,color);
+    const brand=decorative ? null : (item?.brand || shapeToolState.brand || normalizeBrand(state.brand));
+    const color=decorative
+      ? (item?.color || shapeToolState.freeColor || "#a53531")
+      : (item?.color || shapeToolState.color || shapeDefaultColor(brand));
+    if($("shapeModeLabel")) $("shapeModeLabel").textContent=decorative?"SHAPE BEBAS":"SHAPE";
+    ["shapeRoleLabel","shapeBrandLabel","shapeRole","shapeBrand","shapeColourPreview","shapeColour"].forEach(id=>{
+      if($(id)) $(id).hidden=decorative;
+    });
+    if($("freeShapeColour")){
+      $("freeShapeColour").hidden=!decorative;
+      $("freeShapeColour").value=normalizeHexColor(color)||"#a53531";
+      $("freeShapeColour").disabled=!!item?.locked;
+    }
+    if(!decorative){
+      if($("shapeRole")) $("shapeRole").value=normalizeShapeRole(role);
+      if($("shapeBrand")) $("shapeBrand").value=normalizeBrand(brand,state.brand);
+      populateShapeColourOptions(brand,color);
+    }
     if($("shapeAngle")){
       $("shapeAngle").value=String(Math.round(normalizeShapeAngle(item?.angle||0)));
       $("shapeAngle").disabled=!item || !!item.locked;
@@ -535,6 +564,7 @@
     const role=normalizeShapeRole(value);
     shapeToolState.role=role;
     const item=shapeAnnotationById(selectedShapeId);
+    if(item?.decorative) return;
     if(item && !item.locked) item.role=role;
     render();
     if(commit && item && !item.locked) commitHistory();
@@ -544,6 +574,7 @@
     const brand=normalizeBrand(value,state.brand);
     shapeToolState.brand=brand;
     const item=shapeAnnotationById(selectedShapeId);
+    if(item?.decorative) return;
     if(item && !item.locked){
       const oldColor=normalizeHexColor(item.color);
       item.brand=brand;
@@ -561,17 +592,45 @@
 
   function applyShapeColour(value,{commit=false}={}){
     const item=shapeAnnotationById(selectedShapeId);
+    if(item?.decorative) return;
     const brand=item?.brand || shapeToolState.brand;
     const palette=shapePalette(brand);
     const normalized=normalizeHexColor(value);
     const allowed=normalized && palette.some(entry=>normalizeHexColor(entry.color)===normalized);
     const color=allowed?normalized:shapeDefaultColor(brand);
     shapeToolState.color=color;
+    shapeToolState.normalColor=color;
     if(item && !item.locked) item.color=color;
     const swatch=$("shapeColourPreview");
     if(swatch) swatch.style.background=color;
     render();
     if(commit && item && !item.locked) commitHistory();
+  }
+
+  function applyFreeShapeColour(value,{commit=false}={}){
+    const color=normalizeHexColor(value)||"#a53531";
+    shapeToolState.freeColor=color;
+    if(shapeToolState.decorative) shapeToolState.color=color;
+    const item=shapeAnnotationById(selectedShapeId);
+    if(item && item.decorative && !item.locked){
+      if(item.color===color){
+        if(commit && shapeToolState.freeColourDirty){
+          shapeToolState.freeColourDirty=false;
+          commitHistory();
+        }
+        return;
+      }
+      item.color=color;
+      render();
+      if(commit){
+        shapeToolState.freeColourDirty=false;
+        commitHistory();
+      }else{
+        shapeToolState.freeColourDirty=true;
+      }
+    }else{
+      updateShapeFormatToolbar();
+    }
   }
 
   function removeShapePreview(){
@@ -595,7 +654,7 @@
     svg.appendChild(rect);
   }
 
-  function setShapeToolActive(active){
+  function setShapeToolActive(active,decorative=false){
     if(active && typeof customSiteDrawing!=="undefined" && customSiteDrawing){
       alert("Selesaikan atau Batal Draw Site dahulu sebelum guna Shape Tool.");
       return;
@@ -607,8 +666,14 @@
       stageTouchPanMode=false;
       closeTextInlineEditor(false);
       closeMeasureInlineEditor(false);
-      shapeToolState.brand=normalizeBrand(shapeToolState.brand||state.brand,state.brand);
-      if(!shapeToolState.color) shapeToolState.color=shapeDefaultColor(shapeToolState.brand);
+      if(shapeToolState.decorative!==!!decorative) selectedShapeId=null;
+      shapeToolState.decorative=!!decorative;
+      if(shapeToolState.decorative){
+        shapeToolState.color=shapeToolState.freeColor||"#a53531";
+      }else{
+        shapeToolState.brand=normalizeBrand(shapeToolState.brand||state.brand,state.brand);
+        shapeToolState.color=shapeToolState.normalColor||shapeDefaultColor(shapeToolState.brand);
+      }
     }
     shapeToolState.active=!!active;
     shapeToolState.dragging=false;
@@ -662,14 +727,18 @@
     if(w<.08 || h<.08) return render();
 
     normalizeShapeAnnotations();
-    const brand=normalizeBrand(shapeToolState.brand,state.brand);
+    const decorative=!!shapeToolState.decorative;
+    const brand=decorative ? null : normalizeBrand(shapeToolState.brand,state.brand);
     const item=normalizeShapeAnnotation({
       id:state.nextShapeId++,
       x,y,w,h,
       angle:0,
-      role:shapeToolState.role,
+      decorative,
+      role:decorative ? "decorative" : shapeToolState.role,
       brand,
-      color:shapeToolState.color||shapeDefaultColor(brand),
+      color:decorative
+        ? (shapeToolState.freeColor||"#a53531")
+        : (shapeToolState.color||shapeDefaultColor(brand)),
       hidden:false,locked:false
     },state.shapeAnnotations.length);
     state.shapeAnnotations.push(item);
@@ -711,6 +780,17 @@
     const imageButton=$("imageTool");
     toolsDropdown.insertBefore(button,imageButton||toolsDropdown.lastChild);
   }
+  // Standalone visual annotation. The original Shape tool remains unchanged.
+  if(toolsDropdown && !$("freeShapeTool")){
+    const button=document.createElement("button");
+    button.id="freeShapeTool";
+    button.type="button";
+    button.setAttribute("aria-pressed","false");
+    button.title="Shape bebas tanpa sistem produk, warna katalog atau butiran PDF";
+    button.innerHTML='<span class="tool-icon">&#9633;</span><span>Shape Bebas</span>';
+    const normalShape=$("shapeTool");
+    toolsDropdown.insertBefore(button,normalShape?.nextSibling||$("imageTool")||toolsDropdown.lastChild);
+  }
 
   const lineBar=$("lineFormatToolbar");
   if(lineBar && !$("shapeFormatToolbar")){
@@ -720,13 +800,13 @@
     bar.hidden=true;
     bar.setAttribute("aria-label","Shape formatting");
     bar.innerHTML=`
-      <span class="image-format-label">SHAPE</span>
-      <span class="image-format-label">TYPE</span>
+      <span id="shapeModeLabel" class="image-format-label">SHAPE</span>
+      <span id="shapeRoleLabel" class="image-format-label">TYPE</span>
       <select id="shapeRole" title="Fungsi shape" style="width:118px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
         <option value="walkway">Walkway</option>
         <option value="main_surface">Main Surface</option>
       </select>
-      <span class="image-format-label">SYSTEM</span>
+      <span id="shapeBrandLabel" class="image-format-label">SYSTEM</span>
       <select id="shapeBrand" title="Sistem produk" style="width:112px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
         <option value="duracourt">Duracourt</option>
         <option value="primacourt">Primacourt</option>
@@ -738,6 +818,7 @@
       <span class="image-format-label">COLOUR</span>
       <span id="shapeColourPreview" style="width:24px;height:24px;border:1px solid #98a2b3;border-radius:5px;display:inline-block;flex:0 0 auto"></span>
       <select id="shapeColour" title="Warna court palette" style="width:190px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700"></select>
+      <input id="freeShapeColour" type="color" value="#a53531" title="Warna bebas tanpa kod produk" style="height:34px;width:56px;cursor:pointer" hidden>
       <span class="image-format-label">ANGLE</span>
       <input id="shapeAngle" class="image-angle-input" type="number" min="-360" max="360" step="1" value="0" title="Sudut shape dalam darjah">
       <button id="shapeRotateLeft" class="secondary" type="button" title="Pusing 90 darjah ke kiri">&#8634; 90</button>
@@ -750,6 +831,7 @@
   }
 
   shapeToolState.color=shapeDefaultColor(shapeToolState.brand);
+  shapeToolState.normalColor=shapeToolState.color;
 
   // ---- Persist Shape data in every Option/Group/JSON -----------------------
   const originalCaptureCurrentOptionData=captureCurrentOptionData;
@@ -959,8 +1041,10 @@
       const rankText=displayIndex===0 ? "Paling atas" : (displayIndex===total-1 ? "Paling bawah" : `Layer ${displayIndex+1}`);
       return {
         token,type:"shape",id,
-        name:`${shapeRoleLabel(item.role)} Shape ${id}`,
-        meta:`${item.w.toFixed(1)} x ${item.h.toFixed(1)} m - ${productBrandName(item.brand)} - Shape - ${rankText}`,
+        name:item.decorative ? `Shape Bebas ${id}` : `${shapeRoleLabel(item.role)} Shape ${id}`,
+        // Decorative shapes deliberately carry no size, system or product data.
+        meta:item.decorative ? `Visual sahaja - ${rankText}`
+          : `${item.w.toFixed(1)} x ${item.h.toFixed(1)} m - ${productBrandName(item.brand)} - Shape - ${rankText}`,
         color:item.color,
         hidden:!!item.hidden,
         locked:!!item.locked,
@@ -1084,7 +1168,7 @@
   collectUsedColors=function(){
     const used=originalCollectUsedColors();
     normalizeShapeAnnotations();
-    state.shapeAnnotations.filter(item=>!item.hidden).forEach(shape=>{
+    state.shapeAnnotations.filter(item=>!item.hidden && !item.decorative).forEach(shape=>{
       const brand=normalizeBrand(shape.brand,state.brand);
       const palette=shapePalette(brand);
       const info=colorInfo(shape.color,palette);
@@ -1111,7 +1195,7 @@
     visibleSurfacePairs=function(){
       const pairs=originalVisibleSurfacePairs();
       normalizeShapeAnnotations();
-      state.shapeAnnotations.filter(item=>!item.hidden).forEach(shape=>{
+      state.shapeAnnotations.filter(item=>!item.hidden && !item.decorative).forEach(shape=>{
         const color=normalizeHexColor(shape.color);
         if(!color) return;
         const brand=normalizeBrand(shape.brand,state.brand);
@@ -1141,13 +1225,20 @@
     originalUpdateToolsMenuState();
     const button=$("shapeTool");
     if(button){
-      button.classList.toggle("is-active",!!shapeToolState.active);
-      button.setAttribute("aria-pressed",shapeToolState.active?"true":"false");
+      const active=!!shapeToolState.active && !shapeToolState.decorative;
+      button.classList.toggle("is-active",active);
+      button.setAttribute("aria-pressed",active?"true":"false");
+    }
+    const free=$("freeShapeTool");
+    if(free){
+      const active=!!shapeToolState.active && !!shapeToolState.decorative;
+      free.classList.toggle("is-active",active);
+      free.setAttribute("aria-pressed",active?"true":"false");
     }
     const main=$("toolsMenuButton");
     if(main && shapeToolState.active){
       main.classList.add("tool-active");
-      main.title="Tools - Shape aktif";
+      main.title=shapeToolState.decorative?"Tools - Shape Bebas aktif":"Tools - Shape aktif";
     }
   };
 
@@ -1163,7 +1254,12 @@
 
   // ---- Events ---------------------------------------------------------------
   $("shapeTool")?.addEventListener("click",()=>{
-    setShapeToolActive(!shapeToolState.active);
+    setShapeToolActive(!shapeToolState.active || shapeToolState.decorative,false);
+    if($("toolsDropdown")) $("toolsDropdown").hidden=true;
+    $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+  });
+  $("freeShapeTool")?.addEventListener("click",()=>{
+    setShapeToolActive(!shapeToolState.active || !shapeToolState.decorative,true);
     if($("toolsDropdown")) $("toolsDropdown").hidden=true;
     $("toolsMenuButton")?.setAttribute("aria-expanded","false");
   });
@@ -1183,6 +1279,8 @@
   $("shapeRole")?.addEventListener("change",event=>applyShapeRole(event.target.value,{commit:true}));
   $("shapeBrand")?.addEventListener("change",event=>applyShapeBrand(event.target.value,{commit:true}));
   $("shapeColour")?.addEventListener("change",event=>applyShapeColour(event.target.value,{commit:true}));
+  $("freeShapeColour")?.addEventListener("input",event=>applyFreeShapeColour(event.target.value));
+  $("freeShapeColour")?.addEventListener("change",event=>applyFreeShapeColour(event.target.value,{commit:true}));
   $("shapeAngle")?.addEventListener("input",event=>setSelectedShapeAngle(event.target.value));
   $("shapeAngle")?.addEventListener("change",event=>setSelectedShapeAngle(event.target.value,{commit:true}));
   $("shapeRotateLeft")?.addEventListener("click",()=>rotateSelectedShape(-90));
@@ -1246,6 +1344,9 @@
     shapeToolState.pointerId=null;
     shapeToolState.start=null;
     shapeToolState.end=null;
+    shapeToolState.decorative=false;
+    shapeToolState.freeColor="#a53531";
+    shapeToolState.freeColourDirty=false;
     removeShapePreview();
   };
 
