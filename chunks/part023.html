@@ -187,7 +187,13 @@
     const l=byId(selectedLampId);
     if(!l || l.locked)return;
     if(operation==="duplicate"){
-      const copy=normalLamp({...cloneData(l),id:state.nextLampId++,x:l.x+1,y:l.y+1,
+      const rad=l.angle*Math.PI/180;
+      // Include the rendered light beam when enabled to avoid overlap.
+      const width=l.beam
+        ? (l.type==="double"?7:3.8)*Math.abs(Math.cos(rad))+3.3*Math.abs(Math.sin(rad))
+        : 1.6;
+      const copy=normalLamp({...cloneData(l),id:state.nextLampId++,
+        x:l.x+width+.3,y:l.y,
         hidden:false,locked:false},state.lampAnnotations.length);
       state.lampAnnotations.push(copy);
       normalizeArtworkLayerOrder();
