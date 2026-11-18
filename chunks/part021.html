@@ -11,7 +11,12 @@
   if(!Number.isFinite(Number(state.nextShapeId))) state.nextShapeId=1;
 
   let selectedShapeId=null;
-  window.__clearBinaShapeSelection=()=>{selectedShapeId=null;};
+  // Multi-selection applies only to decorative "Shape Bebas" layers.
+  const selectedFreeShapeIds=new Set();
+  window.__clearBinaShapeSelection=()=>{
+    selectedShapeId=null;
+    selectedFreeShapeIds.clear();
+  };
   const shapeToolState={
     active:false,
     dragging:false,
@@ -107,6 +112,10 @@
     if(selectedShapeId!==null && !state.shapeAnnotations.some(item=>item.id===selectedShapeId)){
       selectedShapeId=null;
     }
+    const eligible=new Set(state.shapeAnnotations.filter(item=>item.decorative&&!item.hidden&&!item.locked).map(item=>item.id));
+    for(const id of selectedFreeShapeIds) if(!eligible.has(id))selectedFreeShapeIds.delete(id);
+    if(selectedFreeShapeIds.size && !selectedFreeShapeIds.has(selectedShapeId))
+      selectedShapeId=[...selectedFreeShapeIds].at(-1);
     return state.shapeAnnotations;
   }
 
@@ -218,49 +227,283 @@
     }
   }
 
+
+  // ---- Shape Bebas multi-selection, movement and alignment -----------------
+  function selectedFreeShapes(){
+    return normalizeShapeAnnotations().filter(item=>selectedFreeShapeIds.has(item.id)&&item.decorative&&!item.hidden&&!item.locked);
+  }
+
+  function selectShapeForInteraction(item,event=null,{preserveGroup=true}={}){
+    if(!item)return false;
+    const additive=!!(event?.shiftKey||event?.ctrlKey||event?.metaKey);
+    if(!item.decorative){
+      selectedFreeShapeIds.clear();
+      selectedShapeId=item.id;
+    }else if(additive){
+      if(selectedFreeShapeIds.has(item.id))selectedFreeShapeIds.delete(item.id);
+      else if(!item.hidden&&!item.locked)selectedFreeShapeIds.add(item.id);
+      selectedShapeId=[...selectedFreeShapeIds].at(-1)??null;
+    }else{
+      if(!preserveGroup||!selectedFreeShapeIds.has(item.id)||selectedFreeShapeIds.size<=1){
+        selectedFreeShapeIds.clear();
+        if(!item.hidden&&!item.locked)selectedFreeShapeIds.add(item.id);
+      }
+      selectedShapeId=item.id;
+    }
+    clearOtherSelectionsForShape();
+    return !additive;
+  }
+
+  function shapeWorldBounds(item){
+    const rad=normalizeShapeAngle(item.angle)*Math.PI/180;
+    const w=Math.abs(item.w*Math.cos(rad))+Math.abs(item.h*Math.sin(rad));
+    const h=Math.abs(item.w*Math.sin(rad))+Math.abs(item.h*Math.cos(rad));
+    const cx=item.x+item.w/2,cy=item.y+item.h/2;
+    return {left:cx-w/2,right:cx+w/2,top:cy-h/2,bottom:cy+h/2,cx,cy,w,h};
+  }
+
+  function unionShapeBounds(items){
+    const rects=items.map(shapeWorldBounds);
+    if(!rects.length)return null;
+    const left=Math.min(...rects.map(r=>r.left)),right=Math.max(...rects.map(r=>r.right));
+    const top=Math.min(...rects.map(r=>r.top)),bottom=Math.max(...rects.map(r=>r.bottom));
+    return {left,right,top,bottom,cx:(left+right)/2,cy:(top+bottom)/2,w:right-left,h:bottom-top};
+  }
+
+  function freeShapeSiteBounds(){
+    const polygons=state.siteShapeMode==="custom"
+      ? (Array.isArray(state.siteAreas)?state.siteAreas.flatMap(a=>Array.isArray(a.polygon)?a.polygon:[]):[])
+      : [];
+    const points=polygons.length?polygons:(state.siteShapeMode==="custom"&&Array.isArray(state.sitePolygon)?state.sitePolygon:[]);
+    if(points.length){
+      const x=points.map(p=>Number(p.x)).filter(Number.isFinite);
+      const y=points.map(p=>Number(p.y)).filter(Number.isFinite);
+      if(x.length&&y.length){
+        const left=Math.min(...x),right=Math.max(...x),top=Math.min(...y),bottom=Math.max(...y);
+        return {left,right,top,bottom,cx:(left+right)/2,cy:(top+bottom)/2};
+      }
+    }
+    const left=0,top=0,right=Math.max(0,Number(state.siteW)||0),bottom=Math.max(0,Number(state.siteH)||0);
+    return {left,right,top,bottom,cx:right/2,cy:bottom/2};
+  }
+
+  function selectAllFreeShapes(){
+    selectedFreeShapeIds.clear();
+    normalizeShapeAnnotations().filter(item=>item.decorative&&!item.hidden&&!item.locked)
+      .forEach(item=>selectedFreeShapeIds.add(item.id));
+    selectedShapeId=[...selectedFreeShapeIds].at(-1)??null;
+    shapeToolState.active=false;
+    clearOtherSelectionsForShape();
+    render();
+  }
+
+  function clearFreeShapeSelection(){
+    selectedFreeShapeIds.clear();
+    selectedShapeId=null;
+    render();
+  }
+
+  function alignFreeShapes(mode){
+    const items=selectedFreeShapes();
+    if(items.length<2)return;
+    const alignTo=$("freeShapeAlignTo")?.value||"selection";
+    const target=alignTo==="site"?freeShapeSiteBounds()
+      :alignTo==="key"?(shapeWorldBounds(items.find(item=>item.id===selectedShapeId)||items[0]))
+      :unionShapeBounds(items);
+    if(!target)return;
+    let changed=false;
+    items.forEach(item=>{
+      if(alignTo==="key"&&item.id===selectedShapeId)return;
+      const b=shapeWorldBounds(item);
+      let offset=0;
+      if(mode==="left")offset=target.left-b.left;
+      if(mode==="hcenter")offset=target.cx-b.cx;
+      if(mode==="right")offset=target.right-b.right;
+      if(mode==="top")offset=target.top-b.top;
+      if(mode==="vcenter")offset=target.cy-b.cy;
+      if(mode==="bottom")offset=target.bottom-b.bottom;
+      if(Math.abs(offset)<1e-8)return;
+      if(["left","hcenter","right"].includes(mode))item.x+=offset;
+      else item.y+=offset;
+      changed=true;
+    });
+    if(changed){render();commitHistory();}
+  }
+
+  function distributeFreeShapes(axis,useGap=false){
+    const items=selectedFreeShapes().slice();
+    if(items.length<(useGap?2:3))return;
+    const horiz=axis==="h";
+    items.sort((a,b)=>{
+      const ra=shapeWorldBounds(a),rb=shapeWorldBounds(b);
+      return (horiz?ra.cx-rb.cx:ra.cy-rb.cy)||a.id-b.id;
+    });
+    const first=shapeWorldBounds(items[0]),last=shapeWorldBounds(items.at(-1));
+    const firstCenter=horiz?first.cx:first.cy,lastCenter=horiz?last.cx:last.cy;
+    const gap=Math.max(0,Number($("freeShapeAlignGap")?.value)||0);
+    let changed=false;
+    let nextEdge=horiz?first.right:first.bottom;
+    items.forEach((item,i)=>{
+      if(i===0)return;
+      if(!useGap&&i===items.length-1)return;
+      const b=shapeWorldBounds(item);
+      const desired=useGap
+        ? nextEdge+gap+(horiz?b.w:b.h)/2
+        : firstCenter+(lastCenter-firstCenter)*i/(items.length-1);
+      const offset=desired-(horiz?b.cx:b.cy);
+      if(Math.abs(offset)>1e-8){
+        if(horiz)item.x+=offset;
+        else item.y+=offset;
+        changed=true;
+      }
+      const next=shapeWorldBounds(item);
+      nextEdge=horiz?next.right:next.bottom;
+    });
+    if(changed){render();commitHistory();}
+  }
+
+  function centerFreeShapesInSite(){
+    const items=selectedFreeShapes();
+    if(!items.length)return;
+    const b=unionShapeBounds(items),site=freeShapeSiteBounds();
+    const dx=site.cx-b.cx,dy=site.cy-b.cy;
+    if(Math.abs(dx)<1e-8&&Math.abs(dy)<1e-8)return;
+    items.forEach(item=>{item.x+=dx;item.y+=dy;});
+    render();commitHistory();
+  }
+
+  function ensureFreeShapeAlignToolbar(){
+    if($("freeShapeAlignToolbar"))return;
+    const courtBar=$("courtAlignToolbar");
+    if(!courtBar)return;
+    const bar=courtBar.cloneNode(true);
+    bar.id="freeShapeAlignToolbar";
+    bar.setAttribute("aria-label","Align dan distribute Shape Bebas");
+    bar.hidden=true;
+    const rename={
+      courtAlignTo:"freeShapeAlignTo",courtAlignLeft:"freeShapeAlignLeft",
+      courtAlignHCenter:"freeShapeAlignHCenter",courtAlignRight:"freeShapeAlignRight",
+      courtAlignTop:"freeShapeAlignTop",courtAlignVCenter:"freeShapeAlignVCenter",
+      courtAlignBottom:"freeShapeAlignBottom",
+      courtDistributeHCenter:"freeShapeDistributeHCenter",
+      courtDistributeVCenter:"freeShapeDistributeVCenter",
+      courtAlignGap:"freeShapeAlignGap",courtAlignGapUnit:"freeShapeAlignGapUnit",
+      courtDistributeHGap:"freeShapeDistributeHGap",
+      courtDistributeVGap:"freeShapeDistributeVGap",
+      multiCenterSite:"freeShapeCenterSite",alignKeyCourtLabel:"freeShapeKeyLabel"
+    };
+    bar.querySelectorAll("[id]").forEach(el=>{if(rename[el.id])el.id=rename[el.id];});
+    const key=bar.querySelector('option[value="key"]');
+    if(key)key.textContent="Key Shape";
+    const label=bar.querySelector(".key-court-label");
+    if(label)label.textContent="";
+    bar.querySelectorAll("[title]").forEach(el=>{
+      el.title=el.title.replace(/court/gi,"shape");
+    });
+    const selection=document.createElement("div");
+    selection.className="align-to-wrap";
+    selection.innerHTML='<strong id="freeShapeSelectionCount" style="font-size:11px;white-space:nowrap">2 Shape Bebas</strong><button id="freeShapeClearSelection" class="secondary" type="button" title="Clear Shape Bebas selection" style="min-width:26px;width:26px;padding:3px">×</button>';
+    bar.insertBefore(selection,bar.firstChild);
+    courtBar.parentNode.insertBefore(bar,courtBar.nextSibling);
+    const actions={
+      freeShapeAlignLeft:()=>alignFreeShapes("left"),
+      freeShapeAlignHCenter:()=>alignFreeShapes("hcenter"),
+      freeShapeAlignRight:()=>alignFreeShapes("right"),
+      freeShapeAlignTop:()=>alignFreeShapes("top"),
+      freeShapeAlignVCenter:()=>alignFreeShapes("vcenter"),
+      freeShapeAlignBottom:()=>alignFreeShapes("bottom"),
+      freeShapeDistributeHCenter:()=>distributeFreeShapes("h"),
+      freeShapeDistributeVCenter:()=>distributeFreeShapes("v"),
+      freeShapeDistributeHGap:()=>distributeFreeShapes("h",true),
+      freeShapeDistributeVGap:()=>distributeFreeShapes("v",true),
+      freeShapeCenterSite:centerFreeShapesInSite,
+      freeShapeClearSelection:clearFreeShapeSelection
+    };
+    Object.entries(actions).forEach(([id,fn])=>$(id)?.addEventListener("click",fn));
+  }
+
+  function updateFreeShapeAlignToolbar(){
+    ensureFreeShapeAlignToolbar();
+    const bar=$("freeShapeAlignToolbar");
+    if(!bar)return;
+    const items=selectedFreeShapes();
+    bar.hidden=items.length<2;
+    if(items.length<2)return;
+    if($("freeShapeSelectionCount"))$("freeShapeSelectionCount").textContent=items.length+" Shape Bebas dipilih";
+    if($("freeShapeKeyLabel"))$("freeShapeKeyLabel").textContent="Key: Shape Bebas "+(selectedShapeId??items[0].id);
+    if($("freeShapeAlignGapUnit"))$("freeShapeAlignGapUnit").textContent="m";
+    ["freeShapeDistributeHCenter","freeShapeDistributeVCenter"].forEach(id=>{
+      if($(id))$(id).disabled=items.length<3;
+    });
+  }
+
+  function insertFreeShapeSelectAll(){
+    const list=$("courtList");
+    if(!list||!list.parentNode)return;
+    let bar=$("freeShapeLayerSelectAll");
+    if(!bar){
+      bar=document.createElement("div");
+      bar.id="freeShapeLayerSelectAll";
+      bar.className="layer-group-toolbar";
+      bar.innerHTML='<button type="button" class="secondary" id="freeShapeSelectAllButton">Select All Shape Bebas</button><button type="button" class="secondary" id="freeShapeClearLayerButton" title="Clear selection">Clear</button><span id="freeShapeSelectLayerCount" class="layer-group-count"></span>';
+      list.parentNode.insertBefore(bar,list);
+      $("freeShapeSelectAllButton").addEventListener("click",selectAllFreeShapes);
+      $("freeShapeClearLayerButton").addEventListener("click",clearFreeShapeSelection);
+    }
+    const available=normalizeShapeAnnotations().filter(item=>item.decorative&&!item.hidden&&!item.locked).length;
+    bar.hidden=!available;
+    if($("freeShapeSelectAllButton"))$("freeShapeSelectAllButton").disabled=available<1;
+    if($("freeShapeSelectLayerCount"))$("freeShapeSelectLayerCount").textContent=selectedFreeShapes().length+"/"+available+" dipilih";
+  }
+
   function bindShapeDrag(target,item,group){
     target.addEventListener("pointerdown",event=>{
-      if(item.locked || event.button!==0) return;
+      if(item.locked||event.button!==0)return;
       event.preventDefault();
       event.stopPropagation();
       const id=item.id;
-      selectedShapeId=id;
-      clearOtherSelectionsForShape();
+      const canDrag=selectShapeForInteraction(item,event);
+      if(!canDrag){
+        render();
+        return;
+      }
       const live=shapeAnnotationById(id)||item;
       const start=stagePointFromClient(event.clientX,event.clientY);
-      const x0=live.x, y0=live.y;
+      const x0=live.x,y0=live.y;
       const pid=event.pointerId;
-      // A normal click/tap should select the Shape, never shift it a few
-      // pixels from touch jitter while its settings panel is opening.
-      const dragThresholdPx=event.pointerType==="touch" ? 7 : 3;
+      const starts=new Map((item.decorative&&selectedFreeShapeIds.size>1?selectedFreeShapes():[live])
+        .map(shape=>[shape.id,{x:shape.x,y:shape.y}]));
+      const dragThresholdPx=event.pointerType==="touch"?7:3;
       let moved=false;
       const shiftLock={axis:null};
-      try{target.setPointerCapture?.(pid);}catch(_){ }
-
+      try{target.setPointerCapture?.(pid);}catch(_){}
       const move=e=>{
-        if(e.pointerId!==pid) return;
+        if(e.pointerId!==pid)return;
         e.preventDefault?.();
         const travel=Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY);
-        if(!moved && travel<dragThresholdPx) return;
+        if(!moved&&travel<dragThresholdPx)return;
         const p=stagePointFromClient(e.clientX,e.clientY);
-        const current=shapeAnnotationById(id);
-        if(!current) return;
         const snapped=snapShiftDrag(x0,y0,p.x-start.x,p.y-start.y,e.shiftKey,shiftLock);
-        const nextX=snapped.x,nextY=snapped.y;
-        if(Math.abs(nextX-current.x)<.000001 && Math.abs(nextY-current.y)<.000001) return;
-        current.x=nextX;
-        current.y=nextY;
-        moved=true;
-        updateShapeAnnotationGroup(group,current);
+        const dx=snapped.x-x0,dy=snapped.y-y0;
+        starts.forEach((initial,shapeId)=>{
+          const current=shapeAnnotationById(shapeId);
+          if(!current||current.locked)return;
+          if(Math.abs(initial.x+dx-current.x)<1e-6&&Math.abs(initial.y+dy-current.y)<1e-6)return;
+          current.x=initial.x+dx;
+          current.y=initial.y+dy;
+          const node=svg.querySelector('[data-shape-id="'+shapeId+'"]');
+          if(node)updateShapeAnnotationGroup(node,current);
+          moved=true;
+        });
       };
       const end=e=>{
-        if(e.pointerId!==pid) return;
+        if(e.pointerId!==pid)return;
         window.removeEventListener("pointermove",move);
         window.removeEventListener("pointerup",end);
         window.removeEventListener("pointercancel",end);
-        try{target.releasePointerCapture?.(pid);}catch(_){ }
+        try{target.releasePointerCapture?.(pid);}catch(_){}
         render();
-        if(moved) commitHistory();
+        if(moved)commitHistory();
       };
       window.addEventListener("pointermove",move,{passive:false});
       window.addEventListener("pointerup",end);
@@ -403,7 +646,7 @@
     bindShapeDrag(hit,item,group);
     bindShapeDrag(rect,item,group);
 
-    if(item.id===selectedShapeId){
+    if(item.id===selectedShapeId || selectedFreeShapeIds.has(item.id)){
       group.appendChild(ns("rect",{
         class:"editing-only shape-selection",
         x:item.x,y:item.y,width:item.w,height:item.h,
@@ -411,7 +654,7 @@
         "vector-effect":"non-scaling-stroke","pointer-events":"none"
       }));
 
-      if(!item.locked){
+      if(!item.locked && selectedFreeShapeIds.size<2){
         const handles={
           nw:[item.x,item.y],ne:[item.x+item.w,item.y],
           sw:[item.x,item.y+item.h],se:[item.x+item.w,item.y+item.h]
@@ -465,6 +708,7 @@
     if(!item || item.locked) return;
     state.shapeAnnotations=state.shapeAnnotations.filter(shape=>shape.id!==id);
     state.artworkLayerOrder=(state.artworkLayerOrder||[]).filter(token=>token!==`shape:${id}`);
+    selectedFreeShapeIds.delete(id);
     if(selectedShapeId===id) selectedShapeId=null;
     render();
     commitHistory();
@@ -486,6 +730,8 @@
     normalizeArtworkLayerOrder();
     state.artworkLayerOrder=(state.artworkLayerOrder||[]).filter(token=>token!==`shape:${copy.id}`);
     state.artworkLayerOrder.push(`shape:${copy.id}`);
+    selectedFreeShapeIds.clear();
+    if(copy.decorative)selectedFreeShapeIds.add(copy.id);
     selectedShapeId=copy.id;
     clearOtherSelectionsForShape();
     render();
@@ -532,8 +778,10 @@
     const bar=$("shapeFormatToolbar");
     if(!bar) return;
     const item=selectedShapeId!==null ? shapeAnnotationById(selectedShapeId) : null;
-    const show=!!item || !!shapeToolState.active;
+    const multi=selectedFreeShapes().length>1;
+    const show=(!multi && !!item) || (!multi && !!shapeToolState.active);
     bar.hidden=!show;
+    updateFreeShapeAlignToolbar();
     if(!show) return;
 
     const decorative=!!(item ? item.decorative : shapeToolState.decorative);
@@ -678,7 +926,10 @@
       // Switching from Text/Measure/Court to Shape must also clear their
       // selections, otherwise their formatting bars remain visible.
       clearOtherSelectionsForShape();
-      if(shapeToolState.decorative!==!!decorative) selectedShapeId=null;
+      if(shapeToolState.decorative!==!!decorative){
+        selectedShapeId=null;
+        selectedFreeShapeIds.clear();
+      }
       shapeToolState.decorative=!!decorative;
       if(shapeToolState.decorative){
         shapeToolState.color=shapeToolState.freeColor||"#a53531";
@@ -754,6 +1005,8 @@
       hidden:false,locked:false
     },state.shapeAnnotations.length);
     state.shapeAnnotations.push(item);
+    selectedFreeShapeIds.clear();
+    if(item.decorative)selectedFreeShapeIds.add(item.id);
     selectedShapeId=item.id;
     clearOtherSelectionsForShape();
     normalizeArtworkLayerOrder();
@@ -767,7 +1020,10 @@
     const item=shapeAnnotationById(id);
     if(!item) return;
     item.hidden=!item.hidden;
-    if(item.hidden && selectedShapeId===id) selectedShapeId=null;
+    if(item.hidden){
+      selectedFreeShapeIds.delete(id);
+      if(selectedShapeId===id)selectedShapeId=[...selectedFreeShapeIds].at(-1)??null;
+    }
     render();
     commitHistory();
   }
@@ -776,6 +1032,10 @@
     const item=shapeAnnotationById(id);
     if(!item) return;
     item.locked=!item.locked;
+    if(item.locked){
+      selectedFreeShapeIds.delete(id);
+      if(selectedShapeId===id)selectedShapeId=[...selectedFreeShapeIds].at(-1)??null;
+    }
     render();
     commitHistory();
   }
@@ -889,6 +1149,7 @@
     state.shapeAnnotations=cloneData(data.shapeAnnotations||[]);
     state.nextShapeId=data.nextShapeId||1;
     selectedShapeId=null;
+    selectedFreeShapeIds.clear();
     normalizeShapeAnnotations();
   };
 
@@ -1071,7 +1332,7 @@
         color:item.color,
         hidden:!!item.hidden,
         locked:!!item.locked,
-        active:selectedShapeId===id
+        active:selectedShapeId===id||selectedFreeShapeIds.has(id)
       };
     }
     return originalLayerItemInfo(token,displayIndex,total);
@@ -1082,12 +1343,12 @@
     if(token.startsWith("shape:")){
       const id=parseInt(token.slice(6),10);
       if(!shapeAnnotationById(id)) return;
-      selectedShapeId=id;
-      clearOtherSelectionsForShape();
+      selectShapeForInteraction(shapeAnnotationById(id),event,{preserveGroup:false});
       render();
       return;
     }
     selectedShapeId=null;
+    selectedFreeShapeIds.clear();
     originalSelectArtworkLayerToken(token,event);
   };
 
@@ -1128,6 +1389,7 @@
       return;
     }
 
+    insertFreeShapeSelectAll();
     displayTokens.forEach((token,index)=>{
       const info=layerItemInfo(token,index,displayTokens.length);
       if(!info) return;
@@ -1376,6 +1638,7 @@
     if(event.target?.closest?.("[data-shape-id]")) return;
     if(shapeToolState.active) return;
     selectedShapeId=null;
+    selectedFreeShapeIds.clear();
   },true);
 
   document.addEventListener("keydown",event=>{
@@ -1387,6 +1650,12 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       activateSelectMoveMode();
+      return;
+    }
+    if(event.key==="Escape" && selectedFreeShapeIds.size>1 && !editable){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearFreeShapeSelection();
       return;
     }
     if(event.key==="Escape" && shapeToolState.dragging){
@@ -1423,6 +1692,7 @@
     state.shapeAnnotations=[];
     state.nextShapeId=1;
     selectedShapeId=null;
+    selectedFreeShapeIds.clear();
     shapeToolState.active=false;
     shapeToolState.dragging=false;
     shapeToolState.pointerId=null;
