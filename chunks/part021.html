@@ -727,8 +727,9 @@
     const copy=normalizeShapeAnnotation({
       ...cloneData(item),
       id:state.nextShapeId++,
-      x:item.x+.45,
-      y:item.y+.45,
+      // Use the visible rotated width so every copy sits immediately right.
+      x:item.x+shapeWorldBounds(item).w+.3,
+      y:item.y,
       locked:false,
       hidden:false
     },state.shapeAnnotations.length);
