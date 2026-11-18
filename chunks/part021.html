@@ -293,7 +293,13 @@
       .forEach(item=>selectedFreeShapeIds.add(item.id));
     selectedShapeId=[...selectedFreeShapeIds].at(-1)??null;
     shapeToolState.active=false;
+    shapeToolState.dragging=false;
+    shapeToolState.pointerId=null;
+    shapeToolState.start=null;
+    shapeToolState.end=null;
+    removeShapePreview();
     clearOtherSelectionsForShape();
+    updateToolsMenuState();
     render();
   }
 
