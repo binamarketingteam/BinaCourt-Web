@@ -34,7 +34,7 @@
   };
 
   function normalizeShapeRole(value){
-    return value==="main_surface" ? "main_surface" : "walkway";
+    return value==="main_surface" || value==="line" ? value : "walkway";
   }
 
   function normalizeShapeAngle(value){
@@ -126,7 +126,10 @@
   }
 
   function shapeRoleLabel(role){
-    return normalizeShapeRole(role)==="main_surface" ? "Main Surface" : "Walkway";
+    const normalized=normalizeShapeRole(role);
+    if(normalized==="main_surface") return "Main Surface";
+    if(normalized==="line") return "Line";
+    return "Walkway";
   }
 
   function clearOtherSelectionsForShape(){
@@ -1109,6 +1112,7 @@
       <select id="shapeRole" title="Fungsi shape" style="width:118px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
         <option value="walkway">Walkway</option>
         <option value="main_surface">Main Surface</option>
+        <option value="line">Line</option>
       </select>
       <span id="shapeBrandLabel" class="image-format-label">SYSTEM</span>
       <select id="shapeBrand" title="Sistem produk" style="width:112px;height:34px;padding:5px 24px 5px 8px;font-size:11px;font-weight:700">
@@ -1487,7 +1491,9 @@
         const text=String(existing.usage||"");
         const hasRole=usage==="Walkway"
           ? /walkway/i.test(text)
-          : /main surface/i.test(text);
+          : usage==="Main Surface"
+            ? /main surface/i.test(text)
+            : /(?:^|\s\/\s)Line(?:$|\s\/\s)/i.test(text);
         if(!hasRole) existing.usage=text?`${text} / ${usage}`:usage;
       }else{
         used.push({...info,usage,kind:"surface",brand,lineDetails:undefined});
