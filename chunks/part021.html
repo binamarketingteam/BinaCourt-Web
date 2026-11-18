@@ -1706,25 +1706,50 @@
   svg.addEventListener("pointerup",finishShapePointer,true);
   svg.addEventListener("pointercancel",finishShapePointer,true);
 
-  // Clicking other objects clears Shape selection before their own handlers.
-  // Clicking a bare Site needs one redraw after the click: unlike Court/Shape
-  // objects, the site itself has no selection renderer to refresh the handles.
+  // An empty SITE tap must close resize/rotate selection handles. The
+  // previous SVG click handler could be skipped when another canvas listener
+  // consumed a pointer event, leaving the old handle nodes on screen.
+  // Listen at document capture and finish AFTER all object pointer handlers.
   function isBlankSiteClick(target){
     return target===svg || !!target?.closest?.(".site-artwork-layer");
   }
+  let blankSiteTap=null;
+  document.addEventListener("pointerdown",event=>{
+    blankSiteTap=null;
+    if(event.button!==0 || stageSpaceHeld || stagePanActive || stageTouchPanMode)return;
+    if(!isBlankSiteClick(event.target))return;
+    if(selectedShapeId===null && selectedFreeShapeIds.size===0)return;
+    blankSiteTap={
+      pointerId:event.pointerId,
+      x:event.clientX,
+      y:event.clientY,
+      pointerType:event.pointerType
+    };
+  },true);
+  document.addEventListener("pointerup",event=>{
+    const tap=blankSiteTap;
+    blankSiteTap=null;
+    if(!tap || event.pointerId!==tap.pointerId)return;
+    const distance=Math.hypot(event.clientX-tap.x,event.clientY-tap.y);
+    if(distance>(tap.pointerType==="touch"?10:5))return;
+    requestAnimationFrame(()=>{
+      if(stagePanActive || stageSpaceHeld || stageTouchPanMode || shapeToolState.dragging)return;
+      selectedShapeId=null;
+      selectedFreeShapeIds.clear();
+      // Always redraw even if pointerdown cleared selection first; otherwise
+      // white resize squares can remain in the existing SVG.
+      render();
+    });
+  },true);
+  document.addEventListener("pointercancel",()=>{blankSiteTap=null;},true);
+  // Other object handlers still control selection when tapped, and normal
+  // click + drag inside the Site continues to draw or edit shapes.
   svg.addEventListener("pointerdown",event=>{
-    if(event.target?.closest?.("[data-shape-id]")) return;
-    if(shapeToolState.active) return;
+    if(event.target?.closest?.("[data-shape-id]"))return;
+    if(shapeToolState.active)return;
     selectedShapeId=null;
     selectedFreeShapeIds.clear();
   },true);
-  svg.addEventListener("click",event=>{
-    if(shapeToolState.active || !isBlankSiteClick(event.target))return;
-    // Redraw only the idle site click; do not interfere with court drag,
-    // shape resize, pan, or site polygon editing handles.
-    if(stagePanActive || stageSpaceHeld || stageTouchPanMode)return;
-    render();
-  });
 
   document.addEventListener("keydown",event=>{
     const editable=stageKeyTargetIsEditable(event.target);
