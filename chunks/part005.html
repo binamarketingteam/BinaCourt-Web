@@ -619,6 +619,8 @@ function setCourtViewBox(){
     `${courtViewport.x} ${courtViewport.y} ${courtViewport.w} ${courtViewport.h}`
   );
   if(typeof updateStageRulers==="function") updateStageRulers();
+  // Refresh just the on-screen drag knobs when wheel/pinch changes viewBox.
+  window.__refreshBinaEditingHandleSizes?.();
 }
 
 function resetCourtZoom(){
