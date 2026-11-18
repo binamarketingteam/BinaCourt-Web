@@ -651,6 +651,26 @@ function formatLength(meters,decimals=3,space=true){
   const places=isFeetUnit() ? smartFeetDisplayPlaces(displayValue,decimals) : decimals;
   return `${formatSpatialNumber(displayValue,places)}${gap}${currentLengthUnit()}`;
 }
+// Use the sport's published imperial size on the dimension labels for
+// these fixed-size courts. They are stored in official metric dimensions
+// (13.40 m x 6.10 m), which convert to 43.963 ft x 20.013 ft.
+function standard20x44CourtFeet(court){
+  if(!court || !["pickleball","badminton","sepak_takraw","takraw","badmintonmix"].includes(String(court.type||""))) return false;
+  const w=Number(court.w),h=Number(court.h);
+  return Number.isFinite(w) && Number.isFinite(h) &&
+    Math.abs(w-13.4)<.02 && Math.abs(h-6.1)<.02;
+}
+
+function formatCourtOuterDimension(meters,court,unit="m",decimals=3,space=false){
+  if(isFeetUnit(unit) && standard20x44CourtFeet(court)){
+    const value=Number(meters);
+    const gap=space ? " " : "";
+    if(Math.abs(value-13.4)<.02) return `44${gap}ft`;
+    if(Math.abs(value-6.1)<.02) return `20${gap}ft`;
+  }
+  return formatLengthForUnit(meters,unit,decimals,space);
+}
+
 function formatArea(squareMeters,decimals=3){
   return `${formatSpatialNumber(displayAreaValue(squareMeters),decimals)} ${currentAreaUnit()}`;
 }
