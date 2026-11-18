@@ -790,6 +790,17 @@
     const imageButton=$("imageTool");
     toolsDropdown.insertBefore(button,imageButton||toolsDropdown.lastChild);
   }
+  // Selection tool is deliberately a momentary action: it switches off
+  // drawing/placement modes without removing or moving existing artwork.
+  if(toolsDropdown && !$("selectMoveTool")){
+    const button=document.createElement("button");
+    button.id="selectMoveTool";
+    button.type="button";
+    button.title="Select / Move (V) - keluar daripada tool aktif untuk pilih atau gerakkan item";
+    button.innerHTML='<span class="tool-icon">&#8598;</span><span>Select / Move (V)</span>';
+    toolsDropdown.insertBefore(button,toolsDropdown.firstChild);
+  }
+
   // Standalone visual annotation. The original Shape tool remains unchanged.
   if(toolsDropdown && !$("freeShapeTool")){
     const button=document.createElement("button");
@@ -1262,7 +1273,54 @@
     }
   };
 
+  // V = Select / Move: exit every Tools-dropdown placement mode and return
+  // to normal selection. Keep the existing objects and their selection state.
+  function activateSelectMoveMode(){
+    // These optional Tools are registered by later feature modules. Their
+    // own click handlers perform the proper cancellation of live previews.
+    const placementIds=[
+      "lampSingleTool","lampDoubleTool","doorTool",
+      "partitionTool","netTool"
+    ];
+    placementIds.forEach(id=>{
+      const button=$(id);
+      if(button?.getAttribute("aria-pressed")==="true") button.click();
+    });
+
+    // Shape and Shape Bebas share one tool state. Do not call their
+    // always-activate menu buttons when returning to Select / Move.
+    shapeToolState.active=false;
+    shapeToolState.dragging=false;
+    shapeToolState.pointerId=null;
+    shapeToolState.start=null;
+    shapeToolState.end=null;
+    removeShapePreview();
+
+    lineToolState.active=false;
+    lineToolState.dragging=false;
+    lineToolState.pointerId=null;
+    lineToolState.start=null;
+    lineToolState.end=null;
+
+    measureToolState.active=false;
+    measureToolState.dragging=false;
+    measureToolState.pointerId=null;
+    measureToolState.start=null;
+    measureToolState.end=null;
+
+    textToolState.active=false;
+    stageTouchPanMode=false;
+    closeTextInlineEditor(false);
+    closeMeasureInlineEditor(false);
+
+    if($("toolsDropdown")) $("toolsDropdown").hidden=true;
+    $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+    updateToolsMenuState();
+    render();
+  }
+
   // ---- Events ---------------------------------------------------------------
+  $("selectMoveTool")?.addEventListener("click",activateSelectMoveMode);
   function showShapeToolsAfterSelection(decorative){
     // Shape and Shape Bebas use a floating settings panel which never
     // participates in the canvas layout. Do not scroll the document or
@@ -1320,6 +1378,15 @@
 
   document.addEventListener("keydown",event=>{
     const editable=stageKeyTargetIsEditable(event.target);
+    if(!editable && !event.repeat && !event.ctrlKey && !event.metaKey &&
+       !event.altKey && !event.shiftKey &&
+       String(event.key).toLowerCase()==="v" &&
+       !$("pdfPreviewModal")?.classList.contains("open")){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      activateSelectMoveMode();
+      return;
+    }
     if(event.key==="Escape" && shapeToolState.dragging){
       event.preventDefault();
       shapeToolState.dragging=false;
