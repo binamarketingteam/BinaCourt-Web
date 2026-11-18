@@ -1504,12 +1504,60 @@
   }
 
   // ---- Render and tools integration -----------------------------------------
+  // Editing UI controls are screen-space objects. Their on-screen size must
+  // stay fixed when the SVG viewBox changes from wheel, pinch or zoom buttons.
+  // This alters ONLY editing handles, never exported artwork dimensions.
+  function refreshBinaEditingHandleSizes(){
+    if(!svg || typeof svg.querySelectorAll!=="function")return;
+    const selectors=[
+      ".line-handle-start",".line-handle-end",".line-endpoint-hit",
+      ".measure-handle-start",".measure-handle-end",
+      ".image-resize-hit",".image-resize-knob",".image-rotate-handle",
+      ".shape-resize-hit",".shape-resize-knob",".shape-rotate-handle",
+      ".court-resize-handle",".futsal-d-depth-handle",
+      ".futsal-d-width-handle",".futsal-center-circle-handle",
+      ".custom-site-handle",".custom-site-preview-handle",
+      ".site-resize-handle-group circle",".site-resize-handle-group rect"
+    ];
+    svg.querySelectorAll(selectors.join(",")).forEach(el=>{
+      const matrix=el.getScreenCTM?.();
+      if(!matrix)return;
+      // Works for SVG groups that are translated or rotated.
+      const sx=Math.hypot(matrix.a,matrix.b);
+      const sy=Math.hypot(matrix.c,matrix.d);
+      const scale=Math.sqrt(Math.max(1e-12,sx*sy));
+      if(!Number.isFinite(scale)||scale<=1e-7)return;
+      const cls=el.classList;
+      const hit=cls.contains("line-endpoint-hit")||
+        cls.contains("image-resize-hit")||
+        cls.contains("shape-resize-hit")||
+        (el.closest(".site-resize-handle-group")&&el.getAttribute("fill")==="rgba(0,0,0,0)");
+      const pixels=hit?20:7;
+      if(el.tagName.toLowerCase()==="circle"){
+        el.setAttribute("r",(pixels/scale).toFixed(6));
+      }else if(el.tagName.toLowerCase()==="rect"){
+        const x=Number(el.getAttribute("x"))||0,y=Number(el.getAttribute("y"))||0;
+        const w=Number(el.getAttribute("width"))||0,h=Number(el.getAttribute("height"))||0;
+        const cx=x+w/2,cy=y+h/2;
+        const size=2*pixels/scale;
+        el.setAttribute("x",(cx-size/2).toFixed(6));
+        el.setAttribute("y",(cy-size/2).toFixed(6));
+        el.setAttribute("width",size.toFixed(6));
+        el.setAttribute("height",size.toFixed(6));
+        // Use the same visual rounding regardless of zoom level.
+        if(!hit)el.setAttribute("rx",(Math.min(3,pixels/2)/scale).toFixed(6));
+      }
+    });
+  }
+  window.__refreshBinaEditingHandleSizes=refreshBinaEditingHandleSizes;
+
   const originalRender=render;
   render=function(options={}){
     normalizeShapeAnnotations();
     originalRender(options);
     drawShapeToolOverlay();
     updateShapeFormatToolbar();
+    refreshBinaEditingHandleSizes();
   };
 
   const originalUpdateToolsMenuState=updateToolsMenuState;
