@@ -1533,6 +1533,11 @@
         cls.contains("shape-resize-hit")||
         (el.closest(".site-resize-handle-group")&&el.getAttribute("fill")==="rgba(0,0,0,0)");
       const pixels=hit?20:7;
+      if(!hit && el.getAttribute("stroke") && el.getAttribute("stroke")!=="none"){
+        // Stroke outlines should not thicken or disappear with zoom.
+        el.setAttribute("vector-effect","non-scaling-stroke");
+        el.setAttribute("stroke-width","1.5");
+      }
       if(el.tagName.toLowerCase()==="circle"){
         el.setAttribute("r",(pixels/scale).toFixed(6));
       }else if(el.tagName.toLowerCase()==="rect"){
