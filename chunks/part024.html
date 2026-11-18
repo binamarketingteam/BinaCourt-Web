@@ -180,8 +180,10 @@
       selectedDoorId=null;render();commitHistory();return;
     }
     if(action==="duplicate"){
+      const theta=d.angle*Math.PI/180;
+      const width=(d.w+.55)*(Math.abs(Math.cos(theta))+Math.abs(Math.sin(theta)));
       const clone=normalizeDoor({...cloneData(d),id:state.nextDoorId++,
-        x:d.x+d.w+.35,hidden:false,locked:false},state.doorAnnotations.length);
+        x:d.x+width+.3,y:d.y,hidden:false,locked:false},state.doorAnnotations.length);
       state.doorAnnotations.push(clone);
       normalizeArtworkLayerOrder();
       state.artworkLayerOrder=state.artworkLayerOrder.filter(t=>t!=="door:"+clone.id);
