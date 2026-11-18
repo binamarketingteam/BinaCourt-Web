@@ -129,6 +129,11 @@ function getCustomPalette(){
 
 function getDefaultPaletteForBrand(brand){
   const normalized=normalizeBrand(brand);
+  // Industrial catalogue is strictly isolated: no court palettes, cloud
+  // brand additions, hidden colours or custom swatches may leak into it.
+  if(isIndustrialProductBrand(normalized)){
+    return PU_EPOXY_PALETTE.map(item=>({...item}));
+  }
   const brandName=productBrandName(normalized);
   const cloud=window.BinaCourtBrandLibrary?.paletteForBrand?.(normalized);
   const standard=Array.isArray(cloud) && cloud.length
@@ -143,6 +148,9 @@ function getDefaultPaletteForBrand(brand){
 
 function getLinePaletteForBrand(brand){
   const normalized=normalizeBrand(brand);
+  if(isIndustrialProductBrand(normalized)){
+    return PU_EPOXY_PALETTE.map(item=>({...item}));
+  }
   const brandName=lineBrandName(normalized);
   const cloud=window.BinaCourtBrandLibrary?.paletteForBrand?.(normalized);
   const standard=Array.isArray(cloud) && cloud.length
@@ -395,7 +403,7 @@ function legendBrandsFromItems(items){
 function preferredLegendBrandOrder(items){
   const detected=legendBrandsFromItems(items);
   const ordered=[];
-  ["primacourt","duracourt","terracourt"].forEach(brand=>{
+  ["primacourt","duracourt","terracourt","pu7600","pu7800","ef6200"].forEach(brand=>{
     if(detected.includes(brand) && !ordered.includes(brand)) ordered.push(brand);
   });
   detected.forEach(brand=>{

@@ -60,6 +60,9 @@
             <option value="duracourt">Duracourt</option>
             <option value="primacourt">Primacourt</option>
             <option value="terracourt">Terracourt</option>
+            <option value="pu7600">PU7600</option>
+            <option value="pu7800">PU7800</option>
+            <option value="ef6200">EF6200</option>
           </select>
           <div class="row" style="margin-top:7px">
             <button id="addCustomSiteArea" type="button" class="secondary">+ Tambah Kawasan</button>
@@ -129,6 +132,9 @@
         <option value="duracourt">Duracourt</option>
         <option value="primacourt">Primacourt</option>
         <option value="terracourt">Terracourt</option>
+        <option value="pu7600">PU7600</option>
+        <option value="pu7800">PU7800</option>
+        <option value="ef6200">EF6200</option>
       </select>
       <div class="hint" style="margin-top:5px">Untuk Rectangle, pilihan ini digunakan terus. Untuk Custom Shape, setiap Area boleh pilih jenama sendiri.</div>
       <label>Warna kawasan / walkway</label>
@@ -556,6 +562,9 @@
               <option value="duracourt">Duracourt</option>
               <option value="primacourt">Primacourt</option>
               <option value="terracourt">Terracourt</option>
+              <option value="pu7600">PU7600</option>
+              <option value="pu7800">PU7800</option>
+              <option value="ef6200">EF6200</option>
             </select>
 
             <div class="row">
@@ -1543,10 +1552,40 @@ const DEFAULT_PALETTE = [
   {name:"Duracourt Black", color:"#000000"}
 ];
 
+// PU7600 (gloss), PU7800 (matte) and EF6200 (epoxy) share this
+// exact 17-entry colour catalogue, transcribed from PU EPOXY.pdf (page 1).
+// HEX values reproduce the PDF swatches for onscreen preview, not certified
+// physical paint colour specifications. Keep leading zeroes in the colour codes.
+const INDUSTRIAL_PRODUCT_IDS=["pu7600","pu7800","ef6200"];
+function isIndustrialProductBrand(value){
+  return INDUSTRIAL_PRODUCT_IDS.includes(String(value||"").toLowerCase());
+}
+const PU_EPOXY_PALETTE=[
+  {name:"IVORY 770",code:"770",color:"#f7eecf"},
+  {name:"ASH GREY 650",code:"650",color:"#f0ece9"},
+  {name:"MISTY GREY 390",code:"390",color:"#acb1b7"},
+  {name:"EXECUTIVE GREY 850",code:"850",color:"#8e9a9a"},
+  {name:"SLATE GREY 0420",code:"0420",color:"#6d7278"},
+  {name:"DARK CREAM 0680",code:"0680",color:"#bca984"},
+  {name:"CALM GREEN 0760",code:"0760",color:"#c1cea0"},
+  {name:"EVERGREEN 590",code:"590",color:"#569c53"},
+  {name:"DARK GREEN 170",code:"170",color:"#21763f"},
+  {name:"NEPTUNE 220",code:"220",color:"#336485"},
+  {name:"BLUE 0980",code:"0980",color:"#224088"},
+  {name:"YELLOW 150",code:"150",color:"#ffe93b"},
+  {name:"GOLDEN YELLOW 690",code:"690",color:"#eaad30"},
+  {name:"ORANGE 0970",code:"0970",color:"#d65633"},
+  {name:"INTERNATIONAL ORANGE 841",code:"841",color:"#b73126"},
+  {name:"SIGNAL RED 140",code:"140",color:"#ab1f2a"},
+  {name:"INDIAN RED 0880",code:"0880",color:"#4f0d0f"}
+];
+
 function normalizeBrand(value,fallback="duracourt"){
+  if(isIndustrialProductBrand(value)) return String(value).toLowerCase();
   if(value==="primacourt") return "primacourt";
   if(value==="terracourt") return "terracourt";
   if(value==="duracourt") return "duracourt";
+  if(isIndustrialProductBrand(fallback)) return String(fallback).toLowerCase();
   if(fallback==="primacourt") return "primacourt";
   if(fallback==="terracourt") return "terracourt";
   return "duracourt";
@@ -1554,6 +1593,9 @@ function normalizeBrand(value,fallback="duracourt"){
 
 function productBrandName(brand){
   const normalized=normalizeBrand(brand);
+  if(normalized==="pu7600") return "PU7600";
+  if(normalized==="pu7800") return "PU7800";
+  if(normalized==="ef6200") return "EF6200";
   if(normalized==="primacourt") return "Primacourt";
   if(normalized==="terracourt") return "Terracourt";
   return "Duracourt";
@@ -1561,6 +1603,7 @@ function productBrandName(brand){
 
 function lineBrandName(brand){
   const normalized=normalizeBrand(brand);
+  if(isIndustrialProductBrand(normalized)) return productBrandName(normalized);
   if(normalized==="primacourt") return "Primaline";
   if(normalized==="terracourt") return "Terracourt";
   return "Decoline";
