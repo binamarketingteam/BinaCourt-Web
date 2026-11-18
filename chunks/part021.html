@@ -666,6 +666,9 @@
       stageTouchPanMode=false;
       closeTextInlineEditor(false);
       closeMeasureInlineEditor(false);
+      // Switching from Text/Measure/Court to Shape must also clear their
+      // selections, otherwise their formatting bars remain visible.
+      clearOtherSelectionsForShape();
       if(shapeToolState.decorative!==!!decorative) selectedShapeId=null;
       shapeToolState.decorative=!!decorative;
       if(shapeToolState.decorative){
@@ -1253,15 +1256,34 @@
   };
 
   // ---- Events ---------------------------------------------------------------
-  $("shapeTool")?.addEventListener("click",()=>{
-    setShapeToolActive(!shapeToolState.active || shapeToolState.decorative,false);
+  function showShapeToolsAfterSelection(decorative){
+    // Repeated clicks should return to the selected tool, not turn it off.
+    // Users can exit with Escape, Hand Tool, or another drawing tool.
+    setShapeToolActive(true,decorative);
     if($("toolsDropdown")) $("toolsDropdown").hidden=true;
     $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+
+    // The editor can sit below the visible menu on narrow screens/tablets.
+    // After render restores the stage scroll position, jump to the toolbar.
+    const reveal=()=>{
+      const bar=$("shapeFormatToolbar");
+      if(!bar || bar.hidden || typeof bar.scrollIntoView!=="function") return;
+      bar.style.scrollMarginTop="96px";
+      const box=bar.getBoundingClientRect();
+      const height=window.innerHeight||document.documentElement?.clientHeight||0;
+      if(!height || box.top<88 || box.bottom>height-12){
+        bar.scrollIntoView({behavior:"smooth",block:"start",inline:"nearest"});
+      }
+    };
+    if(typeof requestAnimationFrame==="function") requestAnimationFrame(reveal);
+    else reveal();
+  }
+
+  $("shapeTool")?.addEventListener("click",()=>{
+    showShapeToolsAfterSelection(false);
   });
   $("freeShapeTool")?.addEventListener("click",()=>{
-    setShapeToolActive(!shapeToolState.active || !shapeToolState.decorative,true);
-    if($("toolsDropdown")) $("toolsDropdown").hidden=true;
-    $("toolsMenuButton")?.setAttribute("aria-expanded","false");
+    showShapeToolsAfterSelection(true);
   });
 
   ["lineTool","measureTool","textTool","imageTool","touchPanTool"].forEach(id=>{
