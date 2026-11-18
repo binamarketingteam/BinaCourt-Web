@@ -230,17 +230,24 @@
       const start=stagePointFromClient(event.clientX,event.clientY);
       const x0=live.x, y0=live.y;
       const pid=event.pointerId;
+      // A normal click/tap should select the Shape, never shift it a few
+      // pixels from touch jitter while its settings panel is opening.
+      const dragThresholdPx=event.pointerType==="touch" ? 7 : 3;
       let moved=false;
       try{target.setPointerCapture?.(pid);}catch(_){ }
 
       const move=e=>{
         if(e.pointerId!==pid) return;
         e.preventDefault?.();
+        const travel=Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY);
+        if(!moved && travel<dragThresholdPx) return;
         const p=stagePointFromClient(e.clientX,e.clientY);
         const current=shapeAnnotationById(id);
         if(!current) return;
-        current.x=x0+(p.x-start.x);
-        current.y=y0+(p.y-start.y);
+        const nextX=x0+(p.x-start.x),nextY=y0+(p.y-start.y);
+        if(Math.abs(nextX-current.x)<.000001 && Math.abs(nextY-current.y)<.000001) return;
+        current.x=nextX;
+        current.y=nextY;
         moved=true;
         updateShapeAnnotationGroup(group,current);
       };
@@ -1257,26 +1264,12 @@
 
   // ---- Events ---------------------------------------------------------------
   function showShapeToolsAfterSelection(decorative){
-    // Repeated clicks should return to the selected tool, not turn it off.
-    // Users can exit with Escape, Hand Tool, or another drawing tool.
+    // Shape and Shape Bebas use a floating settings panel which never
+    // participates in the canvas layout. Do not scroll the document or
+    // move the stage when activating either tool.
     setShapeToolActive(true,decorative);
     if($("toolsDropdown")) $("toolsDropdown").hidden=true;
     $("toolsMenuButton")?.setAttribute("aria-expanded","false");
-
-    // The editor can sit below the visible menu on narrow screens/tablets.
-    // After render restores the stage scroll position, jump to the toolbar.
-    const reveal=()=>{
-      const bar=$("shapeFormatToolbar");
-      if(!bar || bar.hidden || typeof bar.scrollIntoView!=="function") return;
-      bar.style.scrollMarginTop="96px";
-      const box=bar.getBoundingClientRect();
-      const height=window.innerHeight||document.documentElement?.clientHeight||0;
-      if(!height || box.top<88 || box.bottom>height-12){
-        bar.scrollIntoView({behavior:"smooth",block:"start",inline:"nearest"});
-      }
-    };
-    if(typeof requestAnimationFrame==="function") requestAnimationFrame(reveal);
-    else reveal();
   }
 
   $("shapeTool")?.addEventListener("click",()=>{

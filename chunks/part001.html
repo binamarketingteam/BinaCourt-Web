@@ -63,7 +63,8 @@
   .inline input{width:auto}
   .toolbar{
     background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px;
-    display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px
+    display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;
+    position:relative;
   }
   .workspace > .toolbar{
     position:sticky;
@@ -192,6 +193,33 @@
   }
   .image-format-toolbar{display:inline-flex;align-items:center;gap:8px;margin-left:4px;padding-left:9px;border-left:1px solid var(--border)}
   .image-format-toolbar[hidden]{display:none!important}
+  /* Shape tool settings are an overlay anchored to the existing toolbar.
+     Inserting this editor into the flex flow used to change the toolbar
+     height, moving the SVG underneath the pointer and causing accidental
+     shape movement when reselecting or dragging an existing shape. */
+  #shapeFormatToolbar:not([hidden]){
+    position:absolute;
+    top:calc(100% + 8px);
+    right:10px;
+    left:10px;
+    z-index:8;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:0;
+    padding:10px 12px;
+    box-sizing:border-box;
+    min-width:0;
+    width:auto;
+    max-height:min(215px,42vh);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    box-shadow:0 8px 22px rgba(16,24,40,.16);
+  }
   .image-format-label{font-size:10px;font-weight:800;color:#667085;white-space:nowrap}
   .image-format-hint{font-size:11px;color:#64748b;white-space:nowrap}
   .image-size-step{width:34px;height:34px;padding:4px!important;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;font-size:16px;font-weight:800}
