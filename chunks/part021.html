@@ -199,6 +199,7 @@
       se:[item.x+item.w,item.y+item.h]
     };
     const hitSize=shapeResizeHitWorldSize();
+    const knobSize=Math.max(.09,Math.min(.40,hitSize*.40));
     Object.entries(handles).forEach(([key,[x,y]])=>{
       const touch=group.querySelector(`.shape-resize-hit[data-handle="${key}"]`);
       if(touch){
@@ -209,8 +210,11 @@
       }
       const knob=group.querySelector(`.shape-resize-knob[data-handle="${key}"]`);
       if(knob){
-        knob.setAttribute("x",x-.20);
-        knob.setAttribute("y",y-.20);
+        knob.setAttribute("x",x-knobSize/2);
+        knob.setAttribute("y",y-knobSize/2);
+        knob.setAttribute("width",knobSize);
+        knob.setAttribute("height",knobSize);
+        knob.setAttribute("rx",knobSize*.10);
       }
     });
 
@@ -679,6 +683,7 @@
           sw:[item.x,item.y+item.h],se:[item.x+item.w,item.y+item.h]
         };
         const hitSize=shapeResizeHitWorldSize();
+        const knobSize=Math.max(.09,Math.min(.40,hitSize*.40));
         Object.entries(handles).forEach(([key,[x,y]])=>{
           const touch=ns("rect",{
             class:"editing-only shape-resize-hit",
@@ -691,8 +696,8 @@
           const knob=ns("rect",{
             class:"editing-only shape-resize-knob",
             "data-handle":key,
-            x:x-.20,y:y-.20,width:.40,height:.40,
-            rx:.05,fill:"#ffffff",stroke:"#2563eb","stroke-width":.04,
+            x:x-knobSize/2,y:y-knobSize/2,width:knobSize,height:knobSize,
+            rx:knobSize*.10,fill:"#ffffff",stroke:"#111111","stroke-width":"1.3",
             "vector-effect":"non-scaling-stroke","pointer-events":"none"
           });
           group.appendChild(knob);
