@@ -69,6 +69,9 @@ jobs:
           cp colour-studio/index.html _site/colour-studio/index.html
           mkdir -p _site/colour-studio/vendor
           cp colour-studio/vendor/html2pdf.bundle.min.js _site/colour-studio/vendor/html2pdf.bundle.min.js
+          # Fixed Bina Paint reference cover image used by A3 PDF page one.
+          mkdir -p _site/colour-studio/assets
+          cp colour-studio/assets/cover-reference.webp _site/colour-studio/assets/cover-reference.webp
 
           # Bootstrap a newly built native APK from a short-lived artifact URL.
           # On later web-only deploys, preserve the already-live APK from Pages.
