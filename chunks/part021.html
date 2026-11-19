@@ -2349,6 +2349,7 @@
     if(!bar)return;
     const tokens=[...chosen].filter(valid);
     bar.hidden=tokens.length<2;
+    bar.style.display=tokens.length<2?"none":"flex";
     if(tokens.length<2)return;
     const kind=document.getElementById("artworkColourKind");
     const palette=document.getElementById("artworkColourPalette");
@@ -2404,8 +2405,8 @@
     // operations, but the unified editor is the consistent source of truth.
     const legacyCourt=document.getElementById("bulkCourtColourToolbar");
     const legacyFree=document.getElementById("bulkFreeShapeColourToolbar");
-    if(legacyCourt)legacyCourt.hidden=true;
-    if(legacyFree)legacyFree.hidden=true;
+    if(legacyCourt){legacyCourt.hidden=true;legacyCourt.style.display="none";}
+    if(legacyFree){legacyFree.hidden=true;legacyFree.style.display="none";}
   }
 
   // Drag any selected group as one world-space transaction. Snapshot all
