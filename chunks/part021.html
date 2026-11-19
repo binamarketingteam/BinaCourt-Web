@@ -2223,6 +2223,313 @@
     if(count)count.textContent=chosen.size?chosen.size+" objek dipilih":"";
     if(clearButton)clearButton.hidden=!chosen.size;
   }
+
+  // BinaCourt Group Drag + Colour V2
+  // One shared editor for any compatible colour property across multiple
+  // selected objects. A colour change creates exactly one undo step.
+  function colourSpecs(token){
+    const obj=itemFor(token);
+    if(!obj)return [];
+    const type=token.split(":")[0];
+    const specs=[];
+    const add=(key,label,prop,brand=null,kind="surface")=>{
+      specs.push({token,obj,key,label,prop,brand,kind});
+    };
+    if(type==="court"){
+      const brand=brandForCourt(obj);
+      add("surface","Court / Surface","fill",brand);
+      add("line","Line","line",brand,"line");
+      bulkCourtColourTargets.filter(t=>t.key!=="fill"&&t.key!=="line"&&t.supports(obj))
+        .forEach(t=>add(t.key,t.label,t.property,brand));
+    }else if(type==="shape"){
+      if(obj.decorative)add("visual","Warna Bebas","color");
+      else{
+        const brand=normalizeBrand(obj.brand,state.brand);
+        if(obj.role==="line")add("line","Line","color",brand,"line");
+        else add("surface","Court / Surface","color",brand);
+      }
+    }else if(type==="site"){
+      add("surface","Court / Surface","color",brandForSiteArea(obj));
+    }else if(type==="line"){
+      add("line","Line","color");
+    }else if(type==="text"){
+      add("text","Text Colour","fill");
+    }else if(type!=="image"&&type!=="measure"){
+      // Optional design objects may expose an editable solid colour.
+      // Never invent one for images, dimensions or structural settings.
+      if(normalizeHexColor(obj.color))add("visual","Warna Objek","color");
+      else if(normalizeHexColor(obj.fill))add("visual","Warna Objek","fill");
+    }
+    return specs;
+  }
+  function compatibleColourOptions(){
+    const tokens=[...chosen].filter(valid);
+    if(tokens.length<2)return [];
+    const first=colourSpecs(tokens[0]);
+    return first.map(spec=>{
+      const set=[spec];
+      for(const token of tokens.slice(1)){
+        const other=colourSpecs(token).find(x=>x.key===spec.key);
+        if(!other)return null;
+        set.push(other);
+      }
+      const library=set.filter(x=>x.brand!==null).map(x=>
+        x.kind==="line"?getLinePaletteForBrand(x.brand):getDefaultPaletteForBrand(x.brand));
+      let palette=null;
+      if(library.length){
+        palette=library[0].filter(col=>library.every(list=>
+          list.some(item=>normalizeHexColor(item.color)===normalizeHexColor(col.color))));
+      }
+      return {key:spec.key,label:spec.label,specs:set,palette};
+    }).filter(Boolean);
+  }
+  function ensureGroupColourEditor(){
+    let bar=document.getElementById("artworkBulkColour");
+    if(bar)return bar;
+    const anchor=document.getElementById("artworkMultiBar");
+    if(!anchor)return null;
+    bar=document.createElement("div");
+    bar.id="artworkBulkColour";
+    bar.style.cssText="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:6px 8px;margin:4px 0;border:1px solid #bfdbfe;border-radius:7px;background:#eff6ff";
+    const title=document.createElement("strong");
+    title.textContent="COLOUR ALL";
+    title.style.cssText="font-size:11px;color:#1d4ed8;white-space:nowrap";
+    const kind=document.createElement("select");
+    kind.id="artworkColourKind";
+    kind.title="Bahagian warna untuk semua objek terpilih";
+    kind.style.cssText="height:32px;min-width:120px;max-width:200px;font-size:11px;padding:3px 8px";
+    const palette=document.createElement("select");
+    palette.id="artworkColourPalette";
+    palette.title="Pilih kod warna produk";
+    palette.style.cssText="height:32px;min-width:140px;max-width:220px;font-size:11px;padding:3px 8px";
+    const custom=document.createElement("input");
+    custom.type="color";
+    custom.id="artworkColourFree";
+    custom.title="Tukar warna semua objek terpilih";
+    custom.style.cssText="height:32px;width:56px;cursor:pointer;padding:1px";
+    const note=document.createElement("span");
+    note.id="artworkColourNote";
+    note.style.cssText="font-size:11px;color:#475467";
+    bar.append(title,kind,palette,custom,note);
+    anchor.insertAdjacentElement("afterend",bar);
+    kind.addEventListener("change",updateGroupColourEditor);
+    function applyColour(value){
+      const colour=normalizeHexColor(value);
+      const choice=compatibleColourOptions().find(x=>x.key===kind.value);
+      if(!colour||!choice||choice.specs.some(sp=>sp.obj.locked||sp.obj.hidden))return;
+      if(choice.palette&&!choice.palette.some(v=>normalizeHexColor(v.color)===colour))return;
+      let changed=false;
+      choice.specs.forEach(sp=>{
+        const item=itemFor(sp.token);
+        if(!item)return;
+        if(normalizeHexColor(item[sp.prop])!==colour){
+          item[sp.prop]=colour;
+          changed=true;
+        }
+        if(sp.key==="netballGoal")item.netballAccentFill=colour;
+        if(sp.key==="surface"&&sp.token.startsWith("court:")&&item.lineOnly){
+          item.lineOnly=false;
+          changed=true;
+        }
+        if(sp.token.startsWith("site:")&&String(item.id)===String(state.activeSiteAreaId)){
+          state.siteColor=colour;
+        }
+      });
+      if(changed){
+        render();
+        commitHistory();
+      }
+    }
+    palette.addEventListener("change",()=>applyColour(palette.value));
+    custom.addEventListener("change",()=>applyColour(custom.value));
+    return bar;
+  }
+  function updateGroupColourEditor(){
+    const bar=ensureGroupColourEditor();
+    if(!bar)return;
+    const tokens=[...chosen].filter(valid);
+    bar.hidden=tokens.length<2;
+    if(tokens.length<2)return;
+    const kind=document.getElementById("artworkColourKind");
+    const palette=document.getElementById("artworkColourPalette");
+    const custom=document.getElementById("artworkColourFree");
+    const note=document.getElementById("artworkColourNote");
+    const options=compatibleColourOptions();
+    const previous=kind.value;
+    kind.replaceChildren();
+    for(const option of options){
+      const el=document.createElement("option");
+      el.value=option.key;
+      el.textContent=option.label;
+      kind.appendChild(el);
+    }
+    const active=options.find(o=>o.key===previous)||options[0]||null;
+    if(active)kind.value=active.key;
+    const locked=tokens.some(token=>itemFor(token)?.locked);
+    kind.disabled=locked||!options.length;
+    palette.replaceChildren();
+    if(active?.palette){
+      const placeholder=document.createElement("option");
+      placeholder.value="";
+      placeholder.textContent="Pilih warna";
+      palette.appendChild(placeholder);
+      active.palette.forEach(item=>{
+        const hex=normalizeHexColor(item.color);
+        if(!hex)return;
+        const opt=document.createElement("option");
+        opt.value=hex;
+        opt.textContent=item.name;
+        palette.appendChild(opt);
+      });
+    }
+    const first=active?.specs[0];
+    const same=first&&active.specs.every(sp=>
+      normalizeHexColor(sp.obj[sp.prop])===normalizeHexColor(first.obj[first.prop]));
+    const current=same?normalizeHexColor(first.obj[first.prop]):"";
+    const listed=active?.palette?.some(item=>normalizeHexColor(item.color)===current);
+    palette.value=listed?current:"";
+    palette.hidden=!active?.palette;
+    palette.disabled=locked||!active?.palette?.length;
+    custom.hidden=!!active?.palette||!active;
+    custom.disabled=locked||!active;
+    if(current&&!active?.palette&&document.activeElement!==custom)custom.value=current;
+    else if(!current&&!active?.palette&&document.activeElement!==custom){
+      custom.value=normalizeHexColor(first?.obj[first?.prop])||"#ffffff";
+    }
+    note.textContent=locked?"Unlock semua objek sebelum edit."
+      :!options.length?"Objek ini tiada bahagian warna serasi. Pilih kumpulan warna yang sama."
+      :active?.palette&&!active.palette.length?"Tiada kod warna sama untuk sistem produk ini."
+      :"Tukar "+tokens.length+" objek sekaligus";
+    // Native court / free-shape colour panels remain available for legacy
+    // operations, but the unified editor is the consistent source of truth.
+    const legacyCourt=document.getElementById("bulkCourtColourToolbar");
+    const legacyFree=document.getElementById("bulkFreeShapeColourToolbar");
+    if(legacyCourt)legacyCourt.hidden=true;
+    if(legacyFree)legacyFree.hidden=true;
+  }
+
+  // Drag any selected group as one world-space transaction. Snapshot all
+  // coordinates first to avoid cumulative errors and commit only on release.
+  function movementSnapshot(token){
+    if(token==="site:main")return null;
+    const obj=itemFor(token);
+    if(!obj||obj.locked||obj.hidden)return null;
+    const type=token.split(":")[0];
+    if(type==="site"&&Array.isArray(obj.polygon)&&obj.polygon.length){
+      return {token,kind:"polygon",base:obj.polygon.map(p=>({...p}))};
+    }
+    if(Number.isFinite(obj.x)&&Number.isFinite(obj.y)){
+      return {token,kind:"xy",base:{x:obj.x,y:obj.y}};
+    }
+    if(obj.start&&obj.end&&Number.isFinite(obj.start.x)&&Number.isFinite(obj.end.x)){
+      return {token,kind:"ends",base:{start:{...obj.start},end:{...obj.end}}};
+    }
+    if(Array.isArray(obj.points)&&obj.points.length&&
+       obj.points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y))){
+      return {token,kind:"points",base:obj.points.map(p=>({...p}))};
+    }
+    if(Number.isFinite(obj.cx)&&Number.isFinite(obj.cy)){
+      return {token,kind:"center",base:{cx:obj.cx,cy:obj.cy}};
+    }
+    if(obj.position&&Number.isFinite(obj.position.x)&&Number.isFinite(obj.position.y)){
+      return {token,kind:"position",base:{...obj.position}};
+    }
+    return null;
+  }
+  function moveSnapshot(snapshot,dx,dy){
+    const obj=itemFor(snapshot.token);
+    if(!obj)return;
+    const base=snapshot.base;
+    if(snapshot.kind==="xy"){
+      obj.x=base.x+dx;obj.y=base.y+dy;
+    }else if(snapshot.kind==="ends"){
+      obj.start={...base.start,x:base.start.x+dx,y:base.start.y+dy};
+      obj.end={...base.end,x:base.end.x+dx,y:base.end.y+dy};
+    }else if(snapshot.kind==="polygon"||snapshot.kind==="points"){
+      obj[snapshot.kind==="polygon"?"polygon":"points"]=base.map(p=>
+        ({...p,x:p.x+dx,y:p.y+dy}));
+      if(snapshot.kind==="polygon"&&String(obj.id)===String(state.activeSiteAreaId)){
+        state.sitePolygon=obj.polygon.map(p=>({...p}));
+      }
+    }else if(snapshot.kind==="center"){
+      obj.cx=base.cx+dx;obj.cy=base.cy+dy;
+    }else if(snapshot.kind==="position"){
+      obj.position={...base,x:base.x+dx,y:base.y+dy};
+    }
+  }
+  function beginGroupMove(event,clickedToken){
+    const tokens=[...chosen].filter(valid);
+    if(tokens.length<2||!chosen.has(clickedToken))return false;
+    if(tokens.some(token=>itemFor(token)?.locked)){
+      const count=tokens.filter(token=>itemFor(token)?.locked).length;
+      alert(count+" objek masih Locked. Unlock sebelum gerakkan kumpulan.");
+      return true;
+    }
+    const snapshots=tokens.map(movementSnapshot);
+    if(snapshots.some(snap=>!snap)){
+      alert("Ada objek yang belum menyokong pergerakan kumpulan.");
+      return true;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    const down={x:event.clientX,y:event.clientY};
+    const point=stagePointFromClient(down.x,down.y);
+    const pointerId=event.pointerId;
+    const isPickMode=multiPickMode;
+    const target=event.target;
+    let moved=false,lastDx=0,lastDy=0;
+    let raf=0;
+    let started=false;
+    function setDistance(dx,dy){
+      lastDx=dx;lastDy=dy;
+      for(const shot of snapshots)moveSnapshot(shot,dx,dy);
+      render();
+    }
+    function onMove(e){
+      if(e.pointerId!==pointerId)return;
+      if(typeof stagePinchActive!=="undefined"&&stagePinchActive)return;
+      const screenDist=Math.hypot(e.clientX-down.x,e.clientY-down.y);
+      if(!started&&screenDist<(e.pointerType==="touch"?8:4))return;
+      started=true;
+      moved=true;
+      e.preventDefault();
+      e.stopPropagation();
+      const p=stagePointFromClient(e.clientX,e.clientY);
+      const dx=p.x-point.x,dy=p.y-point.y;
+      lastDx=dx;lastDy=dy;
+      if(!raf){
+        raf=requestAnimationFrame(()=>{
+          raf=0;
+          setDistance(lastDx,lastDy);
+        });
+      }
+    }
+    function finish(e){
+      if(e.pointerId!==pointerId)return;
+      window.removeEventListener("pointermove",onMove,true);
+      window.removeEventListener("pointerup",finish,true);
+      window.removeEventListener("pointercancel",finish,true);
+      if(raf){cancelAnimationFrame(raf);raf=0;}
+      try{target.releasePointerCapture?.(pointerId)}catch(_){}
+      if(e.type==="pointercancel"){
+        setDistance(0,0);
+      }else if(moved){
+        setDistance(lastDx,lastDy);
+        commitHistory();
+      }else if(isPickMode){
+        toggle(clickedToken);
+      }else{
+        render();
+      }
+    }
+    window.addEventListener("pointermove",onMove,true);
+    window.addEventListener("pointerup",finish,true);
+    window.addEventListener("pointercancel",finish,true);
+    try{target.setPointerCapture?.(pointerId)}catch(_){}
+    return true;
+  }
+
   function selectedNodes(token){
     const [type]=token.split(":");
     const id=token.slice(type.length+1);
@@ -2333,6 +2640,7 @@
     prune();
     syncNativeGroupsIntoDisplay();
     updateToolbar();
+    updateGroupColourEditor();
     decorateLayerRows();
     drawHighlight();
   }
@@ -2346,8 +2654,19 @@
   svg.addEventListener("pointerdown",event=>{
     if(event.button!==0||stageSpaceHeld||stagePanActive||stageTouchPanMode)return;
     const token=tokenFromTarget(event.target);
-    const additive=multiPickMode||event.shiftKey||event.ctrlKey||event.metaKey;
-    if(additive){
+    const explicitToggle=event.shiftKey||event.ctrlKey||event.metaKey;
+    const moveGroup=token&&chosen.size>1&&chosen.has(token)&&!explicitToggle;
+    if(moveGroup){
+      const handle=event.target.closest?.(
+        ".image-resize-hit,.image-rotate-handle,.shape-resize-hit,"+
+        ".shape-rotate-handle,.line-endpoint-hit,.measure-handle-start,"+
+        ".measure-handle-end,.court-resize-handle"
+      );
+      if(!handle){
+        if(beginGroupMove(event,token))return;
+      }
+    }
+    if(multiPickMode||explicitToggle){
       if(!token||token==="site:main"){
         if(multiPickMode&&token==="site:main"){
           event.preventDefault();
