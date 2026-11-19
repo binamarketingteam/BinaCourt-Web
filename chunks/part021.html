@@ -2223,32 +2223,34 @@
     if(count)count.textContent=chosen.size?chosen.size+" objek dipilih":"";
     if(clearButton)clearButton.hidden=!chosen.size;
   }
-  function selectedNode(token){
-    const type=token.split(":")[0],id=token.slice(type.length+1);
-    const inLayer=[...svg.querySelectorAll("[data-layer-token]")]
-      .find(e=>e.getAttribute("data-layer-token")===token);
-    if(inLayer)return inLayer;
+  function selectedNodes(token){
+    const [type]=token.split(":");
+    const id=token.slice(type.length+1);
+    const groups=[...svg.querySelectorAll("[data-layer-token]")]
+      .filter(el=>el.getAttribute("data-layer-token")===token);
+    if(groups.length)return groups;
     const attr=nodeAttrs[type];
-    if(!attr)return null;
-    return [...svg.querySelectorAll("["+attr+"]")]
-      .find(e=>e.getAttribute(attr)===id)||null;
+    return attr?[...svg.querySelectorAll("["+attr+"]")]
+      .filter(el=>el.getAttribute(attr)===id):[];
   }
   function selectedBounds(token){
-    const node=selectedNode(token);
-    if(!node)return null;
-    const source=node.querySelector?.(".shape-content,.image-content,.line-content,.text-content")||node;
-    try{
-      const b=source.getBBox(),m=source.getScreenCTM(),inv=svg.getScreenCTM()?.inverse();
-      if(!m||!inv)return null;
-      function p(x,y){
-        const sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f;
-        return {x:inv.a*sx+inv.c*sy+inv.e,y:inv.b*sx+inv.d*sy+inv.f};
-      }
-      const q=[p(b.x,b.y),p(b.x+b.width,b.y),
-        p(b.x+b.width,b.y+b.height),p(b.x,b.y+b.height)];
-      return {left:Math.min(...q.map(v=>v.x)),top:Math.min(...q.map(v=>v.y)),
-        right:Math.max(...q.map(v=>v.x)),bottom:Math.max(...q.map(v=>v.y))};
-    }catch(_){return null;}
+    const all=[];
+    for(const node of selectedNodes(token)){
+      const source=node.querySelector?.(".shape-content,.image-content,.line-content,.text-content")||node;
+      try{
+        const b=source.getBBox(),m=source.getScreenCTM(),inv=svg.getScreenCTM()?.inverse();
+        if(!m||!inv)continue;
+        function p(x,y){
+          const sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f;
+          return {x:inv.a*sx+inv.c*sy+inv.e,y:inv.b*sx+inv.d*sy+inv.f};
+        }
+        all.push(p(b.x,b.y),p(b.x+b.width,b.y),
+          p(b.x+b.width,b.y+b.height),p(b.x,b.y+b.height));
+      }catch(_){}
+    }
+    if(!all.length)return null;
+    return {left:Math.min(...all.map(v=>v.x)),top:Math.min(...all.map(v=>v.y)),
+      right:Math.max(...all.map(v=>v.x)),bottom:Math.max(...all.map(v=>v.y))};
   }
   function drawHighlight(){
     svg.querySelectorAll(".unified-multi-selection").forEach(el=>el.remove());
