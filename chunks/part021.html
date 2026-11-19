@@ -2027,24 +2027,6 @@
   updateToolsMenuState();
   updateShapeFormatToolbar();
   refreshBulkCourtColourToolbar();
-})();
-
-</script>
-
-<style>
-/* BinaCourt Photoshop-like marching ants selection (screen-space SVG stroke). */
-.shape-annotation .shape-selection-back { stroke:#111 !important; stroke-width:1.8px !important; stroke-dasharray:none !important; vector-effect:non-scaling-stroke; }
-.shape-annotation .shape-selection-ants { stroke:#fff !important; stroke-width:1.8px !important; stroke-dasharray:5px 5px !important; vector-effect:non-scaling-stroke; animation:binaShapeMarch 0.65s linear infinite; }
-.shape-annotation .shape-selection { pointer-events:none !important; }
-.shape-annotation .shape-resize-knob { stroke:#111 !important; stroke-width:1.3px !important; vector-effect:non-scaling-stroke; }
-@keyframes binaShapeMarch { to { stroke-dashoffset:-10px; } }
-@media (prefers-reduced-motion:reduce) { .shape-annotation .shape-selection-ants {animation:none;} }
-</style>
-
-
-<script>
-(function(){
-  "use strict";
   // BinaCourt Unified Selection v1: artwork multi-select, screen-space
   // selection outlines, Layers highlights and tablet-friendly pick mode.
   // Pure editor state: it is never included in saved files or exports.
@@ -2410,7 +2392,20 @@
   };
   refreshSelection();
 })();
+
 </script>
+
+<style>
+/* BinaCourt Photoshop-like marching ants selection (screen-space SVG stroke). */
+.shape-annotation .shape-selection-back { stroke:#111 !important; stroke-width:1.8px !important; stroke-dasharray:none !important; vector-effect:non-scaling-stroke; }
+.shape-annotation .shape-selection-ants { stroke:#fff !important; stroke-width:1.8px !important; stroke-dasharray:5px 5px !important; vector-effect:non-scaling-stroke; animation:binaShapeMarch 0.65s linear infinite; }
+.shape-annotation .shape-selection { pointer-events:none !important; }
+.shape-annotation .shape-resize-knob { stroke:#111 !important; stroke-width:1.3px !important; vector-effect:non-scaling-stroke; }
+@keyframes binaShapeMarch { to { stroke-dashoffset:-10px; } }
+@media (prefers-reduced-motion:reduce) { .shape-annotation .shape-selection-ants {animation:none;} }
+</style>
+
+
 <style>
 /* Visible selection never changes exported court colours or geometry. */
 .unified-multi-selection rect:nth-child(2) {
