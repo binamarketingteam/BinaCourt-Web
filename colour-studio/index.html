@@ -2706,67 +2706,37 @@ async function downloadProposalA3DirectV339(name, meta, ids, onProgress) {
 }
 
 
-// Selection overlay — Photoshop-style marching ants. Visual only, not exported.
+// Photoshop-style marching ants ONLY during active Polygon drawing.
+// Once the polygon is completed or cancelled, it vanishes immediately.
+// Saved coloured areas are never outlined or animated.
 const antsCanvas=document.createElement('canvas');
 antsCanvas.id='studioSelectionAnts';
 antsCanvas.setAttribute('aria-hidden','true');
 antsCanvas.style.cssText='position:absolute;left:0;top:0;pointer-events:none;z-index:3';
 shell.appendChild(antsCanvas);
 const antsCtx=antsCanvas.getContext('2d');
-let antsPath=null, antsLayer='', antsUpdated=0, antsPhase=0;
-function buildAntsPath(){
- const a=selectedArea();
- antsPath=null;
- if(!hasProjectPhoto||!a||a.visible===false||!a.mask){antsLayer='';return;}
- const k=Math.min(1,850/Math.max(width,height));
- const w=Math.max(1,Math.round(width*k)),h=Math.max(1,Math.round(height*k));
- const tiny=document.createElement('canvas');tiny.width=w;tiny.height=h;
- const tc=tiny.getContext('2d',{willReadFrequently:true});tc.imageSmoothingEnabled=false;
- tc.drawImage(a.mask,0,0,w,h);
- const data=tc.getImageData(0,0,w,h).data;
- const filled=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&data[(y*w+x)*4+3]>70;
- const p=new Path2D(),sx=width/w,sy=height/h;let count=0;
- for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-  if(!filled(x,y))continue;
-  if(!filled(x,y-1)){p.moveTo(x*sx,y*sy);p.lineTo((x+1)*sx,y*sy);count++;}
-  if(!filled(x+1,y)){p.moveTo((x+1)*sx,y*sy);p.lineTo((x+1)*sx,(y+1)*sy);count++;}
-  if(!filled(x,y+1)){p.moveTo((x+1)*sx,(y+1)*sy);p.lineTo(x*sx,(y+1)*sy);count++;}
-  if(!filled(x-1,y)){p.moveTo(x*sx,(y+1)*sy);p.lineTo(x*sx,y*sy);count++;}
- }
- antsPath=count?p:null;antsLayer=String(a.id);
-}
-function paintStudioSelection(now){
+let antsPhase=0, antsLastFrame=0;
+function paintStudioSelection(){
  if(antsCanvas.width!==width||antsCanvas.height!==height){
-  antsCanvas.width=width;antsCanvas.height=height;antsLayer='';antsUpdated=0;
+  antsCanvas.width=width;antsCanvas.height=height;
  }
  antsCtx.clearRect(0,0,width,height);
- if(compareActive)return;
- const a=selectedArea();
- if(!a||!hasProjectPhoto)return;
- if(antsLayer!==String(a.id)||now-antsUpdated>1200){
-  antsUpdated=now;buildAntsPath();
- }
+ if(compareActive||tool!=='polygon'||polygon.length===0||!hasProjectPhoto)return;
  const c=antsCtx,z=Math.max(.075,zoom);
- function outline(p){
-  c.lineJoin='round';c.lineWidth=1.8/z;
-  c.setLineDash([]);c.strokeStyle='#111';c.stroke(p);
-  c.strokeStyle='#fff';c.setLineDash([5/z,5/z]);
-  c.lineDashOffset=-antsPhase/z;c.stroke(p);
-  c.setLineDash([]);c.lineDashOffset=0;
- }
- if(antsPath)outline(antsPath);
- if(tool==='polygon'&&polygon.length){
-  const p=new Path2D();p.moveTo(polygon[0].x,polygon[0].y);
-  for(let i=1;i<polygon.length;i++)p.lineTo(polygon[i].x,polygon[i].y);
-  if(mouseImg)p.lineTo(mouseImg.x,mouseImg.y);
-  outline(p);
- }
+ const p=new Path2D();
+ p.moveTo(polygon[0].x,polygon[0].y);
+ for(let i=1;i<polygon.length;i++)p.lineTo(polygon[i].x,polygon[i].y);
+ if(mouseImg)p.lineTo(mouseImg.x,mouseImg.y);
+ c.lineJoin='round';c.lineCap='butt';c.lineWidth=1.8/z;
+ c.setLineDash([]);c.strokeStyle='#111111';c.stroke(p);
+ c.strokeStyle='#ffffff';c.setLineDash([5/z,5/z]);
+ c.lineDashOffset=-antsPhase/z;c.stroke(p);
+ c.setLineDash([]);c.lineDashOffset=0;
 }
-let antsLastFrame=0;
 function studioAntsLoop(now){
  if(now-antsLastFrame>=90){
   antsLastFrame=now;antsPhase=(antsPhase+1)%10;
-  try{paintStudioSelection(now)}catch(e){console.warn('Studio selection overlay:',e);}
+  try{paintStudioSelection()}catch(e){console.warn('Studio polygon selection:',e);}
  }
  requestAnimationFrame(studioAntsLoop);
 }
