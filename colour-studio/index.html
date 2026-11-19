@@ -1014,6 +1014,7 @@ window.addEventListener('resize',()=>{
 function mapPoint(ev){const rect=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
 function mapPointClampedToImage(ev){const rect=shell.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
 function handlePolygonPoint(ev,pt){
+ if(performance.now()<polygonJustCompletedUntil)return;
  if(historyBusy)return;
  if(selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}
  // Clicking the first vertex again closes the polygon, as in Photoshop.
@@ -1024,6 +1025,7 @@ function handlePolygonPoint(ev,pt){
   if(screenDistance<=tolerance){
    ev.preventDefault();mouseImg=null;
    finishPolygon(); // commits selection and clears polygon, or opens transfer dialog
+   if(polygon.length===0)clearFinishedPolygonLines();
    requestRender();
    return;
   }
@@ -1503,7 +1505,7 @@ async function travelTransferredLayers(from,to,label){
  finally{historyBusy=false;updateHistoryButtons();}
 }
 
-function finishPolygon(){if(polygonMode==='transfer'){openLayerTransfer();return;}if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}const a=selectedArea();if(!a||polygon.length<3)return;if(a.locked){cancelPolygon();toast('Layer dikunci. Polygon tidak mengubah mask.');return;}rememberMask(a);const ac=a.mask.getContext('2d');if(polygonMode==='subtract'){ac.globalCompositeOperation='destination-out';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}else if(polygonMode==='add-empty'){const temp=document.createElement('canvas');temp.width=width;temp.height=height;const tc=temp.getContext('2d');tc.fillStyle='white';tc.beginPath();tc.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)tc.lineTo(polygon[i].x,polygon[i].y);tc.closePath();tc.fill();tc.globalCompositeOperation='destination-out';for(const other of areas){if(other.mask)tc.drawImage(other.mask,0,0);}tc.globalCompositeOperation='source-over';ac.drawImage(temp,0,0);}else{ac.globalCompositeOperation='source-over';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}a.dirty=true;const didSubtract=polygonMode==='subtract';const didAddEmpty=polygonMode==='add-empty';polygon=[];polygonMode=polygonPresetMode;mouseImg=null;updatePolygonControls();setDirty();updateHint();requestRender();if(didSubtract)toast('Kawasan dipadam daripada Area aktif (ALT).');if(didAddEmpty)toast('Hanya kawasan yang belum diwarnakan ditambah ke Area aktif (Ctrl+Alt).');}
+function finishPolygon(){if(polygonMode==='transfer'){openLayerTransfer();return;}if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}const a=selectedArea();if(!a||polygon.length<3)return;if(a.locked){cancelPolygon();toast('Layer dikunci. Polygon tidak mengubah mask.');return;}rememberMask(a);const ac=a.mask.getContext('2d');if(polygonMode==='subtract'){ac.globalCompositeOperation='destination-out';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}else if(polygonMode==='add-empty'){const temp=document.createElement('canvas');temp.width=width;temp.height=height;const tc=temp.getContext('2d');tc.fillStyle='white';tc.beginPath();tc.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)tc.lineTo(polygon[i].x,polygon[i].y);tc.closePath();tc.fill();tc.globalCompositeOperation='destination-out';for(const other of areas){if(other.mask)tc.drawImage(other.mask,0,0);}tc.globalCompositeOperation='source-over';ac.drawImage(temp,0,0);}else{ac.globalCompositeOperation='source-over';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}a.dirty=true;const didSubtract=polygonMode==='subtract';const didAddEmpty=polygonMode==='add-empty';polygonMode=polygonPresetMode;clearFinishedPolygonLines();setDirty();requestRender();if(didSubtract)toast('Kawasan dipadam daripada Area aktif (ALT).');if(didAddEmpty)toast('Hanya kawasan yang belum diwarnakan ditambah ke Area aktif (Ctrl+Alt).');}
 function drawBrush(a,point,prev,erase){
  if(a.locked)return;
  const m=a.mask.getContext('2d');
@@ -2734,12 +2736,19 @@ antsCanvas.style.cssText='position:absolute;left:0;top:0;pointer-events:none;z-i
 shell.appendChild(antsCanvas);
 const antsCtx=antsCanvas.getContext('2d');
 let antsPhase=0, antsLastFrame=0;
+let polygonJustCompletedUntil=0;
+function clearFinishedPolygonLines(){
+ polygon=[];mouseImg=null;
+ polygonJustCompletedUntil=performance.now()+300;
+ antsCtx.clearRect(0,0,antsCanvas.width,antsCanvas.height);
+ updatePolygonControls();updateHint();requestRender();
+}
 function paintStudioSelection(){
  if(antsCanvas.width!==width||antsCanvas.height!==height){
   antsCanvas.width=width;antsCanvas.height=height;
  }
  antsCtx.clearRect(0,0,width,height);
- if(compareActive||tool!=='polygon'||polygon.length===0||!hasProjectPhoto||!transferLayerModal.hidden)return;
+ if(compareActive||tool!=='polygon'||polygon.length===0||!hasProjectPhoto||!transferLayerModal.hidden||performance.now()<polygonJustCompletedUntil)return;
  const c=antsCtx,z=Math.max(.075,zoom);
  const p=new Path2D();
  p.moveTo(polygon[0].x,polygon[0].y);
