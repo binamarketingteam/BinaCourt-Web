@@ -1704,8 +1704,8 @@ function visiblePaletteForProduct(){
 }
 function renderPalette(){
  const q=($('paletteSearch').value||'').trim().toLowerCase();const all=visiblePaletteForProduct();const rows=all.filter(item=>!q||[item.name,item.code,item.hex].some(s=>s.toLowerCase().includes(q)));
- $('paletteCount').textContent=all.length?`${rows.length} daripada ${all.length} warna${rows.length>120?' · Papar 120 terawal, guna carian':''}`:'Palette masih kosong. Klik Tambah / Urus atau Import.';
- $('palette').innerHTML=rows.slice(0,120).map(item=>`<button class="swatch" data-swatch="${item.hex}" title="${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' · '))}" style="background:${item.hex}" aria-label="Pilih ${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' '))}"></button>`).join('');
+ $('paletteCount').textContent=all.length?`${rows.length} daripada ${all.length} warna${rows.length>120&&productIdAlias(selectedArea()?.productId||'')!=='glomel'?' · Papar 120 terawal, guna carian':''}`:'Palette masih kosong. Klik Tambah / Urus atau Import.';
+ $('palette').innerHTML=(productIdAlias(selectedArea()?.productId||'')==='glomel'?rows:rows.slice(0,120)).map(item=>`<button class="swatch" data-swatch="${item.hex}" title="${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' · '))}" style="background:${item.hex}" aria-label="Pilih ${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' '))}"></button>`).join('');
  $('palette').querySelectorAll('[data-swatch]').forEach(b=>{b.onclick=()=>setColor(b.dataset.swatch);b.disabled=!!selectedArea()?.locked;b.classList.toggle('active',!!selectedArea()&&b.dataset.swatch.toLowerCase()===getColor(selectedArea()).toLowerCase());});
 }
 function updatePalette(items,mode='add'){
