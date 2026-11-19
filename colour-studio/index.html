@@ -1013,7 +1013,25 @@ window.addEventListener('resize',()=>{
 
 function mapPoint(ev){const rect=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
 function mapPointClampedToImage(ev){const rect=shell.getBoundingClientRect();return{x:Math.max(0,Math.min(width,(ev.clientX-rect.left)/rect.width*width)),y:Math.max(0,Math.min(height,(ev.clientY-rect.top)/rect.height*height))}}
-function handlePolygonPoint(ev,pt){if(historyBusy)return;if(selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}if(ev.altKey)ev.preventDefault();if(polygon.length===0)polygonMode=polygonPresetMode==='transfer'?'transfer':((ev.altKey&&(ev.ctrlKey||ev.metaKey))?'add-empty':(ev.altKey?'subtract':polygonPresetMode));polygon.push(pt);updatePolygonControls();updateHint();requestRender();}
+function handlePolygonPoint(ev,pt){
+ if(historyBusy)return;
+ if(selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}
+ // Clicking the first vertex again closes the polygon, as in Photoshop.
+ // Use a SCREEN-pixel tolerance so the click target does not grow while zooming.
+ if(polygon.length>=3){
+  const first=polygon[0],screenDistance=Math.hypot(pt.x-first.x,pt.y-first.y)*Math.max(zoom,.075);
+  const tolerance=ev.pointerType==='touch'?18:12;
+  if(screenDistance<=tolerance){
+   ev.preventDefault();mouseImg=null;
+   finishPolygon(); // commits selection and clears polygon, or opens transfer dialog
+   requestRender();
+   return;
+  }
+ }
+ if(ev.altKey)ev.preventDefault();
+ if(polygon.length===0)polygonMode=polygonPresetMode==='transfer'?'transfer':((ev.altKey&&(ev.ctrlKey||ev.metaKey))?'add-empty':(ev.altKey?'subtract':polygonPresetMode));
+ polygon.push(pt);updatePolygonControls();updateHint();requestRender();
+}
 function clampZoom(z){return Math.min(Math.max(z,.075),8)}
 function zoomAt(clientX,clientY,z){const box=workspace.getBoundingClientRect(),px=clientX-box.left,py=clientY-box.top;let old=zoom;zoom=clampZoom(z);panX=px-(px-panX)/old*zoom;panY=py-(py-panY)/old*zoom;applyTransform()}
 function getColor(a){return currentScheme().colors[a.id]||'#E5DED2'}
@@ -2721,7 +2739,7 @@ function paintStudioSelection(){
   antsCanvas.width=width;antsCanvas.height=height;
  }
  antsCtx.clearRect(0,0,width,height);
- if(compareActive||tool!=='polygon'||polygon.length===0||!hasProjectPhoto)return;
+ if(compareActive||tool!=='polygon'||polygon.length===0||!hasProjectPhoto||!transferLayerModal.hidden)return;
  const c=antsCtx,z=Math.max(.075,zoom);
  const p=new Path2D();
  p.moveTo(polygon[0].x,polygon[0].y);
