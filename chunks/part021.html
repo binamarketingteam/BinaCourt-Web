@@ -2578,7 +2578,15 @@
       Math.max(1,svg.getBoundingClientRect().width);
     let index=0;
     for(const token of chosen){
-      const b=selectedBounds(token);
+      let b=selectedBounds(token);
+      // Some layers have no visible SVG group until the next editor render.
+      // For rectangular shapes, use the saved geometry instead of hiding selection.
+      if(!b && token.startsWith("shape:")){
+        const item=itemFor(token);
+        if(item&&Number.isFinite(+item.x)&&Number.isFinite(+item.y)&&Number.isFinite(+item.w)&&Number.isFinite(+item.h)){
+          b={left:+item.x,top:+item.y,right:+item.x+(+item.w),bottom:+item.y+(+item.h)};
+        }
+      }
       if(!b)continue;
       index++;
       const x=b.left-4*px,y=b.top-4*px;
@@ -2650,6 +2658,9 @@
   }
   function refreshSelection(){
     prune();
+    // Native single-object clicks must also show the Photoshop outline.
+    // Previously only unified multi-select state was guaranteed to paint it.
+    if(!chosen.size)seedFromNative();
     syncNativeGroupsIntoDisplay();
     updateToolbar();
     updateGroupColourEditor();
@@ -2702,6 +2713,14 @@
     }
     requestAnimationFrame(refreshSelection);
   },true);
+  // The native selection handler often completes on pointerup (not pointerdown).
+  // Sync again after it commits, so clicks, drags and tablet taps stay visible.
+  svg.addEventListener("pointerup",()=>{
+    requestAnimationFrame(()=>{
+      if(!chosen.size)seedFromNative();
+      refreshSelection();
+    });
+  },false);
   const list=document.getElementById("courtList");
   list?.addEventListener("click",event=>{
     if(event.target.closest(".layer-handle,.layer-actions"))return;
