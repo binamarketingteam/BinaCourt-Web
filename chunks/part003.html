@@ -1553,7 +1553,7 @@ const DEFAULT_PALETTE = [
 ];
 
 // PU7600 (gloss), PU7800 (matte) and EF6200 (epoxy) share this
-// exact 17-entry colour catalogue, transcribed from PU EPOXY.pdf (page 1).
+// 17 catalogue colours from PU EPOXY.pdf (page 1), plus PU White and PU Black.
 // HEX values reproduce the PDF swatches for onscreen preview, not certified
 // physical paint colour specifications. Keep leading zeroes in the colour codes.
 const INDUSTRIAL_PRODUCT_IDS=["pu7600","pu7800","ef6200"];
@@ -1577,7 +1577,9 @@ const PU_EPOXY_PALETTE=[
   {name:"ORANGE 0970",code:"0970",color:"#d65633"},
   {name:"INTERNATIONAL ORANGE 841",code:"841",color:"#b73126"},
   {name:"SIGNAL RED 140",code:"140",color:"#ab1f2a"},
-  {name:"INDIAN RED 0880",code:"0880",color:"#4f0d0f"}
+  {name:"INDIAN RED 0880",code:"0880",color:"#4f0d0f"},
+  {name:"PU White",code:"PU White",color:"#ffffff"},
+  {name:"PU Black",code:"PU Black",color:"#000000"}
 ];
 
 function normalizeBrand(value,fallback="duracourt"){
