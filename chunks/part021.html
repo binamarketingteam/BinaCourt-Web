@@ -2393,7 +2393,7 @@
       .forEach(s=>chosen.add("shape:"+s.id));
     requestAnimationFrame(refreshSelection);
   });
-  document.addEventListener("keydown",event=>{
+  window.addEventListener("keydown",event=>{
     if(event.key!=="Escape"||!chosen.size)return;
     if(event.target?.isContentEditable||
        /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName||""))return;
