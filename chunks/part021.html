@@ -2040,3 +2040,386 @@
 @keyframes binaShapeMarch { to { stroke-dashoffset:-10px; } }
 @media (prefers-reduced-motion:reduce) { .shape-annotation .shape-selection-ants {animation:none;} }
 </style>
+
+
+<script>
+(function(){
+  "use strict";
+  // BinaCourt Unified Selection v1: artwork multi-select, screen-space
+  // selection outlines, Layers highlights and tablet-friendly pick mode.
+  // Pure editor state: it is never included in saved files or exports.
+  const chosen=new Set();
+  let multiPickMode=false;
+  const collections={
+    court:"courts",shape:"shapeAnnotations",image:"imageAnnotations",
+    line:"lineAnnotations",text:"textAnnotations",measure:"measurements",
+    lamp:"lampAnnotations",door:"doorAnnotations",
+    partition:"partitionAnnotations",net:"netAnnotations"
+  };
+  const nodeAttrs={
+    court:"data-id",shape:"data-shape-id",image:"data-image-id",
+    line:"data-line-id",text:"data-text-id",measure:"data-measure-id",
+    lamp:"data-lamp-id",door:"data-door-id",
+    partition:"data-partition-id",net:"data-net-id"
+  };
+  function itemFor(token){
+    if(token==="site:main")return {hidden:false};
+    if(token.startsWith("site:")){
+      if(state.siteShapeMode!=="custom")return null;
+      return (state.siteAreas||[]).find(x=>String(x.id)===token.slice(5))||null;
+    }
+    const [type,id]=token.split(":");
+    const key=collections[type];
+    return key?(state[key]||[]).find(x=>String(x.id)===id)||null:null;
+  }
+  function valid(token){
+    const obj=itemFor(token);
+    return !!obj&&!obj.hidden;
+  }
+  function prune(){
+    for(const token of chosen)if(!valid(token))chosen.delete(token);
+  }
+  function tokenFromTarget(target){
+    if(!target?.closest)return null;
+    const node=target.closest(
+      "[data-layer-token],[data-id],[data-shape-id],[data-image-id]," +
+      "[data-line-id],[data-text-id],[data-measure-id],[data-lamp-id]," +
+      "[data-door-id],[data-partition-id],[data-net-id]"
+    );
+    if(!node)return null;
+    const token=node.getAttribute("data-layer-token");
+    if(token&&valid(token))return token;
+    for(const [type,attr] of Object.entries(nodeAttrs)){
+      const id=node.getAttribute(attr);
+      if(id!==null&&id!=="preview"&&valid(type+":"+id))return type+":"+id;
+    }
+    return null;
+  }
+  function seedFromNative(){
+    if(chosen.size)return;
+    // Preserve the first selected object when the user Ctrl-clicks another.
+    if(selectedFreeShapeIds.size){
+      for(const id of selectedFreeShapeIds)if(valid("shape:"+id))chosen.add("shape:"+id);
+    }else if(selectedShapeId!==null&&valid("shape:"+selectedShapeId)){
+      chosen.add("shape:"+selectedShapeId);
+    }else if(state.selectedId!==null&&valid("court:"+state.selectedId)){
+      const courts=selectedCourts();
+      for(const c of courts)if(valid("court:"+c.id))chosen.add("court:"+c.id);
+    }else{
+      for(const [id,type] of [
+        [selectedImageId,"image"],[selectedLineId,"line"],
+        [selectedTextId,"text"],[selectedMeasurementId,"measure"]
+      ]){
+        if(id!==null&&valid(type+":"+id)){chosen.add(type+":"+id);break;}
+      }
+    }
+  }
+  function syncNative(){
+    prune();
+    const tokens=[...chosen];
+    const onlyCourts=tokens.length>0&&tokens.every(t=>t.startsWith("court:"));
+    const onlyFreeShapes=tokens.length>0&&tokens.every(t=>
+      t.startsWith("shape:")&&itemFor(t)?.decorative&&!itemFor(t)?.locked);
+    selectedImageId=null;
+    selectedLineId=null;
+    selectedTextId=null;
+    selectedMeasurementId=null;
+    if(onlyCourts){
+      selectedShapeId=null;
+      selectedFreeShapeIds.clear();
+      multiSelectedCourtIds.clear();
+      tokens.forEach(t=>multiSelectedCourtIds.add(Number(t.slice(6))));
+      state.selectedId=Number(tokens.at(-1).slice(6));
+    }else if(onlyFreeShapes){
+      clearCourtSelection();
+      selectedFreeShapeIds.clear();
+      tokens.forEach(t=>selectedFreeShapeIds.add(Number(t.slice(6))));
+      selectedShapeId=Number(tokens.at(-1).slice(6));
+    }else{
+      clearCourtSelection();
+      selectedShapeId=null;
+      selectedFreeShapeIds.clear();
+      if(tokens.length===1){
+        const [type,id]=tokens[0].split(":");
+        if(type==="shape")selectedShapeId=Number(id);
+        if(type==="image")selectedImageId=Number(id);
+        if(type==="line")selectedLineId=Number(id);
+        if(type==="text")selectedTextId=Number(id);
+        if(type==="measure")selectedMeasurementId=Number(id);
+      }
+    }
+  }
+  function toggle(token){
+    if(!valid(token))return;
+    seedFromNative();
+    if(chosen.has(token))chosen.delete(token);
+    else chosen.add(token);
+    syncNative();
+    render();
+  }
+  function selectAll(){
+    chosen.clear();
+    if(typeof normalizeArtworkLayerOrder==="function"){
+      normalizeArtworkLayerOrder().forEach(token=>{
+        if(token!=="site:main"&&valid(token))chosen.add(token);
+      });
+    }
+    for(const type of ["text","measure"]){
+      (state[collections[type]]||[]).forEach(x=>{
+        const token=type+":"+x.id;
+        if(valid(token))chosen.add(token);
+      });
+    }
+    syncNative();
+    render();
+  }
+  function clear(){
+    chosen.clear();
+    clearCourtSelection();
+    selectedShapeId=null;
+    selectedFreeShapeIds.clear();
+    selectedImageId=null;
+    selectedLineId=null;
+    selectedTextId=null;
+    selectedMeasurementId=null;
+    render();
+  }
+  function ensureToolbar(){
+    if(document.getElementById("artworkMultiBar"))return;
+    const anchor=document.getElementById("multiSelectPanel")
+      ||document.getElementById("courtAlignToolbar");
+    if(!anchor?.parentElement)return;
+    const bar=document.createElement("div");
+    bar.id="artworkMultiBar";
+    bar.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:4px 5px;min-height:34px";
+    bar.innerHTML=
+      '<button type="button" class="secondary" id="artworkPickMode" title="Ctrl / Shift + klik; pada tablet, hidupkan mode ini dan tap objek">Multi Select</button>'+
+      '<strong id="artworkPickCount" style="font-size:11px;color:#1d4ed8"></strong>'+
+      '<button type="button" class="secondary" id="artworkPickAll">Select All</button>'+
+      '<button type="button" class="secondary" id="artworkPickClear">Clear</button>';
+    anchor.insertAdjacentElement("afterend",bar);
+    ["artworkPickMode","artworkPickAll","artworkPickClear"].forEach(id=>{
+      const b=document.getElementById(id);
+      b.style.cssText="padding:6px 9px;font-size:11px;font-weight:700";
+    });
+    document.getElementById("artworkPickMode").addEventListener("click",()=>{
+      multiPickMode=!multiPickMode;
+      if(multiPickMode&&typeof activateSelectMoveMode==="function")activateSelectMoveMode();
+      updateToolbar();
+    });
+    document.getElementById("artworkPickAll").addEventListener("click",selectAll);
+    document.getElementById("artworkPickClear").addEventListener("click",clear);
+  }
+  function updateToolbar(){
+    ensureToolbar();
+    prune();
+    const t=document.getElementById("artworkPickMode");
+    const count=document.getElementById("artworkPickCount");
+    const clearButton=document.getElementById("artworkPickClear");
+    if(t){
+      t.textContent=multiPickMode?"Multi Select: ON":"Multi Select";
+      t.setAttribute("aria-pressed",multiPickMode?"true":"false");
+      t.style.background=multiPickMode?"#eff6ff":"";
+      t.style.color=multiPickMode?"#1d4ed8":"";
+      t.style.borderColor=multiPickMode?"#2563eb":"";
+    }
+    if(count)count.textContent=chosen.size?chosen.size+" objek dipilih":"";
+    if(clearButton)clearButton.hidden=!chosen.size;
+  }
+  function selectedNode(token){
+    const type=token.split(":")[0],id=token.slice(type.length+1);
+    const inLayer=[...svg.querySelectorAll("[data-layer-token]")]
+      .find(e=>e.getAttribute("data-layer-token")===token);
+    if(inLayer)return inLayer;
+    const attr=nodeAttrs[type];
+    if(!attr)return null;
+    return [...svg.querySelectorAll("["+attr+"]")]
+      .find(e=>e.getAttribute(attr)===id)||null;
+  }
+  function selectedBounds(token){
+    const node=selectedNode(token);
+    if(!node)return null;
+    const source=node.querySelector?.(".shape-content,.image-content,.line-content,.text-content")||node;
+    try{
+      const b=source.getBBox(),m=source.getScreenCTM(),inv=svg.getScreenCTM()?.inverse();
+      if(!m||!inv)return null;
+      function p(x,y){
+        const sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f;
+        return {x:inv.a*sx+inv.c*sy+inv.e,y:inv.b*sx+inv.d*sy+inv.f};
+      }
+      const q=[p(b.x,b.y),p(b.x+b.width,b.y),
+        p(b.x+b.width,b.y+b.height),p(b.x,b.y+b.height)];
+      return {left:Math.min(...q.map(v=>v.x)),top:Math.min(...q.map(v=>v.y)),
+        right:Math.max(...q.map(v=>v.x)),bottom:Math.max(...q.map(v=>v.y))};
+    }catch(_){return null;}
+  }
+  function drawHighlight(){
+    svg.querySelectorAll(".unified-multi-selection").forEach(el=>el.remove());
+    if(!chosen.size)return;
+    const px=(svg.viewBox?.baseVal?.width||state.siteW||40)/
+      Math.max(1,svg.getBoundingClientRect().width);
+    let index=0;
+    for(const token of chosen){
+      const b=selectedBounds(token);
+      if(!b)continue;
+      index++;
+      const x=b.left-4*px,y=b.top-4*px;
+      const w=Math.max(b.right-b.left+8*px,14*px);
+      const h=Math.max(b.bottom-b.top+8*px,14*px);
+      const group=ns("g",{class:"unified-multi-selection editing-only",
+        "pointer-events":"none","data-selected-token":token});
+      group.appendChild(ns("rect",{x,y,width:w,height:h,fill:"#2563eb",
+        "fill-opacity":".04",stroke:"#111111","stroke-width":"2",
+        "vector-effect":"non-scaling-stroke","pointer-events":"none"}));
+      group.appendChild(ns("rect",{x,y,width:w,height:h,fill:"none",
+        stroke:"#ffffff","stroke-width":"2","stroke-dasharray":"5 5",
+        "vector-effect":"non-scaling-stroke","pointer-events":"none"}));
+      for(const [cx,cy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){
+        group.appendChild(ns("rect",{
+          x:cx-3*px,y:cy-3*px,width:6*px,height:6*px,rx:px,
+          fill:"#ffffff",stroke:"#2563eb","stroke-width":"1.5",
+          "vector-effect":"non-scaling-stroke","pointer-events":"none"
+        }));
+      }
+      group.appendChild(ns("rect",{x,y:y-16*px,width:23*px,height:14*px,rx:3*px,
+        fill:"#2563eb","pointer-events":"none"}));
+      const text=ns("text",{x:x+11.5*px,y:y-9*px,"text-anchor":"middle",
+        "dominant-baseline":"middle","font-size":10*px,"font-weight":"700",
+        fill:"#ffffff","pointer-events":"none"});
+      text.textContent=String(index);
+      group.appendChild(text);
+      svg.appendChild(group);
+    }
+  }
+  function decorateLayerRows(){
+    const list=document.getElementById("courtList");
+    if(!list)return;
+    list.querySelectorAll("[data-layer-token]").forEach(row=>{
+      const isSelected=chosen.has(row.dataset.layerToken);
+      if(!isSelected&&chosen.size){
+        row.classList.remove("active");
+        row.style.boxShadow="";
+        row.style.background="";
+      }
+      if(!isSelected)return;
+      row.classList.add("active");
+      row.style.boxShadow="inset 3px 0 #2563eb";
+      row.style.background="#eff6ff";
+      row.setAttribute("aria-selected","true");
+      const caption=row.querySelector(".layer-name");
+      if(caption&&!caption.querySelector(".unified-layer-check")){
+        const tick=document.createElement("span");
+        tick.className="unified-layer-check";
+        tick.textContent="✓ ";
+        tick.style.cssText="color:#1d4ed8;font-weight:900;margin-right:4px";
+        caption.insertBefore(tick,caption.firstChild);
+      }
+    });
+  }
+  function syncNativeGroupsIntoDisplay(){
+    // Native touch long-press & Shape Bebas Select All should retain highlights.
+    if(chosen.size>1)return;
+    const courts=selectedCourts();
+    if(courts.length>1){
+      chosen.clear();
+      courts.forEach(c=>chosen.add("court:"+c.id));
+      return;
+    }
+    if(selectedFreeShapeIds.size>1){
+      chosen.clear();
+      selectedFreeShapeIds.forEach(id=>chosen.add("shape:"+id));
+    }
+  }
+  function refreshSelection(){
+    prune();
+    syncNativeGroupsIntoDisplay();
+    updateToolbar();
+    decorateLayerRows();
+    drawHighlight();
+  }
+  const renderBeforeUnified=render;
+  render=function(options={}){
+    const result=renderBeforeUnified(options);
+    refreshSelection();
+    return result;
+  };
+  // Capture selection gestures before native per-object drag handlers.
+  svg.addEventListener("pointerdown",event=>{
+    if(event.button!==0||stageSpaceHeld||stagePanActive||stageTouchPanMode)return;
+    const token=tokenFromTarget(event.target);
+    const additive=multiPickMode||event.shiftKey||event.ctrlKey||event.metaKey;
+    if(additive){
+      if(!token||token==="site:main"){
+        if(multiPickMode&&token==="site:main"){
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      toggle(token);
+      return;
+    }
+    if(!token||token==="site:main"){
+      chosen.clear();
+    }else{
+      const allSameType=[...chosen].every(t=>t.split(":")[0]===token.split(":")[0]);
+      const groupDrag=chosen.size>1&&chosen.has(token)&&allSameType&&
+        (token.startsWith("court:")||token.startsWith("shape:"));
+      if(!groupDrag){chosen.clear();chosen.add(token);}
+    }
+    requestAnimationFrame(refreshSelection);
+  },true);
+  const list=document.getElementById("courtList");
+  list?.addEventListener("click",event=>{
+    if(event.target.closest(".layer-handle,.layer-actions"))return;
+    const row=event.target.closest("[data-layer-token]");
+    if(!row)return;
+    const token=row.dataset.layerToken;
+    const additive=multiPickMode||event.shiftKey||event.ctrlKey||event.metaKey;
+    if(additive){
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      toggle(token);
+    }else{
+      chosen.clear();
+      if(valid(token))chosen.add(token);
+      requestAnimationFrame(refreshSelection);
+    }
+  },true);
+  document.getElementById("freeShapeSelectAllButton")?.addEventListener("click",()=>{
+    chosen.clear();
+    (state.shapeAnnotations||[]).filter(s=>s.decorative&&!s.hidden&&!s.locked)
+      .forEach(s=>chosen.add("shape:"+s.id));
+    requestAnimationFrame(refreshSelection);
+  });
+  document.addEventListener("keydown",event=>{
+    if(event.key!=="Escape"||!chosen.size)return;
+    if(event.target?.isContentEditable||
+       /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName||""))return;
+    multiPickMode=false;
+    clear();
+  },true);
+  window.BinaCourtMultiSelection={
+    get tokens(){return [...chosen];},
+    clear,selectAll,
+    pick(token){toggle(token);}
+  };
+  refreshSelection();
+})();
+</script>
+<style>
+/* Visible selection never changes exported court colours or geometry. */
+.unified-multi-selection rect:nth-child(2) {
+  animation:binaUnifiedSelectionMarch 0.75s linear infinite;
+}
+@keyframes binaUnifiedSelectionMarch {
+  to {stroke-dashoffset:-10px}
+}
+@media (prefers-reduced-motion:reduce) {
+  .unified-multi-selection rect:nth-child(2) {animation:none}
+}
+</style>
