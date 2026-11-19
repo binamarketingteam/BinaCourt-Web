@@ -2202,7 +2202,11 @@ function proposalLegend(scheme,usageByArea){
  groups.sort((a,b)=>PAINT_CATEGORIES.findIndex(c=>c.id===a.category)-PAINT_CATEGORIES.findIndex(c=>c.id===b.category)||b.pixels-a.pixels);
  return{groups,total:groups.reduce((sum,g)=>sum+g.entries.length,0)};
 }
-function coverHtml(name,meta,cover){return `<section class="page cover"><div class="cover-image" style="background-image:linear-gradient(90deg,rgba(22,38,48,.82),rgba(22,38,48,.32)),url('${cover}')"></div><div class="cover-art"></div><div class="cover-core"><img class="cover-logo" src="${DEFAULT_PROPOSAL_LOGO}"/><div class="cover-kicker">BINA PAINT · COLOUR CONSULTANCY</div><div class="cover-title">COLOUR SCHEME<br/>PROPOSAL</div></div><div class="cover-project"><small>PROJECT PROPOSAL</small><strong>${escapeText(name.toUpperCase())}</strong>${meta.documentRef?`<span>${escapeText(meta.documentRef)}</span>`:''}<span>${escapeText(meta.date||'')}</span></div></section>`;}
+function coverHtml(name,meta,cover){return `<section class="page cover bina-style-cover">
+ <div class="bina-cover-side"><img class="bina-cover-logo" src="${DEFAULT_PROPOSAL_LOGO}" alt="Bina Paint"/><div class="bina-cover-eyebrow">BINA PAINT · COLOUR CONSULTANCY</div><div class="bina-cover-title">COLOUR SCHEME<br/>PROPOSAL</div><div class="bina-cover-rule"></div><div class="bina-cover-detail"><span>PROJECT</span><strong>${escapeText(name.toUpperCase())}</strong></div><div class="bina-cover-detail"><span>REFERENCE</span><strong>${escapeText(meta.documentRef||'')}</strong></div><div class="bina-cover-columns"><div><span>NAMA SALE</span><strong>${escapeText(meta.salesName||'-')}</strong></div><div><span>PREPARED BY</span><strong>FAEZI</strong></div></div><div class="bina-cover-date">${escapeText(meta.date||'')}</div></div>
+ <div class="bina-cover-photo"><img src="${cover}" alt="Gambar cadangan colour scheme"/><div class="bina-cover-photo-tag">COLOUR SCHEME DESIGN</div></div>
+ <div class="bina-cover-footer"><span>BINA PAINT · PROTECT / ENHANCE / BUILD</span><span>${escapeText(meta.documentRef||'')}</span></div>
+ </section>`;}
 function legendTitle(c){const code=String(c.code||'').trim();const rawName=String(c.name||'').trim();const name=rawName&&rawName.toUpperCase()!=='CUSTOM COLOUR'?rawName:'';if(code&&name)return `${code} ${name}`.toUpperCase();if(code)return code.toUpperCase();if(name)return name.toUpperCase();return '';}
 function pageMontage(photos){if(views.length){const map=new Map(views.map((v,i)=>[v.id,photos[i]]));return renderA3FreeFrames(map);}const n=photos.length;
  if(n===1)return `<div class="montage solo"><img src="${photos[0]}"/></div>`;
@@ -2216,7 +2220,7 @@ function productLegendCard(group){
  const rows=shown.map((c,i)=>`<div class="spec-line"><strong>${i+1}.</strong> ${escapeText(legendTitle(c))}<span> · ${escapeText(c.description)}</span></div>`).join('');
  return `<div class="spec-group swatch-count-${shown.length}"><div class="spec-category">${escapeText(group.categoryLabel).toUpperCase()}</div><div class="spec-main"><div class="spec-swatches">${swatches}</div><div class="spec-copy"><div class="spec-product">${logoImg(paintProducts.find(p=>p.id===group.productId)||{id:group.productId,name:group.productName})}</div><div class="spec-lines">${rows}</div></div></div></div>`;
 }
-function proposalSchemePage(name,meta,number,photos,legend){const client=meta.clientLogo?`<img class="client-logo" src="${meta.clientLogo}"/>`:'';
+function proposalSchemePage(name,meta,number,photos,legend){const client='';
  const showGroups=legend.groups.slice(0,3);
  const continuation=legend.groups.length>3||legend.groups.some(g=>g.entries.length>5);
  const spec=showGroups.length?showGroups.map(productLegendCard).join(''):'<div class="no-colors">Belum ada kawasan yang dimasking untuk cadangan ini.</div>';
@@ -2279,6 +2283,27 @@ async function buildA3Html(name,meta,ids,onProgress,autoPrint=true){
  .appendix-main{padding:13mm 18mm}.appendix-top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ddd;padding-bottom:6mm;margin-bottom:10mm}.appendix-top h2{font-family:'Montserrat','Inter','Aptos',sans-serif;font-size:21pt;font-weight:600;letter-spacing:.15px;margin:0;color:#233c51}.appendix-top span{font-family:'Inter','Aptos',sans-serif;font-size:10.5pt;font-weight:400;color:#647486}.appendix-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5mm 4mm}.appendix-color{display:flex;align-items:center;gap:2mm;min-width:0}.appendix-chip{width:15mm;height:15mm;border:1px solid #cdd2d6;flex:none;font-size:8pt;font-weight:500;padding:2mm;color:#223}.appendix-color strong{display:block;font-family:'Inter','Aptos',sans-serif;font-weight:600;font-size:8.3pt;line-height:1.22;overflow-wrap:anywhere}.appendix-color small{display:block;font-family:'Inter','Aptos',sans-serif;font-weight:400;font-size:7.8pt;color:#697987;margin-top:1mm;overflow-wrap:anywhere}
  .pdf-preview-tools{position:sticky;top:0;z-index:50;background:#173853;color:white;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;font-size:14px;box-shadow:0 2px 10px #0004}.pdf-preview-tools span{font-size:12px;color:#cbdfea}.pdf-preview-tools button{padding:10px 18px;border:0;background:#ffd05d;color:#152b3c;font-family:'Inter','Aptos',sans-serif;font-weight:600;border-radius:8px;cursor:pointer}
  @media screen{body{padding:15px}.page{margin:0 auto 18px;transform-origin:top center}.pdf-preview-tools{margin:-15px -15px 18px}}
+/* BinaCourt-inspired first-page layout: structured project panel and large project visual. */
+.bina-style-cover{background:#102844;color:#fff;display:grid;grid-template-columns:45% 55%;font-family:'Inter','Aptos',Arial,sans-serif}
+.bina-cover-side{position:relative;padding:24mm 18mm 21mm 22mm;background:linear-gradient(145deg,#102844 0%,#163c5b 65%,#205c80 100%);display:flex;flex-direction:column;z-index:2}
+.bina-cover-logo{height:24mm;max-width:92mm;width:auto;object-fit:contain;object-position:left center;align-self:flex-start;margin-bottom:19mm}
+.bina-cover-eyebrow{font-size:9pt;font-weight:700;letter-spacing:2px;color:#f7ca60;margin-bottom:5mm}
+.bina-cover-title{font-family:'Montserrat','Inter',sans-serif;font-size:33pt;font-weight:700;line-height:1.12;letter-spacing:.15px}
+.bina-cover-rule{width:35mm;height:1.5mm;background:#ffd05d;margin:12mm 0}
+.bina-cover-detail{display:flex;flex-direction:column;gap:2mm;margin-bottom:7mm;min-width:0}
+.bina-cover-detail span,.bina-cover-columns span{font-size:8pt;font-weight:700;letter-spacing:1.2px;color:#c4d6e4}
+.bina-cover-detail strong{font-size:14pt;line-height:1.3;overflow-wrap:anywhere;font-weight:700}
+.bina-cover-detail:nth-of-type(2) strong{font-size:11pt}
+.bina-cover-columns{display:flex;gap:11mm;margin-top:2mm}
+.bina-cover-columns>div{display:flex;flex-direction:column;gap:2mm;min-width:0}
+.bina-cover-columns strong{font-size:11pt;overflow-wrap:anywhere}
+.bina-cover-date{font-size:10pt;color:#c6d9e7;margin-top:auto}
+.bina-cover-photo{position:relative;overflow:hidden;background:#dce4e8}
+.bina-cover-photo img{display:block;width:100%;height:100%;object-fit:cover}
+.bina-cover-photo:before{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(8,28,45,.35),transparent 45%);z-index:1}
+.bina-cover-photo-tag{position:absolute;bottom:19mm;right:15mm;z-index:2;background:#ffd05d;color:#102844;font:700 11pt 'Montserrat',sans-serif;padding:5mm 7mm;letter-spacing:.5px}
+.bina-cover-footer{position:absolute;bottom:0;left:0;right:0;height:10mm;background:#0b2035;color:#dce8f2;display:flex;align-items:center;justify-content:space-between;padding:0 12mm 0 22mm;font-size:7pt;letter-spacing:.4px;z-index:4}
+
  @media print{body{background:white}.page{box-shadow:none;margin:0}.pdf-preview-tools{display:none!important} }
  
 /* V3.34: product logo integration */
