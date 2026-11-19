@@ -2202,17 +2202,11 @@ function proposalLegend(scheme,usageByArea){
  groups.sort((a,b)=>PAINT_CATEGORIES.findIndex(c=>c.id===a.category)-PAINT_CATEGORIES.findIndex(c=>c.id===b.category)||b.pixels-a.pixels);
  return{groups,total:groups.reduce((sum,g)=>sum+g.entries.length,0)};
 }
-function coverHtml(name,meta,cover){return `<section class="page cover reference-cover">
- <div class="reference-cover-image" style="background-image:url('${cover}')"></div>
- <div class="reference-cover-mist"></div>
- <img class="reference-cover-logo" src="${DEFAULT_PROPOSAL_LOGO}" alt="Bina Paint"/>
- <div class="reference-cover-heading"><div class="reference-cover-title">COLOUR SCHEME</div><div class="reference-cover-subtitle">PROPOSAL</div></div>
- <div class="reference-cover-wheel"></div>
- <div class="reference-cover-innerwheel"></div>
- <div class="reference-cover-bottom-fade"></div>
- <div class="reference-cover-company"><div class="reference-cover-bina-mark">BINA<span>THE PERFECT SOLUTION</span></div><div class="reference-cover-contact"><strong>BINA PAINT</strong><span>No. 10 Jalan 9/7 Taman IKS, Seksyen 9, 43650 Bandar Baru Bangi, Selangor.</span><span>Tel: 03 8926 0012 / 0013 &nbsp; | &nbsp; Fax: 03 8926 0023</span><span>info@binapaint.com.my &nbsp; | &nbsp; www.binapaint.com.my</span></div></div>
- <div class="reference-cover-project"><strong>${escapeText(name.toUpperCase())}</strong><small>${escapeText(meta.documentRef||'')}</small></div>
- </section>`;}
+// Fixed reference artwork is stored in the repository, not derived from project photos.
+function coverHtml(name,meta,cover){
+ const asset=new URL('assets/cover-reference.webp',window.location.href).href;
+ return `<section class="page reference-static-cover"><img class="reference-static-cover-image" src="${asset}" alt="Bina Paint Colour Scheme Proposal"/><div class="reference-static-cover-project">${escapeText((name||'PROJEK BAHARU').toUpperCase())}</div></section>`;
+}
 function legendTitle(c){const code=String(c.code||'').trim();const rawName=String(c.name||'').trim();const name=rawName&&rawName.toUpperCase()!=='CUSTOM COLOUR'?rawName:'';if(code&&name)return `${code} ${name}`.toUpperCase();if(code)return code.toUpperCase();if(name)return name.toUpperCase();return '';}
 function pageMontage(photos){if(views.length){const map=new Map(views.map((v,i)=>[v.id,photos[i]]));return renderA3FreeFrames(map);}const n=photos.length;
  if(n===1)return `<div class="montage solo"><img src="${photos[0]}"/></div>`;
@@ -2329,6 +2323,11 @@ async function buildA3Html(name,meta,ids,onProgress,autoPrint=true){
 .reference-cover-project{position:absolute;z-index:6;right:5mm;bottom:6mm;width:208mm;min-height:52mm;border:1.1mm solid #111;border-radius:5mm;background:rgba(255,255,255,.97);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:3mm;padding:6mm 10mm;color:#111}
 .reference-cover-project strong{font-family:'Inter','Aptos',sans-serif;font-size:16pt;line-height:1.2;font-style:italic;font-weight:500;letter-spacing:.7px;overflow-wrap:anywhere}
 .reference-cover-project small{font-size:8pt;color:#4b5660;overflow-wrap:anywhere}
+
+/* Reference cover is the user's exact flat artwork; ONLY project name is dynamic. */
+.reference-static-cover{background:#fff!important;position:relative!important;display:block!important;color:#111!important}
+.reference-static-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
+.reference-static-cover-project{position:absolute;z-index:3;left:52.74%;right:4.77%;top:85.36%;bottom:6.49%;display:flex;justify-content:center;align-items:center;text-align:center;background:white;color:#111;font-family:Arial,'Inter',sans-serif;font-size:18.5pt;font-weight:700;letter-spacing:.65px;line-height:1.12;overflow-wrap:anywhere;padding:0 1.5mm}
 
  @media print{body{background:white}.page{box-shadow:none;margin:0}.pdf-preview-tools{display:none!important} }
  
