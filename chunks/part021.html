@@ -184,13 +184,13 @@
       hit.setAttribute("width",item.w);
       hit.setAttribute("height",item.h);
     }
-    // Keep both Photoshop-style selection strokes aligned while resizing.
-    group.querySelectorAll(".shape-selection").forEach(sel=>{
+    const sel=group.querySelector(".shape-selection");
+    if(sel){
       sel.setAttribute("x",item.x);
       sel.setAttribute("y",item.y);
       sel.setAttribute("width",item.w);
       sel.setAttribute("height",item.h);
-    });
+    }
 
     const handles={
       nw:[item.x,item.y],
@@ -662,18 +662,10 @@
     bindShapeDrag(rect,item,group);
 
     if(item.id===selectedShapeId || selectedFreeShapeIds.has(item.id)){
-      // Photoshop marching ants: contrasting solid black under animated white dashes.
-      // SVG non-scaling strokes keep the outline readable at every zoom level.
       group.appendChild(ns("rect",{
-        class:"editing-only shape-selection shape-selection-back",
+        class:"editing-only shape-selection",
         x:item.x,y:item.y,width:item.w,height:item.h,
-        fill:"none",stroke:"#111111","stroke-width":"1.8",
-        "vector-effect":"non-scaling-stroke","pointer-events":"none"
-      }));
-      group.appendChild(ns("rect",{
-        class:"editing-only shape-selection shape-selection-ants",
-        x:item.x,y:item.y,width:item.w,height:item.h,
-        fill:"none",stroke:"#ffffff","stroke-width":"1.8","stroke-dasharray":"5 5",
+        fill:"none",stroke:"#2563eb","stroke-width":.045,"stroke-dasharray":".16 .10",
         "vector-effect":"non-scaling-stroke","pointer-events":"none"
       }));
 
@@ -2658,9 +2650,6 @@
   }
   function refreshSelection(){
     prune();
-    // Native single-object clicks must also show the Photoshop outline.
-    // Previously only unified multi-select state was guaranteed to paint it.
-    if(!chosen.size)seedFromNative();
     syncNativeGroupsIntoDisplay();
     updateToolbar();
     updateGroupColourEditor();
@@ -2713,14 +2702,6 @@
     }
     requestAnimationFrame(refreshSelection);
   },true);
-  // The native selection handler often completes on pointerup (not pointerdown).
-  // Sync again after it commits, so clicks, drags and tablet taps stay visible.
-  svg.addEventListener("pointerup",()=>{
-    requestAnimationFrame(()=>{
-      if(!chosen.size)seedFromNative();
-      refreshSelection();
-    });
-  },false);
   const list=document.getElementById("courtList");
   list?.addEventListener("click",event=>{
     if(event.target.closest(".layer-handle,.layer-actions"))return;
@@ -2762,15 +2743,7 @@
 
 </script>
 
-<style>
-/* BinaCourt Photoshop-like marching ants selection (screen-space SVG stroke). */
-.shape-annotation .shape-selection-back { stroke:#111 !important; stroke-width:1.8px !important; stroke-dasharray:none !important; vector-effect:non-scaling-stroke; }
-.shape-annotation .shape-selection-ants { stroke:#fff !important; stroke-width:1.8px !important; stroke-dasharray:5px 5px !important; vector-effect:non-scaling-stroke; animation:binaShapeMarch 0.65s linear infinite; }
-.shape-annotation .shape-selection { pointer-events:none !important; }
-.shape-annotation .shape-resize-knob { stroke:#111 !important; stroke-width:1.3px !important; vector-effect:non-scaling-stroke; }
-@keyframes binaShapeMarch { to { stroke-dashoffset:-10px; } }
-@media (prefers-reduced-motion:reduce) { .shape-annotation .shape-selection-ants {animation:none;} }
-</style>
+
 
 
 <style>
