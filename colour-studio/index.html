@@ -224,13 +224,31 @@
 #saveMenuWrap>.cloud-head-menu{left:auto;right:0}
 .cloud-head-menu .btn{width:100%;justify-content:flex-start}
 @media(max-width:760px){.header-buttons>.export-menu{flex:1;min-width:0}.header-buttons>.export-menu>.btn{width:100%}#saveMenuWrap>.cloud-head-menu{left:0;right:auto}}
+/* BinaCourt-style project controls, always visible before PDF export. */
+.topbar{height:auto;min-height:67px;flex-wrap:wrap;align-items:center}
+.studio-project-bar{display:flex;flex:1 1 530px;align-items:end;gap:9px;min-width:0;flex-wrap:wrap}
+.studio-project-field{display:flex;flex-direction:column;gap:4px;min-width:105px}
+.studio-project-title{flex:1 1 200px;min-width:170px}
+.studio-project-field label{color:#cbdce8;font-size:10px;font-weight:700;letter-spacing:.03em}
+.studio-project-field input,.studio-project-field select{height:35px;max-width:100%;background:#fff;color:#18344d;border:1px solid #cddbe5;border-radius:7px;padding:6px 9px;font-size:12px}
+.studio-project-field select{min-width:120px}
+.studio-project-no{width:92px;min-width:92px}
+.studio-project-ref{display:flex;flex-direction:column;justify-content:end;gap:3px;max-width:270px;min-width:125px}
+.studio-project-ref small{color:#ffe19a;font-size:10px;font-weight:650;overflow-wrap:anywhere}
+.studio-project-ref .save-status{font-size:10px}
+@media(max-width:940px){.studio-project-bar{order:3;flex-basis:100%;padding-bottom:8px}.header-buttons{margin-left:auto}}
 </style>
 </head>
 <body>
 <div class="app">
  <header class="topbar">
   <div class="brand"><div class="brand-mark">B</div><div><strong>BINA PAINT</strong><small>COLOUR SCHEME STUDIO · V3.41</small></div></div>
-  <div class="project-head"><input aria-label="Nama projek" id="projectName" placeholder="Nama projek" value="Projek Baharu"/><span class="save-status" id="saveStatus">Belum disimpan</span></div>
+  <div class="project-head studio-project-bar">
+   <div class="studio-project-field studio-project-title"><label for="projectName">Project</label><input aria-label="Nama projek" id="projectName" placeholder="Nama projek" value="Projek Baharu"/></div>
+   <div class="studio-project-field"><label for="studioSalesName">Nama Sale</label><select id="studioSalesName"><option value="">Pilih Nama Sale</option><option>Abid</option><option>Aida</option><option>Aizat</option><option>Asbullah</option><option>Baim</option><option>Dani</option><option>Farhan</option><option>Firdaus</option><option>Haji</option><option>Hendra</option><option>Saiful</option><option>Shafit</option><option>Sharifah</option><option>Wahab</option><option>Zul</option></select></div>
+   <div class="studio-project-field studio-project-no"><label for="studioReferenceNo">No. Rujukan</label><input id="studioReferenceNo" value="01" maxlength="30" autocomplete="off"/></div>
+   <div class="studio-project-ref"><small id="studioReferencePreview">CSBP</small><span class="save-status" id="saveStatus">Belum disimpan</span></div>
+  </div>
   <div class="header-buttons">
     <button class="btn outline-dark" id="newBtn">＋ NEW</button>
     <div class="export-menu" id="openMenuWrap"><button class="btn outline-dark" id="openMenuBtn" aria-haspopup="menu" aria-expanded="false">📂 OPEN ▾</button><div class="export-submenu cloud-head-menu" id="openSubmenu" hidden><button type="button" class="btn" id="openLocalBtn">💻 Open Local (Explorer)</button><button type="button" class="btn" id="openWebBtn">☁ Open Web</button></div></div>
@@ -542,13 +560,30 @@ function getProposalMYDate(){
 function cleanDocumentField(s){return String(s??'').trim().toUpperCase().replace(/[^A-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');}
 function makeProposalMeta(meta){
  const d=getProposalMYDate();
- const preparedBy=cleanDocumentField(meta?.preparedBy);
+ const preparedBy='FAEZI';
  const salesName=cleanDocumentField(meta?.salesName);
- const folderNumber=cleanDocumentField(meta?.folderNumber);
- return{...(meta||{}),preparedBy,salesName,folderNumber,date:d.iso,documentRef:`CSBP/${d.short}/${preparedBy}/${salesName}/${folderNumber}`};
+ const folderNumber=cleanDocumentField(meta?.folderNumber)||'01';
+ return{...(meta||{}),clientLogo:'',preparedBy,salesName,folderNumber,date:d.iso,documentRef:`CSBP${d.short}/${salesName||'[NAMA SALE]'}/faezi/${folderNumber}`};
 }
+function syncStudioProjectBar(){
+ const sale=$('studioSalesName'),number=$('studioReferenceNo');
+ if(!sale||!number)return;
+ proposalMeta=makeProposalMeta({...proposalMeta,salesName:sale.value,folderNumber:number.value});
+ $('studioReferencePreview').textContent=proposalMeta.documentRef;
+}
+function setStudioProjectBar(meta){
+ const sale=$('studioSalesName'),number=$('studioReferenceNo');
+ if(!sale||!number)return;
+ const value=meta?.salesName||'';
+ if(value&&!Array.from(sale.options).some(o=>o.value===value))sale.add(new Option(value,value));
+ sale.value=value;number.value=meta?.folderNumber||'01';
+ syncStudioProjectBar();
+}
+$('studioSalesName').addEventListener('change',()=>{syncStudioProjectBar();setDirty()});
+$('studioReferenceNo').addEventListener('input',()=>{syncStudioProjectBar();setDirty()});
 function currentProposalMeta(){return makeProposalMeta(proposalMeta);}
-let views=[],activeViewId=null,proposalMeta=makeProposalMeta({preparedBy:'',salesName:'',folderNumber:'',clientLogo:''});
+let views=[],activeViewId=null,proposalMeta=makeProposalMeta({salesName:'',folderNumber:'01'});
+setStudioProjectBar(proposalMeta);
 let viewSwitching=false;
 
 // Temporary Alt+right-drag size adjustment (no paint/erase while resizing).
@@ -1918,6 +1953,7 @@ function blankProject(){
  updateShade();
  hasProjectPhoto=false;isDemo=false;
  $('projectName').value='Projek Baharu';
+ setStudioProjectBar({salesName:'',folderNumber:'01'});
 
  $('saveStatus').style.display='none';
  refreshUI();renderViewList();updateEmptyProjectUI();fitView();
@@ -2337,7 +2373,8 @@ async function loadProject(data){if(!data||data.app!=='Bina Colour Scheme Studio
  proposalMeta=makeProposalMeta({clientLogo:'',...savedMeta,
    preparedBy:savedMeta.preparedBy||oldRef?.[1]||'',
    salesName:savedMeta.salesName||oldRef?.[2]||'',
-   folderNumber:savedMeta.folderNumber||oldRef?.[3]||''});
+   folderNumber:savedMeta.folderNumber||oldRef?.[3]||'01'});
+ setStudioProjectBar(proposalMeta);
  renderViewList();
  if(Array.isArray(data.palette)&&data.palette.length){updatePalette(data.palette,'add');}isDemo=false;resetMaskHistory();dirty=false;$('saveStatus').textContent='Projek dibuka';$('imageInfo').textContent='Gambar projek dimuatkan';refreshUI();fitView();if(normalizedSchemes.changed){setDirty();toast('Scheme lama telah diselaraskan ke nombor. Sila Simpan Lokal atau Fail Projek untuk kekalkan perubahan.');}else toast('Projek "'+data.name+'" berjaya dibuka')}
 $('projectFile').onchange=async ev=>{const file=ev.target.files[0];if(!file)return;try{const text=await file.text();await loadProject(JSON.parse(text));closeModal();}catch(err){toast('Tidak dapat buka projek: '+err.message)}ev.target.value=''};
