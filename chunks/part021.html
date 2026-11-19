@@ -1251,6 +1251,19 @@
     return order;
   };
 
+  // Keep optional Tools object groups addressable by the unified selection
+  // system even when their own renderer has no data-layer-token attribute.
+  function drawTaggedSelectObject(token,draw){
+    const before=new Set(svg.children);
+    draw();
+    for(const child of svg.children){
+      if(!before.has(child) && typeof child.setAttribute==="function" &&
+         !child.hasAttribute("data-layer-token")){
+        child.setAttribute("data-layer-token",token);
+      }
+    }
+  }
+
   drawArtworkLayers=function(){
     normalizeImageAnnotations();
     normalizeLineAnnotations();
@@ -1316,25 +1329,27 @@
       }
 
       if(token.startsWith("lamp:")){
-        if(window.BinaCourtLighting) window.BinaCourtLighting.draw(parseInt(token.slice(5),10));
+        drawTaggedSelectObject(token,()=>{
+          if(window.BinaCourtLighting) window.BinaCourtLighting.draw(parseInt(token.slice(5),10));
+        });
         index++;
         continue;
       }
 
       if(token.startsWith("door:")){
-        window.BinaCourtDoors?.draw(parseInt(token.slice(5),10));
+        drawTaggedSelectObject(token,()=>window.BinaCourtDoors?.draw(parseInt(token.slice(5),10)));
         index++;
         continue;
       }
 
       if(token.startsWith("partition:")){
-        window.BinaCourtPartitions?.draw(parseInt(token.slice(10),10));
+        drawTaggedSelectObject(token,()=>window.BinaCourtPartitions?.draw(parseInt(token.slice(10),10)));
         index++;
         continue;
       }
 
       if(token.startsWith("net:")){
-        window.BinaCourtNets?.draw(parseInt(token.slice(4),10));
+        drawTaggedSelectObject(token,()=>window.BinaCourtNets?.draw(parseInt(token.slice(4),10)));
         index++;
         continue;
       }
