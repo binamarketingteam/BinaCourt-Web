@@ -2121,39 +2121,18 @@ function paletteMatchColor(hex){return customPalette.find(p=>p.hex.toUpperCase()
 let lastProposalSelection=null;
 function proposalOptions(){
  if(!hasProjectPhoto){toast('Upload gambar dahulu.');return;}
- ensureViews();
+ ensureViews();syncStudioProjectBar();
  const list=views.map((v,i)=>`<span style="font-size:12px;display:inline-block;padding:4px 8px;background:#f1f5f7;border-radius:6px;margin:3px">${i+1}. ${escapeText(v.name)}</span>`).join('');
  openModal(`<div class="modal-head"><h2>Export Colour Scheme Proposal · A3</h2><button class="btn" data-close>✕ Tutup</button></div>
- <p>Cover A3 + satu halaman setiap cadangan. Susunan gambar menggunakan A3 Layout Designer (Export → Susun Gambar A3). Semua Scheme berkongsi layout. Bahagian bawah memaparkan warna dan produk yang digunakan.</p>
- <div class="proposal-grid"><div class="field"><label>Nama Projek</label><input id="pdfProjectName" class="proposal-field" value="${escapeText($('projectName').value)}"/></div>
- <div class="field"><label>Disediakan Oleh</label><input id="pdfPrepared" class="proposal-field" placeholder="Contoh: FAEZI" value="${escapeText(proposalMeta.preparedBy||'')}" autocomplete="off"/></div>
- <div class="field"><label>Nama Sale</label><input id="pdfSale" class="proposal-field" placeholder="Contoh: SHAFIT" value="${escapeText(proposalMeta.salesName||'')}" autocomplete="off"/></div>
- <div class="field"><label>Nombor Rujukan Folder</label><input id="pdfFolder" class="proposal-field" placeholder="Contoh: 10" value="${escapeText(proposalMeta.folderNumber||'')}" autocomplete="off"/></div>
- <div class="field"><label>Tarikh (automatik)</label><input id="pdfDate" class="proposal-field" readonly value="${getProposalMYDate().short}"/></div>
- <div class="field" style="grid-column:1/-1"><label>Rujukan Dokumen (dijana automatik)</label><input id="pdfRef" class="proposal-field" readonly style="font-weight:750;background:#f1f6fa;color:#163a56" value="${escapeText(currentProposalMeta().documentRef)}"/><small class="tiny">Format tetap: CSBP / DD/MM/YY / DISEDIAKAN OLEH / NAMA SALE / NO. FOLDER</small></div></div>
- <div class="field"><label>Cadangan untuk dimasukkan</label><div class="proposal-schemes" id="pdfSchemeSelection">${schemes.map((s)=>`<label><input type="checkbox" value="${escapeText(s.id)}" checked/> ${escapeText(s.name)}</label>`).join('')}</div></div>
- <div class="field"><label>Gambar / Sudut (${views.length})</label><div>${list}</div><small class="tiny">Tambahkan sudut di panel Foto sebelum eksport. Setiap sudut perlu dimasking jika mahu berubah ikut Scheme.</small></div>
- <div class="field"><label>Logo Pelanggan (pilihan)</label><input id="pdfClientLogo" type="file" accept="image/png,image/jpeg,image/webp"/><small class="tiny">Logo ini akan diletakkan dalam header. Logo utama sudah tersedia.</small></div>
- <p class="tiny">Untuk simpan: dalam dialog cetak Chrome/Edge pilih <b>Save as PDF</b>, kertas <b>A3</b>, orientasi <b>Landscape</b>, margin <b>None</b> dan matikan <b>Headers and footers</b>. Pastikan Background graphics diaktifkan.</p>
- <button class="btn primary block" id="buildProposalA3" style="margin-top:12px">▣ Jana Proposal A3</button><div id="pdfProgress" class="tiny" style="margin-top:8px"></div>`);
- const updateRefPreview=()=>{
-  proposalMeta=makeProposalMeta({...proposalMeta,preparedBy:$('pdfPrepared').value,salesName:$('pdfSale').value,folderNumber:$('pdfFolder').value});
-  $('pdfRef').value=proposalMeta.documentRef;$('pdfDate').value=getProposalMYDate().short;
-  setDirty();
- };
- for(const id of ['pdfPrepared','pdfSale','pdfFolder'])$(id).addEventListener('input',updateRefPreview);
- const btn=$('buildProposalA3');btn.onclick=async()=>{
-  const ids=[...$('pdfSchemeSelection').querySelectorAll('input:checked')].map(el=>el.value);if(!ids.length)return toast('Pilih sekurang-kurangnya satu cadangan.');
-  const name=$('pdfProjectName').value.trim()||$('projectName').value;
-  const p=makeProposalMeta({...proposalMeta,preparedBy:$('pdfPrepared').value,salesName:$('pdfSale').value,folderNumber:$('pdfFolder').value});
-  if(!p.preparedBy||!p.salesName||!p.folderNumber){toast('Isi Disediakan Oleh, Nama Sale dan Nombor Rujukan Folder dahulu.');$('pdfProgress').textContent='Lengkapkan tiga maklumat rujukan dokumen terlebih dahulu.';return;}
-  const file=$('pdfClientLogo').files?.[0];if(file){const url=URL.createObjectURL(file);try{const im=await loadImage(url);const c=document.createElement('canvas');const scale=Math.min(1,500/Math.max(im.naturalWidth,im.naturalHeight));c.width=Math.max(1,Math.round(im.naturalWidth*scale));c.height=Math.max(1,Math.round(im.naturalHeight*scale));c.getContext('2d').drawImage(im,0,0,c.width,c.height);p.clientLogo=c.toDataURL('image/png');}finally{URL.revokeObjectURL(url)}}
-  proposalMeta=p;setDirty();const printTab=window.open('','_blank');if(!printTab){toast('Benarkan pop-up untuk jana PDF A3.');return;}
-  printTab.document.write('<!doctype html><title>Menjana A3...</title><body style="font:16px Arial;padding:40px">Sedang menyediakan gambar dan PDF A3, sila tunggu...</body>');printTab.document.close();
-  btn.disabled=true;$('pdfProgress').textContent='Menjana warna bagi setiap sudut...';
-  try{syncActiveView();const html=await buildA3Html(name,p,ids,(v)=>{$('pdfProgress').textContent=v;},true);printTab.document.open();printTab.document.write(html);printTab.document.close();lastProposalSelection={ids:[...ids]};$('pdfProgress').textContent='Siap. Gunakan Print / Save as PDF dalam tab baharu.';toast('Proposal A3 sedia dicetak.');}
-  catch(err){printTab.document.body.innerText='Gagal menyediakan proposal: '+err.message;toast('PDF gagal: '+err.message)}finally{btn.disabled=false;}
- };
+ <p>Maklumat Project, Nama Sale dan No. Rujukan diambil terus dari bahagian atas Colour Scheme Studio. Disediakan Oleh ditetapkan kepada <b>FAEZI</b>.</p>
+ <div class="proposal-grid"><div class="field"><label>Project</label><strong>${escapeText($('projectName').value)}</strong></div>
+ <div class="field"><label>Disediakan Oleh</label><strong>FAEZI</strong></div>
+ <div class="field"><label>Nama Sale</label><strong>${escapeText(proposalMeta.salesName||'Belum dipilih')}</strong></div>
+ <div class="field"><label>No. Rujukan</label><strong>${escapeText(proposalMeta.folderNumber)}</strong></div>
+ <div class="field" style="grid-column:1/-1"><label>Rujukan Dokumen</label><strong style="color:#163a56;overflow-wrap:anywhere">${escapeText(proposalMeta.documentRef)}</strong></div></div>
+ <div class="field"><label>Cadangan untuk dimasukkan</label><div class="proposal-schemes" id="pdfSchemeSelection">${schemes.map(s=>`<label><input type="checkbox" value="${escapeText(s.id)}" checked/> ${escapeText(s.name)}</label>`).join('')}</div></div>
+ <div class="field"><label>Gambar / Sudut (${views.length})</label><div>${list}</div></div>
+ <button class="btn primary block" id="buildProposalA3" style="margin-top:12px">⬇ Export Proposal A3 (PDF)</button><div id="pdfProgress" class="tiny" style="margin-top:8px"></div>`);
 }
 const exportMenuWrap=$('exportMenuWrap'),exportMenuBtn=$('exportMenuBtn'),exportSubmenu=$('exportSubmenu');
 function toggleExportMenu(force){
@@ -2591,67 +2570,32 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){finishBrus
 window.addEventListener('resize',()=>{if(!painting)fitView()});
 // Colour Scheme Studio V3.39: Direct PDF export via bundled html2pdf.js.
 // This script runs INSIDE the existing application closure; View PDF remains unchanged.
-const originalProposalOptionsV339 = proposalOptions;
-proposalOptions = function proposalOptionsWithDirectPdf() {
-  originalProposalOptionsV339();
-  const btn = $('buildProposalA3');
-  if (!btn) return;
-  btn.textContent = '⬇ Export Proposal A3 (PDF)';
-  const note = $('modalLayer')?.querySelector('.modal p.tiny');
-  if (note && note.textContent.includes('Save as PDF')) {
-    note.innerHTML = 'Export akan terus memuat turun <b>fail PDF A3 Landscape</b> tanpa dialog Print. <b>View PDF</b> kekal sebagai pratonton.';
-  }
-  btn.onclick = async () => {
-    const progress = $('pdfProgress');
-    const ids = [...$('pdfSchemeSelection').querySelectorAll('input:checked')].map(el => el.value);
-    if (!ids.length) return toast('Pilih sekurang-kurangnya satu cadangan.');
-    const name = $('pdfProjectName').value.trim() || $('projectName').value || 'Projek Baharu';
-    const p = makeProposalMeta({
-      ...proposalMeta,
-      preparedBy: $('pdfPrepared').value,
-      salesName: $('pdfSale').value,
-      folderNumber: $('pdfFolder').value
-    });
-    if (!p.preparedBy || !p.salesName || !p.folderNumber) {
-      toast('Isi Disediakan Oleh, Nama Sale dan Nombor Rujukan Folder dahulu.');
-      progress.textContent = 'Lengkapkan tiga maklumat rujukan dokumen terlebih dahulu.';
-      return;
-    }
-    const clientFile = $('pdfClientLogo').files?.[0];
-    if (clientFile) {
-      const url = URL.createObjectURL(clientFile);
-      try {
-        const im = await loadImage(url);
-        const c = document.createElement('canvas');
-        const scale = Math.min(1, 500 / Math.max(im.naturalWidth, im.naturalHeight));
-        c.width = Math.max(1, Math.round(im.naturalWidth * scale));
-        c.height = Math.max(1, Math.round(im.naturalHeight * scale));
-        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        p.clientLogo = c.toDataURL('image/png');
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    }
-    proposalMeta = p;
-    setDirty();
-    btn.disabled = true;
-    btn.textContent = 'Menjana PDF...';
-    progress.textContent = 'Menyediakan gambar dan layout A3...';
-    try {
-      syncActiveView();
-      await downloadProposalA3DirectV339(name, p, ids, message => { if (progress) progress.textContent = message; });
-      lastProposalSelection = { ids: [...ids] };
-      progress.textContent = 'PDF berjaya dijana dan muat turun telah dimulakan.';
-      toast('PDF A3 berjaya dijana. Semak Downloads.');
-    } catch (err) {
-      console.error('Direct PDF export failed', err);
-      progress.textContent = 'Gagal menjana PDF: ' + (err?.message || err);
-      toast('Export PDF gagal. ' + (err?.message || err));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '⬇ Export Proposal A3 (PDF)';
-    }
-  };
+const originalProposalOptionsV339=proposalOptions;
+proposalOptions=function proposalOptionsWithDirectPdf(){
+ originalProposalOptionsV339();
+ const btn=$('buildProposalA3');if(!btn)return;
+ btn.onclick=async()=>{
+  syncStudioProjectBar();
+  const progress=$('pdfProgress');
+  const ids=[...$('pdfSchemeSelection').querySelectorAll('input:checked')].map(el=>el.value);
+  if(!ids.length)return toast('Pilih sekurang-kurangnya satu cadangan.');
+  if(!proposalMeta.salesName){toast('Pilih Nama Sale di bahagian Project atas dahulu.');return;}
+  const name=$('projectName').value.trim()||'Projek Baharu';
+  const p=makeProposalMeta(proposalMeta);
+  proposalMeta=p;setDirty();btn.disabled=true;btn.textContent='Menjana PDF...';
+  progress.textContent='Menyediakan gambar dan layout A3...';
+  try{
+   syncActiveView();
+   await downloadProposalA3DirectV339(name,p,ids,message=>{if(progress)progress.textContent=message;});
+   lastProposalSelection={ids:[...ids]};
+   progress.textContent='PDF berjaya dijana dan muat turun telah dimulakan.';
+   toast('PDF A3 berjaya dijana. Semak Downloads.');
+  }catch(err){
+   console.error('Direct PDF export failed',err);
+   progress.textContent='Gagal menjana PDF: '+(err?.message||err);
+   toast('Export PDF gagal. '+(err?.message||err));
+  }finally{btn.disabled=false;btn.textContent='⬇ Export Proposal A3 (PDF)';}
+ };
 };
 
 async function loadPdfScriptV339(doc, src) {
