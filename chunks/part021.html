@@ -442,6 +442,7 @@
     if($("freeShapeSelectionCount"))$("freeShapeSelectionCount").textContent=items.length+" Shape Bebas dipilih";
     if($("freeShapeKeyLabel"))$("freeShapeKeyLabel").textContent="Key: Shape Bebas "+(selectedShapeId??items[0].id);
     if($("freeShapeAlignGapUnit"))$("freeShapeAlignGapUnit").textContent="m";
+    refreshBulkFreeShapeColourToolbar(items);
     ["freeShapeDistributeHCenter","freeShapeDistributeVCenter"].forEach(id=>{
       if($(id))$(id).disabled=items.length<3;
     });
@@ -1576,12 +1577,199 @@
   }
   window.__refreshBinaEditingHandleSizes=refreshBinaEditingHandleSizes;
 
+
+  // Bulk colour editing for multi-selected courts: same colour property and
+  // product palette, with one undo/history step for the entire group.
+  const bulkCourtColourTargets=[
+    {key:"fill",label:"Court Surface",property:"fill",supports:()=>true},
+    {key:"line",label:"Court Line",property:"line",supports:()=>true},
+    {key:"kitchen",label:"Kitchen",property:"kitchenFill",supports:c=>isPickleballCourtType(c.type)},
+    {key:"pickleballCrossA",label:"Pickleball Silang A",property:"pickleballCrossA",supports:c=>isPickleballCourtType(c.type)&&!!c.pickleballCrossEnabled},
+    {key:"pickleballCrossB",label:"Pickleball Silang B",property:"pickleballCrossB",supports:c=>isPickleballCourtType(c.type)&&!!c.pickleballCrossEnabled},
+    {key:"takrawCircle",label:"Takraw Bulatan",property:"takrawCircleFill",supports:c=>isTakrawCourtType(c.type)},
+    {key:"takrawServe",label:"Takraw Serve / Semi-D",property:"takrawServeFill",supports:c=>isTakrawCourtType(c.type)},
+    {key:"netballGoal",label:"Netball Goal D",property:"netballGoalFill",supports:c=>isNetballCourtType(c.type)},
+    {key:"netballCenter",label:"Netball Bulat Tengah",property:"netballCenterFill",supports:c=>isNetballCourtType(c.type)},
+    {key:"netballMiddle",label:"Netball Petak Tengah",property:"netballMiddleFill",supports:c=>isNetballCourtType(c.type)},
+    {key:"volleyball",label:"Volleyball Middle",property:"volleyballAccentFill",supports:c=>isVolleyballCourtType(c.type)},
+    {key:"futsalCenter",label:"Futsal Bulat Tengah",property:"futsalCenterFill",supports:c=>isFutsalCourtType(c.type)},
+    {key:"futsalD",label:"Futsal Bulatan D",property:"futsalDFill",supports:c=>isFutsalCourtType(c.type)},
+    {key:"handballD",label:"Handball Bulatan D",property:"handballDFill",supports:c=>isHandballCourtType(c.type)},
+    {key:"zone",label:"Basketball 3-Point",property:"zoneFill",supports:c=>isBasketballCourtType(c.type)},
+    {key:"key",label:"Basketball Key",property:"keyFill",supports:c=>isBasketballCourtType(c.type)},
+    {key:"center",label:"Basketball Center",property:"centerFill",supports:c=>isBasketballCourtType(c.type)}
+  ];
+
+  function createBulkCourtColourControl(id,label){
+    const wrap=document.createElement("label");
+    wrap.style.cssText="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin:0;white-space:nowrap";
+    const title=document.createElement("span");
+    title.textContent=label;
+    const select=document.createElement("select");
+    select.id=id;
+    select.style.cssText="height:32px;min-width:112px;max-width:210px;padding:4px 20px 4px 6px;font-size:11px";
+    wrap.append(title,select);
+    return wrap;
+  }
+
+  function ensureBulkCourtColourToolbar(){
+    const panel=$("multiSelectPanel");
+    if(!panel)return;
+    if($("bulkCourtColourToolbar"))return;
+    const bar=document.createElement("div");
+    bar.id="bulkCourtColourToolbar";
+    bar.style.cssText="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:2px 0";
+    const prefix=document.createElement("strong");
+    prefix.textContent="COLOUR ALL";
+    prefix.style.cssText="font-size:11px;white-space:nowrap";
+    bar.appendChild(prefix);
+    bar.appendChild(createBulkCourtColourControl("bulkCourtColourTarget","Bahagian"));
+    bar.appendChild(createBulkCourtColourControl("bulkCourtColourValue","Warna"));
+    const preview=document.createElement("span");
+    preview.id="bulkCourtColourPreview";
+    preview.style.cssText="width:24px;height:24px;border:1px solid #98a2b3;border-radius:5px;display:inline-block;flex:0 0 24px";
+    bar.appendChild(preview);
+    const hint=document.createElement("span");
+    hint.id="bulkCourtColourHint";
+    hint.style.cssText="font-size:10px;max-width:270px;white-space:normal";
+    bar.appendChild(hint);
+    panel.style.flexWrap="wrap";
+    panel.appendChild(bar);
+    $("bulkCourtColourTarget").addEventListener("change",refreshBulkCourtColourToolbar);
+    $("bulkCourtColourValue").addEventListener("change",event=>{
+      const courts=selectedCourts();
+      const entry=bulkCourtColourTargets.find(item=>item.key===$("bulkCourtColourTarget")?.value);
+      const color=normalizeHexColor(event.target.value);
+      if(courts.length<2 || !entry || !color)return;
+      if(courts.some(c=>c.locked||c.hidden||!entry.supports(c)))return;
+      const brand=brandForCourt(courts[0]);
+      if(courts.some(c=>brandForCourt(c)!==brand))return;
+      const palette=entry.key==="line" ? getLinePaletteForBrand(brand) : getDefaultPaletteForBrand(brand);
+      if(!palette.some(item=>normalizeHexColor(item.color)===color))return;
+      let changed=false;
+      courts.forEach(c=>{
+        if(normalizeHexColor(c[entry.property])!==color){
+          c[entry.property]=color;
+          changed=true;
+        }
+        if(entry.key==="netballGoal")c.netballAccentFill=color;
+      });
+      if(!changed)return;
+      render();
+      commitHistory();
+    });
+  }
+
+  function refreshBulkCourtColourToolbar(){
+    ensureBulkCourtColourToolbar();
+    const courts=selectedCourts();
+    const bar=$("bulkCourtColourToolbar");
+    if(!bar)return;
+    bar.hidden=courts.length<2;
+    if(courts.length<2)return;
+    const targetSelect=$("bulkCourtColourTarget");
+    const colorSelect=$("bulkCourtColourValue");
+    const preview=$("bulkCourtColourPreview");
+    const hint=$("bulkCourtColourHint");
+    const brand=brandForCourt(courts[0]);
+    const sameBrand=courts.every(c=>brandForCourt(c)===brand);
+    const unlocked=courts.every(c=>!c.locked && !c.hidden);
+    const choices=bulkCourtColourTargets.filter(item=>courts.every(c=>item.supports(c)));
+    const previousTarget=targetSelect.value;
+    targetSelect.replaceChildren();
+    choices.forEach(item=>{
+      const option=document.createElement("option");
+      option.value=item.key;
+      option.textContent=item.label;
+      targetSelect.appendChild(option);
+    });
+    targetSelect.value=choices.some(item=>item.key===previousTarget)?previousTarget:(choices[0]?.key||"");
+    const target=choices.find(item=>item.key===targetSelect.value);
+    targetSelect.disabled=!sameBrand||!unlocked;
+    colorSelect.replaceChildren();
+    const placeholder=document.createElement("option");
+    placeholder.value="";
+    placeholder.textContent="Pilih warna";
+    colorSelect.appendChild(placeholder);
+    const palette=target ? (target.key==="line" ? getLinePaletteForBrand(brand) : getDefaultPaletteForBrand(brand)) : [];
+    palette.forEach(item=>{
+      const color=normalizeHexColor(item.color);
+      if(!color)return;
+      const option=document.createElement("option");
+      option.value=color;
+      option.textContent=item.name;
+      colorSelect.appendChild(option);
+    });
+    const initial=target && courts.every(c=>normalizeHexColor(c[target.property])===normalizeHexColor(courts[0][target.property]))
+      ? normalizeHexColor(courts[0][target.property]) : "";
+    colorSelect.value=palette.some(item=>normalizeHexColor(item.color)===initial)?initial:"";
+    colorSelect.disabled=!sameBrand||!unlocked||!target;
+    if(preview)preview.style.background=colorSelect.value || "repeating-linear-gradient(45deg,#ddd 0 5px,#fff 5px 10px)";
+    if(hint){
+      hint.textContent=!sameBrand?"Pilih court daripada sistem produk yang sama."
+        :!unlocked?"Unlock semua court dipilih untuk tukar warna serentak."
+        :"Warna ditukar pada "+courts.length+" court terpilih.";
+    }
+  }
+
+  let bulkFreeShapeColourDirty=false;
+  function refreshBulkFreeShapeColourToolbar(items){
+    const bar=$("freeShapeAlignToolbar");
+    if(!bar || items.length<2)return;
+    let wrap=$("bulkFreeShapeColourToolbar");
+    if(!wrap){
+      wrap=document.createElement("label");
+      wrap.id="bulkFreeShapeColourToolbar";
+      wrap.style.cssText="display:inline-flex;align-items:center;gap:7px;margin:0 8px;font-size:11px;font-weight:700";
+      const label=document.createElement("span");
+      label.textContent="COLOUR ALL";
+      const input=document.createElement("input");
+      input.type="color";
+      input.id="bulkFreeShapeColour";
+      input.title="Ubah warna semua Shape Bebas yang dipilih";
+      input.style.cssText="height:32px;width:50px;padding:1px;cursor:pointer";
+      wrap.append(label,input);
+      bar.appendChild(wrap);
+      function recolour(commit){
+        const group=selectedFreeShapes();
+        const color=normalizeHexColor(input.value);
+        if(group.length<2||!color)return;
+        let changed=false;
+        group.forEach(item=>{
+          if(normalizeHexColor(item.color)!==color){
+            item.color=color;
+            changed=true;
+          }
+        });
+        shapeToolState.freeColor=color;
+        if(changed){
+          bulkFreeShapeColourDirty=true;
+          render();
+        }
+        if(commit && bulkFreeShapeColourDirty){
+          bulkFreeShapeColourDirty=false;
+          commitHistory();
+        }
+      }
+      input.addEventListener("input",()=>recolour(false));
+      input.addEventListener("change",()=>recolour(true));
+    }
+    const input=$("bulkFreeShapeColour");
+    const current=selectedShapeId!==null
+      ? items.find(item=>item.id===selectedShapeId) || items[0]
+      : items[0];
+    if(input && document.activeElement!==input){
+      input.value=normalizeHexColor(current.color)||"#a53531";
+    }
+  }
+
   const originalRender=render;
   render=function(options={}){
     normalizeShapeAnnotations();
     originalRender(options);
     drawShapeToolOverlay();
     updateShapeFormatToolbar();
+    refreshBulkCourtColourToolbar();
     refreshBinaEditingHandleSizes();
   };
 
@@ -1825,6 +2013,7 @@
   normalizeArtworkLayerOrder();
   updateToolsMenuState();
   updateShapeFormatToolbar();
+  refreshBulkCourtColourToolbar();
 })();
 
 </script>
