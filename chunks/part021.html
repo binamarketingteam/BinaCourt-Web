@@ -2461,61 +2461,72 @@
     const tokens=[...chosen].filter(valid);
     if(tokens.length<2||!chosen.has(clickedToken))return false;
     if(tokens.some(token=>itemFor(token)?.locked)){
-      const count=tokens.filter(token=>itemFor(token)?.locked).length;
-      alert(count+" objek masih Locked. Unlock sebelum gerakkan kumpulan.");
+      alert("Ada objek Locked dalam selection. Unlock dahulu untuk gerakkan kumpulan.");
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return true;
     }
     const snapshots=tokens.map(movementSnapshot);
-    if(snapshots.some(snap=>!snap)){
-      alert("Ada objek yang belum menyokong pergerakan kumpulan.");
+    if(snapshots.some(shot=>!shot)){
+      alert("Objek ini belum mempunyai koordinat yang boleh digerakkan bersama.");
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return true;
     }
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
     const down={x:event.clientX,y:event.clientY};
-    const point=stagePointFromClient(down.x,down.y);
+    const start=stagePointFromClient(down.x,down.y);
     const pointerId=event.pointerId;
     const isPickMode=multiPickMode;
     const target=event.target;
-    let moved=false,lastDx=0,lastDy=0;
-    let raf=0;
-    let started=false;
-    function setDistance(dx,dy){
-      lastDx=dx;lastDy=dy;
-      for(const shot of snapshots)moveSnapshot(shot,dx,dy);
-      render();
+    let moved=false,dx=0,dy=0;
+    // Move the live SVG nodes WITHOUT rendering/replacing the pointer target.
+    // Re-rendering during drag used to drop pointer capture and move one item.
+    const elements=[];
+    for(const shot of snapshots){
+      for(const node of selectedNodes(shot.token)){
+        elements.push({node,base:node.getAttribute("transform")||""});
+      }
+    }
+    for(const node of svg.querySelectorAll(".unified-multi-selection")){
+      if(chosen.has(node.getAttribute("data-selected-token"))){
+        elements.push({node,base:node.getAttribute("transform")||""});
+      }
+    }
+    function showMove(){
+      const offset="translate("+dx+" "+dy+")";
+      elements.forEach(({node,base})=>{
+        if(node.isConnected)node.setAttribute("transform",offset+(base?" "+base:""));
+      });
     }
     function onMove(e){
       if(e.pointerId!==pointerId)return;
       if(typeof stagePinchActive!=="undefined"&&stagePinchActive)return;
-      const screenDist=Math.hypot(e.clientX-down.x,e.clientY-down.y);
-      if(!started&&screenDist<(e.pointerType==="touch"?8:4))return;
-      started=true;
+      const distance=Math.hypot(e.clientX-down.x,e.clientY-down.y);
+      if(!moved&&distance<(e.pointerType==="touch"?8:4))return;
       moved=true;
       e.preventDefault();
       e.stopPropagation();
-      const p=stagePointFromClient(e.clientX,e.clientY);
-      const dx=p.x-point.x,dy=p.y-point.y;
-      lastDx=dx;lastDy=dy;
-      if(!raf){
-        raf=requestAnimationFrame(()=>{
-          raf=0;
-          setDistance(lastDx,lastDy);
-        });
-      }
+      const point=stagePointFromClient(e.clientX,e.clientY);
+      dx=point.x-start.x;
+      dy=point.y-start.y;
+      showMove();
     }
     function finish(e){
       if(e.pointerId!==pointerId)return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
       window.removeEventListener("pointermove",onMove,true);
       window.removeEventListener("pointerup",finish,true);
       window.removeEventListener("pointercancel",finish,true);
-      if(raf){cancelAnimationFrame(raf);raf=0;}
       try{target.releasePointerCapture?.(pointerId)}catch(_){}
       if(e.type==="pointercancel"){
-        setDistance(0,0);
+        render();
       }else if(moved){
-        setDistance(lastDx,lastDy);
+        snapshots.forEach(shot=>moveSnapshot(shot,dx,dy));
+        render();
         commitHistory();
       }else if(isPickMode){
         toggle(clickedToken);
