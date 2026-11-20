@@ -630,7 +630,8 @@ function setBrushSize(value){
 function polygonModeMeta(mode){
  const map={
   'add':{label:'Polygon',buttonText:'⬡ Polygon',title:'Polygon (P) · Tambah kawasan'},
-  'subtract':{label:'Unselect',buttonText:'◌ Unselect',title:'Unselect Polygon · Buang kawasan terpilih'},
+  'subtract':{label:'Unselect',buttonText:'◌ Unselect',title:'Unselect Polygon · Buang kawasan layer aktif'},
+  'subtract-all':{label:'Unselect Semua',buttonText:'◌ Unselect Semua',title:'Buang warna di dalam polygon daripada semua layer tanpa perlu memilih layer'},
   'transfer':{label:'Pindah Layer',buttonText:'⇄ Pindah Layer',title:'Pindahkan kawasan berwarna ke layer baharu atau sedia ada'},
    'add-empty':{label:'Isi Kosong',buttonText:'◫ Isi Kosong',title:'Isi Kosong · Hanya ruang belum berwarna'}
  };
@@ -641,7 +642,7 @@ const polygonToolBtn=$('polygonToolBtn'),polygonToolMenu=$('polygonToolMenu'),po
 document.body.appendChild(polygonSubmenu);polygonToolBtn.setAttribute('aria-haspopup','menu');polygonToolBtn.setAttribute('aria-expanded','false');
 let polygonMenuTimer=null,polygonMenuPointerId=null,polygonMenuPointerStart=null,polygonMenuIgnoreClick=false;
 function setPolygonPresetMode(mode){
- polygonMenuIgnoreClick=false;polygonPresetMode=(mode==='subtract'||mode==='add-empty'||mode==='transfer')?mode:'add';
+ polygonMenuIgnoreClick=false;polygonPresetMode=(mode==='subtract'||mode==='subtract-all'||mode==='add-empty'||mode==='transfer')?mode:'add';
  if(!polygon.length)polygonMode=polygonPresetMode;
  updatePolygonToolButton();updateHint();updatePolygonControls();requestRender();
 }
@@ -649,6 +650,9 @@ function updatePolygonToolButton(){
  const meta=polygonModeMeta(polygonPresetMode);
  if(polygonToolBtn){polygonToolBtn.textContent=meta.buttonText;polygonToolBtn.title=meta.title;}
  if(polygonSubmenu)polygonSubmenu.querySelectorAll('[data-polygon-mode]').forEach(btn=>btn.classList.toggle('current',btn.dataset.polygonMode===polygonPresetMode));
+ const allBtn=$('subtractAllTool');if(allBtn)allBtn.classList.toggle('active',tool==='polygon'&&polygonPresetMode==='subtract-all');
+ if(polygonToolBtn)polygonToolBtn.classList.toggle('active',tool==='polygon'&&polygonPresetMode!=='subtract-all'&&polygonPresetMode!=='transfer');
+ const transferBtn=$('transferLayerTool');if(transferBtn)transferBtn.classList.toggle('active',tool==='polygon'&&polygonPresetMode==='transfer');
 }
 function openPolygonSubmenu(){
  if(!polygonSubmenu)return;polygonSubmenu.hidden=false;polygonToolMenu?.classList.add('open');polygonToolBtn.setAttribute('aria-expanded','true');updatePolygonToolButton();
@@ -832,11 +836,11 @@ function selectTool(t){finishBrushStroke(true);clearTouchPolygonPress();closePol
 function updateHint(){
  if(spaceHeld){$('helpText').textContent='SPACE ditekan: Seret untuk gerakkan gambar · Lepaskan SPACE untuk kembali ke '+tool.toUpperCase();$('statusText').textContent='Gerak sementara (SPACE) · Tool asal: '+tool;return;}
  const activePolyMode=polygon.length?polygonMode:polygonPresetMode;
- const hints={polygon:activePolyMode==='transfer'?'Pindah Layer: tandakan bahagian berwarna dalam layer sumber, kemudian pilih layer destinasi.':activePolyMode==='subtract'?'Unselect: pilih kawasan untuk dibuang.':activePolyMode==='add-empty'?'Isi Kosong: pilih hanya ruang belum berwarna.':'Polygon: klik bucu untuk tambah kawasan.',brush:'Brush: satu jari mewarna; dua jari hanya zoom/pan.',eraser:'Eraser: satu jari memadam; dua jari hanya zoom/pan.',hand:'Seret untuk gerakkan gambar.'};
- $('helpText').textContent=hints[tool]+(selectedArea()?' Area: '+selectedArea().name:' Tambah / pilih Area dahulu.');
+ const hints={polygon:activePolyMode==='transfer'?'Pindah Layer: tandakan bahagian berwarna dalam layer sumber, kemudian pilih layer destinasi.':activePolyMode==='subtract-all'?'Unselect Semua: tandakan satu kawasan untuk buang warna daripada SEMUA layer yang tidak dikunci.':activePolyMode==='subtract'?'Unselect: pilih kawasan untuk dibuang pada layer aktif.':activePolyMode==='add-empty'?'Isi Kosong: pilih hanya ruang belum berwarna.':'Polygon: klik bucu untuk tambah kawasan.',brush:'Brush: satu jari mewarna; dua jari hanya zoom/pan.',eraser:'Eraser: satu jari memadam; dua jari hanya zoom/pan.',hand:'Seret untuk gerakkan gambar.'};
+ $('helpText').textContent=hints[tool]+(tool==='polygon'&&activePolyMode==='subtract-all'?' Tidak perlu pilih layer dahulu.':(selectedArea()?' Area: '+selectedArea().name:' Tambah / pilih Area dahulu.'));
  $('statusText').textContent=tool==='polygon'?polygonModeMeta(activePolyMode).label+' · '+polygon.length+' titik':'Mode: '+tool;
 }
-function updatePolygonControls(){const mode=polygon.length?polygonMode:polygonPresetMode;$('finishPolygon').disabled=polygon.length<3;$('cancelPolygon').disabled=polygon.length===0;$('finishPolygon').textContent=mode==='transfer'?'⇄ Pilih Destinasi':mode==='subtract'&&polygon.length?'✓ Buang Kawasan':(mode==='add-empty'&&polygon.length?'✓ Isi Kawasan Kosong':'✓ Siap Polygon');updatePolygonToolButton();}
+function updatePolygonControls(){const mode=polygon.length?polygonMode:polygonPresetMode;$('finishPolygon').disabled=polygon.length<3;$('cancelPolygon').disabled=polygon.length===0;$('finishPolygon').textContent=mode==='transfer'?'⇄ Pilih Destinasi':mode==='subtract-all'&&polygon.length?'✓ Padam Semua Layer':mode==='subtract'&&polygon.length?'✓ Buang Kawasan':(mode==='add-empty'&&polygon.length?'✓ Isi Kawasan Kosong':'✓ Siap Polygon');updatePolygonToolButton();}
 function updateShade(){shadowDetailCache=new WeakMap();loupeSourceDirty=true;shadeCanvas.width=width;shadeCanvas.height=height;let src=imageCtx.getImageData(0,0,width,height),pix=src.data;for(let i=0;i<pix.length;i+=4){const lum=(0.2126*pix[i]+0.7152*pix[i+1]+0.0722*pix[i+2])/255;const shade=Math.min(255,Math.round(255*(.56+.63*lum)));pix[i]=shade;pix[i+1]=shade;pix[i+2]=shade;pix[i+3]=255;}shadeCtx.putImageData(src,0,0);}
 function invalidateAll(){loupeSourceDirty=true;for(const a of areas)a.dirty=true;requestRender()}
 /* Detail Shadow V2: locally enhance only dark and mid-shadow image details.
@@ -954,7 +958,7 @@ function layerCache(a,sch){const col=sch.colors[a.id]||'#E5DED2',key=materialKey
  return a.cache;
 }
 function drawImageTo(out,guide){out.clearRect(0,0,width,height);out.drawImage(imageCanvas,0,0);const sch=currentScheme();for(const a of areas){if(a.visible===false)continue;out.globalAlpha=a.opacity??.95;out.drawImage(layerCache(a,sch),0,0);out.globalAlpha=1;}
- if(guide && polygon.length){out.save();const strokeColor=polygonMode==='transfer'?'#31c9ec':polygonMode==='subtract'?'#ff5261':(polygonMode==='add-empty'?'#4ee0b6':'#ffe164');const pointStroke=polygonMode==='transfer'?'#137a92':polygonMode==='subtract'?'#a11c35':(polygonMode==='add-empty'?'#0a6b57':'#184a6c');out.strokeStyle=strokeColor;out.lineWidth=1.25/zoom;out.setLineDash([4/zoom,3/zoom]);out.beginPath();out.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)out.lineTo(polygon[i].x,polygon[i].y);if(mouseImg&&tool==='polygon')out.lineTo(mouseImg.x,mouseImg.y);if((polygonMode==='subtract'||polygonMode==='add-empty')&&polygon.length>=3){out.closePath();out.fillStyle=polygonMode==='subtract'?'rgba(245,47,70,.14)':'rgba(54,210,166,.14)';out.fill()}out.stroke();out.setLineDash([]);for(const p of polygon){out.beginPath();out.arc(p.x,p.y,1.5/zoom,0,Math.PI*2);out.fillStyle='#fff';out.fill();out.strokeStyle=pointStroke;out.lineWidth=.65/zoom;out.stroke();}out.restore();}}
+ if(guide && polygon.length){out.save();const strokeColor=polygonMode==='transfer'?'#31c9ec':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#ff5261':(polygonMode==='add-empty'?'#4ee0b6':'#ffe164');const pointStroke=polygonMode==='transfer'?'#137a92':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#a11c35':(polygonMode==='add-empty'?'#0a6b57':'#184a6c');out.strokeStyle=strokeColor;out.lineWidth=1.25/zoom;out.setLineDash([4/zoom,3/zoom]);out.beginPath();out.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)out.lineTo(polygon[i].x,polygon[i].y);if(mouseImg&&tool==='polygon')out.lineTo(mouseImg.x,mouseImg.y);if((polygonMode==='subtract'||polygonMode==='subtract-all'||polygonMode==='add-empty')&&polygon.length>=3){out.closePath();out.fillStyle=(polygonMode==='subtract'||polygonMode==='subtract-all')?'rgba(245,47,70,.14)':'rgba(54,210,166,.14)';out.fill()}out.stroke();out.setLineDash([]);for(const p of polygon){out.beginPath();out.arc(p.x,p.y,1.5/zoom,0,Math.PI*2);out.fillStyle='#fff';out.fill();out.strokeStyle=pointStroke;out.lineWidth=.65/zoom;out.stroke();}out.restore();}}
 function refreshComparison(){
  if(!compareActive)return;
  if(compareBefore.width!==width||compareBefore.height!==height){compareBefore.width=width;compareBefore.height=height;}
@@ -1106,7 +1110,7 @@ function mapPointClampedToImage(ev){const rect=shell.getBoundingClientRect();ret
 function handlePolygonPoint(ev,pt){
  if(performance.now()<polygonJustCompletedUntil)return;
  if(historyBusy)return;
- if(selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}
+ if(polygonPresetMode!=='subtract-all'&&selectedArea()?.locked){toast('Layer dikunci. Buka mangga sebelum menggunakan Polygon.');return;}
  // Clicking the first vertex again closes the polygon, as in Photoshop.
  // Use a SCREEN-pixel tolerance so the click target does not grow while zooming.
  if(polygon.length>=3){
@@ -1121,7 +1125,7 @@ function handlePolygonPoint(ev,pt){
   }
  }
  if(ev.altKey)ev.preventDefault();
- if(polygon.length===0)polygonMode=polygonPresetMode==='transfer'?'transfer':((ev.altKey&&(ev.ctrlKey||ev.metaKey))?'add-empty':(ev.altKey?'subtract':polygonPresetMode));
+ if(polygon.length===0)polygonMode=(polygonPresetMode==='transfer'||polygonPresetMode==='subtract-all')?polygonPresetMode:((ev.altKey&&(ev.ctrlKey||ev.metaKey))?'add-empty':(ev.altKey?'subtract':polygonPresetMode));
  polygon.push(pt);updatePolygonControls();updateHint();requestRender();
 }
 function clampZoom(z){return Math.min(Math.max(z,.075),8)}
@@ -1454,6 +1458,7 @@ async function travelMaskHistory(source,destination,label){
  if(brushStroke)finishBrushStroke(true);
  const last=source[source.length-1];if(!last){updateHistoryButtons();return;}
  if(last.kind==='layer-transfer')return travelTransferredLayers(source,destination,label);
+ if(last.kind==='multi-mask')return travelMultiMaskHistory(source,destination,label);
  const area=areas.find(a=>a.id===last.id);
  if(!area){source.pop();updateHistoryButtons();return;}
  if(area.locked){toast(label+' ditangguh: layer dikunci. Buka mangga dahulu.');return;}
@@ -1470,14 +1475,72 @@ async function travelMaskHistory(source,destination,label){
  }catch(e){toast(label+' gagal: '+e.message)}
  finally{historyBusy=false;updateHistoryButtons();}
 }
+/* One history entry restores every mask touched by Unselect Semua together. */
+async function travelMultiMaskHistory(source,destination,label){
+ if(historyBusy)return;
+ const entry=source[source.length-1];
+ if(!entry||entry.kind!=='multi-mask')return;
+ const items=entry.snapshots.map(snapshot=>({snapshot,area:areas.find(a=>a.id===snapshot.id)}));
+ if(items.some(item=>!item.area||item.area.locked))return toast(label+' tidak boleh dibuat: satu atau lebih layer telah dikunci atau tiada.');
+ historyBusy=true;updateHistoryButtons();
+ try{
+  const previous=await Promise.all(items.map(item=>loadImage(item.snapshot.data)));
+  const opposite=items.map(item=>({id:item.area.id,data:item.area.mask.toDataURL('image/png')}));
+  items.forEach((item,i)=>{
+   const ctx=item.area.mask.getContext('2d');
+   ctx.globalCompositeOperation='source-over';
+   ctx.clearRect(0,0,item.area.mask.width,item.area.mask.height);
+   ctx.drawImage(previous[i],0,0,item.area.mask.width,item.area.mask.height);
+   item.area.dirty=true;
+  });
+  source.pop();destination.push({kind:'multi-mask',snapshots:opposite});
+  if(destination.length>10)destination.shift();
+  setDirty();requestRender();toast(label+' berjaya untuk '+items.length+' layer.');
+ }catch(e){toast(label+' gagal: '+e.message);}
+ finally{historyBusy=false;updateHistoryButtons();}
+}
 async function undoMask(){return travelMaskHistory(undoStack,redoStack,'Undo');}
 async function redoMask(){return travelMaskHistory(redoStack,undoStack,'Redo');}
+
+/* Unselect Semua: erase the drawn polygon from every intersecting unlocked
+   layer mask, without changing the original photograph or deleting layer entries.
+   Hidden layers are included so they cannot reappear inside the cleared region. */
+function finishSubtractAllPolygon(){
+ if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}
+ if(!hasProjectPhoto||polygon.length<3)return;
+ const bounds=moveBounds(polygon);
+ if(bounds.w<=0||bounds.h<=0){cancelPolygon();return;}
+ const intersects=a=>partContainsMask(movePart(a,polygon,bounds));
+ const affected=areas.filter(a=>!a.locked&&intersects(a));
+ const lockedCount=areas.filter(a=>a.locked&&intersects(a)).length;
+ if(!affected.length){
+  clearFinishedPolygonLines();
+  toast(lockedCount?'Kawasan ini hanya mempunyai layer dikunci. Buka mangga jika mahu padam.':'Tiada warna layer dalam kawasan yang dipilih.');
+  return;
+ }
+ const history={kind:'multi-mask',snapshots:affected.map(a=>({id:a.id,data:a.mask.toDataURL('image/png')}))};
+ undoStack.push(history);if(undoStack.length>10)undoStack.shift();redoStack=[];
+ for(const a of affected){
+  const c=a.mask.getContext('2d');
+  c.save();c.globalCompositeOperation='destination-out';c.fillStyle='#fff';
+  c.beginPath();c.moveTo(polygon[0].x,polygon[0].y);
+  for(let i=1;i<polygon.length;i++)c.lineTo(polygon[i].x,polygon[i].y);
+  c.closePath();c.fill();c.restore();a.dirty=true;
+ }
+ clearFinishedPolygonLines();setDirty();updateHistoryButtons();requestRender();
+ toast('Warna dipadam daripada '+affected.length+' layer.'+(lockedCount?' '+lockedCount+' layer dikunci dikekalkan.':'')+' Ctrl+Z untuk Undo.');
+}
 
 /* V3.40 Partial mask transfer. Reuses the existing Polygon pointer & magnifier tools. */
 const moveModeButton=document.createElement('button');
 moveModeButton.type='button';moveModeButton.className='tool';moveModeButton.id='transferLayerTool';
 moveModeButton.textContent='⇄ Pindah Layer';moveModeButton.title='Pilih bahagian berwarna untuk pindah ke layer lain';
 polygonToolMenu.insertAdjacentElement('afterend',moveModeButton);
+const subtractAllModeButton=document.createElement('button');
+subtractAllModeButton.type='button';subtractAllModeButton.className='tool';subtractAllModeButton.id='subtractAllTool';
+subtractAllModeButton.textContent='◌ Unselect Semua';subtractAllModeButton.title='Lukis polygon untuk padam warna pada semua layer sekaligus (layer dikunci dilangkau)';
+polygonToolMenu.insertAdjacentElement('afterend',subtractAllModeButton);
+subtractAllModeButton.onclick=()=>{setPolygonPresetMode('subtract-all');selectTool('polygon');};
 moveModeButton.onclick=()=>{setPolygonPresetMode('transfer');selectTool('polygon');moveModeButton.classList.add('active');};
 const moveMenuButton=document.createElement('button');moveMenuButton.type='button';moveMenuButton.className='tool-subitem';
 moveMenuButton.dataset.polygonMode='transfer';
@@ -1610,7 +1673,7 @@ async function travelTransferredLayers(from,to,label){
  finally{historyBusy=false;updateHistoryButtons();}
 }
 
-function finishPolygon(){if(polygonMode==='transfer'){openLayerTransfer();return;}if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}const a=selectedArea();if(!a||polygon.length<3)return;if(a.locked){cancelPolygon();toast('Layer dikunci. Polygon tidak mengubah mask.');return;}rememberMask(a);const ac=a.mask.getContext('2d');if(polygonMode==='subtract'){ac.globalCompositeOperation='destination-out';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}else if(polygonMode==='add-empty'){const temp=document.createElement('canvas');temp.width=width;temp.height=height;const tc=temp.getContext('2d');tc.fillStyle='white';tc.beginPath();tc.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)tc.lineTo(polygon[i].x,polygon[i].y);tc.closePath();tc.fill();tc.globalCompositeOperation='destination-out';for(const other of areas){if(other.mask)tc.drawImage(other.mask,0,0);}tc.globalCompositeOperation='source-over';ac.drawImage(temp,0,0);}else{ac.globalCompositeOperation='source-over';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}a.dirty=true;const didSubtract=polygonMode==='subtract';const didAddEmpty=polygonMode==='add-empty';polygonMode=polygonPresetMode;clearFinishedPolygonLines();setDirty();requestRender();if(didSubtract)toast('Kawasan dipadam daripada Area aktif (ALT).');if(didAddEmpty)toast('Hanya kawasan yang belum diwarnakan ditambah ke Area aktif (Ctrl+Alt).');}
+function finishPolygon(){if(polygonMode==='transfer'){openLayerTransfer();return;}if(polygonMode==='subtract-all'){finishSubtractAllPolygon();return;}if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}const a=selectedArea();if(!a||polygon.length<3)return;if(a.locked){cancelPolygon();toast('Layer dikunci. Polygon tidak mengubah mask.');return;}rememberMask(a);const ac=a.mask.getContext('2d');if(polygonMode==='subtract'){ac.globalCompositeOperation='destination-out';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}else if(polygonMode==='add-empty'){const temp=document.createElement('canvas');temp.width=width;temp.height=height;const tc=temp.getContext('2d');tc.fillStyle='white';tc.beginPath();tc.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)tc.lineTo(polygon[i].x,polygon[i].y);tc.closePath();tc.fill();tc.globalCompositeOperation='destination-out';for(const other of areas){if(other.mask)tc.drawImage(other.mask,0,0);}tc.globalCompositeOperation='source-over';ac.drawImage(temp,0,0);}else{ac.globalCompositeOperation='source-over';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}a.dirty=true;const didSubtract=polygonMode==='subtract';const didAddEmpty=polygonMode==='add-empty';polygonMode=polygonPresetMode;clearFinishedPolygonLines();setDirty();requestRender();if(didSubtract)toast('Kawasan dipadam daripada Area aktif (ALT).');if(didAddEmpty)toast('Hanya kawasan yang belum diwarnakan ditambah ke Area aktif (Ctrl+Alt).');}
 function drawBrush(a,point,prev,erase){
  if(a.locked)return;
  const m=a.mask.getContext('2d');
@@ -1669,6 +1732,11 @@ canvas.addEventListener('pointerdown',ev=>{
  const pt=mapPoint(ev);
  if(activeTool()==='hand'||(ev.altKey&&tool!=='polygon')){
   panning=true;dragFrom={pointerId:ev.pointerId,x:ev.clientX,y:ev.clientY,panX,panY};syncToolVisuals();return;
+ }
+ if(tool==='polygon'&&polygonPresetMode==='subtract-all'){
+  if(!hasProjectPhoto){toast('Upload gambar dahulu.');return;}
+  if(ev.pointerType==='touch'){startTouchPolygonPress(ev);return;}
+  handlePolygonPoint(ev,pt);return;
  }
  const area=selectedArea();
  if(!area){toast('Tambah atau pilih Area dahulu.');return;}
@@ -1742,8 +1810,10 @@ workspace.addEventListener('pointerdown',ev=>{
  }
  // For Polygon, clicking outside the image adds a point clamped to the image edge.
  if(tool==='polygon' && activeTool()!=='hand'){
-  const a=selectedArea(); if(!a){toast('Tambah atau pilih Area dahulu.');return;}
-  if(a.locked){toast('Layer dikunci. Buka mangga dahulu untuk edit.');return;}
+  if(polygonPresetMode!=='subtract-all'){
+   const a=selectedArea();if(!a){toast('Tambah atau pilih Area dahulu.');return;}
+   if(a.locked){toast('Layer dikunci. Buka mangga dahulu untuk edit.');return;}
+  }
   if(ev.pointerType==='touch'){startTouchPolygonPress(ev);return;}
   const pt=mapPointClampedToImage(ev);handlePolygonPoint(ev,pt);return;
  }
@@ -2670,7 +2740,7 @@ async function listWebProjects(client,user){
  });
 }
 
-updatePolygonToolButton();$('helpBtn').onclick=()=>openModal(`<div class="modal-head"><h2>Cara Menggunakan Colour Scheme Studio V3.40</h2><button class="btn" data-close>✕ Tutup</button></div><ol><li>Ikon tong sampah dalam senarai layer memadam layer yang dipilih selepas pengesahan. Layer terkunci mesti dibuka dahulu.</li><li><b>Palette Saya:</b> 120 warna daripada katalog telah dimasukkan mengikut kod dan nama. Cari kod/nama di ruangan carian. Klik Tambah / Urus untuk tambah warna sendiri, padam atau pulihkan 120 warna katalog. Eksport JSON untuk kongsi dengan staf. HEX diambil sebagai anggaran digital daripada swatch PDF; warna sebenar boleh berbeza.</li><li>Upload gambar projek. Gunakan <b>Crop Gambar</b> pada panel Foto untuk potong tepi yang tidak diperlukan. Seret empat penjuru atau bahagian dalam pilihan crop, kemudian klik Crop Gambar. Foto dan mask pada sudut aktif akan dicrop bersama supaya sejajar. Simpan fail projek untuk backup.</li><li>Klik <b>Tambah Area</b> dan namakan kawasan, misalnya "Dinding Utama".</li><li>Pilih <b>Polygon</b>, klik bucu kawasan, kemudian <b>Siap Polygon</b>. <b>Telefon:</b> sentuh dan tahan sekitar 0.25 saat pada gambar hingga Microscope Zoom muncul, seret untuk laraskan titik dan lepaskan jari untuk meletakkan titik. Ulang setiap bucu. Ketikan ringkas juga masih boleh. Tekan dua kali juga boleh untuk lengkapkan polygon menggunakan tetikus. <b>Tekan Backspace</b> untuk undur/buang titik Polygon terakhir, satu demi satu, sebelum menyiapkan polygon. Ia tidak mengubah kawasan yang sudah siap. <b>Klik di luar gambar juga dibenarkan</b>; titik akan automatik melekat pada tepi/hujung gambar.</li><li><b>Unselect</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Unselect</b>, atau tahan <b>ALT</b> semasa klik titik pertama. Klik bucu-bucu polygon dan tekan <b>Buang Kawasan</b> atau double-click. Hanya mask Area yang dipilih dipadam. <b>Ctrl+Z</b> untuk undo.</li><li><b>Isi kawasan kosong sahaja</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Isi Kosong</b>, atau tahan <b>Ctrl + Alt</b> semasa klik titik pertama. Apabila polygon siap, sistem hanya akan menambah bahagian yang <b>belum diwarnakan oleh mana-mana Area</b>. Sesuai untuk isi dinding besar tanpa menimpa beam, tiang atau kawasan yang telah siap diwarnakan.</li><li><b>⇄ Pindah Layer:</b> Pilih layer sumber, gunakan butang Pindah Layer atau submenu Polygon, klik titik untuk pilih kawasan berwarna. Klik Pilih Destinasi, kemudian pilih layer baharu atau sedia ada. Kawasan pindah dipadam automatik daripada layer asal. Undo/Redo mengembalikan kedua-dua mask.</li><li><b>Microscope:</b> Tekan <b>Zoom ON / OFF</b> untuk hidup atau matikan bulatan pembesar semasa Polygon. Touch Polygon masih menggunakan tahan, seret dan lepas walaupun microscope dimatikan.</li><li><b>Rename layer:</b> Double-click nama layer untuk lihat senarai cadangan (General Wall, Feature Wall, Coping, Ceiling, Beam, Column, Fence, Fascia, Door, Window Frame). Pilih cadangan atau taip nama sendiri.</li><li><b>Redo:</b> Klik Redo atau tekan Ctrl+Y / Ctrl+Shift+Z selepas Undo untuk pulihkan sapuan/mask yang dibatalkan. Langkah baharu selepas Undo akan mengosongkan Redo.</li><li><b>Brush/Eraser live preview:</b> Pada telefon, satu jari mewarna/memadam; apabila jari kedua masuk, sapuan sementara dibatalkan dan dua jari hanya menggerakkan atau mengezum gambar. Halakan cursor ke gambar; bulatan menunjukkan diameter sebenar mengikut zoom, tanpa mengubah hasil. Untuk ubah saiz, <b>tahan ALT + klik kanan, kemudian drag ke kiri/kanan</b>: kiri = kecil, kanan = besar. Lepaskan klik kanan untuk kembali kepada Brush/Eraser asal. Slider Saiz turut berubah secara langsung.</li><li>Pilih <b>Brush</b> untuk tambah mask atau <b>Eraser</b> untuk buang lebihan mask. Untuk menggerakkan gambar, <b>tahan Spacebar dan seret</b>; apabila dilepaskan, tool asal kembali secara automatik. Tool <b>Gerak</b> (H) masih boleh dipilih secara kekal. Scroll / dua jari untuk zoom-pan.</li><li>Masukkan warna HEX, pilih swatch, dan laraskan kekuatan warna. Tambah Area untuk bahagian lain. <b>Double-click pada nama layer di senarai kiri</b> untuk rename terus; <b>Enter</b> untuk simpan, <b>Esc</b> untuk batal, atau klik di luar untuk simpan. Nama layer turut tersimpan dalam fail projek. <b>Tarik layer naik/turun</b> untuk susun urutan warna bila kawasan bertindih (atas = depan). Pada telefon, tarik ikon ⠿. Tekan <b>Alt + ↑ / ↓</b> untuk ubah susunan menggunakan keyboard.</li><li><b>Hide / Show layer:</b> Ikon mata di kanan layer menyembunyikan atau menampilkan warna tanpa membuang mask. <b>Lock / Unlock:</b> Ikon mangga mengunci perubahan Polygon, Brush, Eraser, warna, opacity, rename, padam dan drag bagi layer itu. Klik mangga lagi untuk buka. Status tersimpan dalam projek.</li><li>Sistem bermula dengan <b>Scheme 1</b> sahaja. Klik <b>Duplikasi Scheme</b> untuk Scheme 2, 3 dan seterusnya tanpa masking semula. Projek lama yang masih ada Scheme A/B/C akan ditukar kepada nombor; salinan B/C default yang belum diubah dibuang, tetapi kombinasi warna lama yang berbeza dikekalkan.</li><li><b>Material Recolour V1:</b> Pilih layer dan tetapkan Jenis Kemasan sebagai Flat, Preserve Texture atau Metallic Tint. Kawalan Kekalkan Tekstur, Kurangkan Kesan Lama dan Kekalkan Highlight digunakan untuk gambar editor, Before/After serta semua Scheme dalam PDF A3. Clean-up ialah simulasi penurasan imej tanpa AI, bukan pemulihan gambar sebenar. Slider Gelap / Cerah Warna (-100% hingga +100%, asal 0%) hanya mengubah warna cat terpilih, bukan exposure foto asal. Ia disimpan mengikut layer dan turut digunakan dalam PDF. Tetapan disimpan dalam fail .bcsproj bagi setiap layer; projek lama menggunakan Flat secara automatik.</li><li><b>Produk Cat:</b> Di Urus Produk Cat, kategori kini boleh ditambah, dinamakan semula atau dibuang jika tidak digunakan. MultiProof 5000 dipadankan ke Roof Coating. Di Property Area pilih Kategori Permukaan dan Produk Cat pada setiap layer. Pilih siri secara manual supaya projek lama tidak tersalah label. Gunakan <b>Urus Produk Cat</b> untuk tambah/edit/padam siri dan Export/Import katalog JSON bagi staf. Logo rasmi produk digunakan automatik dalam Colour Legend PDF A3. Produk tanpa logo rasmi masih dipaparkan sebagai teks. Logo boleh ditukar dalam Urus Produk Cat. Warna yang dikongsi dua produk akan disenaraikan berasingan. Jika kumpulan warna melebihi ruang footer, sistem jana halaman sambungan.</li><li><b>Simpan Lokal</b> hanya untuk pelayar/peranti semasa. Gunakan <b>Fail Projek</b> untuk menghantar fail kerja kepada staf melalui Google Drive. Staf gunakan <b>Buka → Import Fail Projek</b>.</li><li><b>Rujukan Dokumen:</b> CSBP kekal, tarikh Malaysia dijana automatik, dan staf isi Disediakan Oleh, Nama Sale dan No. Folder. Contoh: CSBP/18/10/26/FAEZI/SHAFIT/10. Rujukan penuh tertera pada PDF dan disimpan dalam fail projek.</li><li><b>Before / After:</b> Tekan butang Before / After pada toolbar untuk membandingkan foto asal (kiri) dengan hasil warna Scheme aktif (kanan). Tekan Kembali ke Editor untuk sambung masking. Perbandingan ialah pratonton sahaja dan tidak mengubah atau menyimpan apa-apa mask baharu.</li><li><b>Export</b> di bahagian atas kanan membuka submenu <b>Export A3</b> dan <b>View PDF</b>. Export A3 menjana dokumen A3 (cover + cadangan) dan membuka pilihan Print / Save as PDF. Susun Gambar A3 membuka Layout Designer untuk drag, resize dan crop gambar serta menggunakan layout sama bagi semua Scheme. View PDF membuka pratonton A3 tanpa dialog cetak automatik; gunakan butang Print / Save as PDF dalam pratonton apabila bersedia.</li></ol><p><b>Shortcut:</b> <span class="shortcut">V</span> Polygon · <span class="shortcut">C</span> Unselect · <span class="shortcut">X</span> Isi Kosong · <span class="shortcut">B</span> Brush · <span class="shortcut">E</span> Eraser · <span class="shortcut">H</span> Gerak · <span class="shortcut">Tekan lama Polygon</span> Buka submenu Polygon / Unselect / Isi Kosong · <span class="shortcut">ALT + Polygon</span> Unselect kawasan · <span class="shortcut">Ctrl + Alt + Polygon</span> Isi kawasan kosong sahaja · <span class="shortcut">Klik luar gambar</span> Titik akan melekat pada tepi gambar · <span class="shortcut">SPACE + Drag</span> Gerak sementara · <span class="shortcut">Alt + Right Drag</span> Saiz Eraser/Brush · <span class="shortcut">Backspace</span> Undur titik Polygon · <span class="shortcut">Ctrl+Z</span> Undo mask · <span class="shortcut">Ctrl+Y / Ctrl+Shift+Z</span> Redo mask.</p><p><b>Had V1:</b> Masking masih manual; pengesanan dinding automatik, akaun staf dan sync automatik akan memerlukan pembangunan cloud.</p>`);
+updatePolygonToolButton();$('helpBtn').onclick=()=>openModal(`<div class="modal-head"><h2>Cara Menggunakan Colour Scheme Studio V3.40</h2><button class="btn" data-close>✕ Tutup</button></div><ol><li>Ikon tong sampah dalam senarai layer memadam layer yang dipilih selepas pengesahan. Layer terkunci mesti dibuka dahulu.</li><li><b>Palette Saya:</b> 120 warna daripada katalog telah dimasukkan mengikut kod dan nama. Cari kod/nama di ruangan carian. Klik Tambah / Urus untuk tambah warna sendiri, padam atau pulihkan 120 warna katalog. Eksport JSON untuk kongsi dengan staf. HEX diambil sebagai anggaran digital daripada swatch PDF; warna sebenar boleh berbeza.</li><li>Upload gambar projek. Gunakan <b>Crop Gambar</b> pada panel Foto untuk potong tepi yang tidak diperlukan. Seret empat penjuru atau bahagian dalam pilihan crop, kemudian klik Crop Gambar. Foto dan mask pada sudut aktif akan dicrop bersama supaya sejajar. Simpan fail projek untuk backup.</li><li>Klik <b>Tambah Area</b> dan namakan kawasan, misalnya "Dinding Utama".</li><li>Pilih <b>Polygon</b>, klik bucu kawasan, kemudian <b>Siap Polygon</b>. <b>Telefon:</b> sentuh dan tahan sekitar 0.25 saat pada gambar hingga Microscope Zoom muncul, seret untuk laraskan titik dan lepaskan jari untuk meletakkan titik. Ulang setiap bucu. Ketikan ringkas juga masih boleh. Tekan dua kali juga boleh untuk lengkapkan polygon menggunakan tetikus. <b>Tekan Backspace</b> untuk undur/buang titik Polygon terakhir, satu demi satu, sebelum menyiapkan polygon. Ia tidak mengubah kawasan yang sudah siap. <b>Klik di luar gambar juga dibenarkan</b>; titik akan automatik melekat pada tepi/hujung gambar.</li><li><b>Unselect</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Unselect</b>, atau tahan <b>ALT</b> semasa klik titik pertama. Klik bucu-bucu polygon dan tekan <b>Buang Kawasan</b> atau double-click. Hanya mask Area yang dipilih dipadam. <b>Ctrl+Z</b> untuk undo.</li><li><b>Isi kawasan kosong sahaja</b>: Tahan butang <b>Polygon</b> untuk buka submenu dan pilih <b>Isi Kosong</b>, atau tahan <b>Ctrl + Alt</b> semasa klik titik pertama. Apabila polygon siap, sistem hanya akan menambah bahagian yang <b>belum diwarnakan oleh mana-mana Area</b>. Sesuai untuk isi dinding besar tanpa menimpa beam, tiang atau kawasan yang telah siap diwarnakan.</li><li><b>⇄ Pindah Layer:</b> Pilih layer sumber, gunakan butang Pindah Layer atau submenu Polygon, klik titik untuk pilih kawasan berwarna. Klik Pilih Destinasi, kemudian pilih layer baharu atau sedia ada. Kawasan pindah dipadam automatik daripada layer asal. Undo/Redo mengembalikan kedua-dua mask.</li><li><b>Microscope:</b> Tekan <b>Zoom ON / OFF</b> untuk hidup atau matikan bulatan pembesar semasa Polygon. Touch Polygon masih menggunakan tahan, seret dan lepas walaupun microscope dimatikan.</li><li><b>Rename layer:</b> Double-click nama layer untuk lihat senarai cadangan (General Wall, Feature Wall, Coping, Ceiling, Beam, Column, Fence, Fascia, Door, Window Frame). Pilih cadangan atau taip nama sendiri.</li><li><b>Redo:</b> Klik Redo atau tekan Ctrl+Y / Ctrl+Shift+Z selepas Undo untuk pulihkan sapuan/mask yang dibatalkan. Langkah baharu selepas Undo akan mengosongkan Redo.</li><li><b>Brush/Eraser live preview:</b> Pada telefon, satu jari mewarna/memadam; apabila jari kedua masuk, sapuan sementara dibatalkan dan dua jari hanya menggerakkan atau mengezum gambar. Halakan cursor ke gambar; bulatan menunjukkan diameter sebenar mengikut zoom, tanpa mengubah hasil. Untuk ubah saiz, <b>tahan ALT + klik kanan, kemudian drag ke kiri/kanan</b>: kiri = kecil, kanan = besar. Lepaskan klik kanan untuk kembali kepada Brush/Eraser asal. Slider Saiz turut berubah secara langsung.</li><li>Pilih <b>Brush</b> untuk tambah mask atau <b>Eraser</b> untuk buang lebihan mask. Untuk menggerakkan gambar, <b>tahan Spacebar dan seret</b>; apabila dilepaskan, tool asal kembali secara automatik. Tool <b>Gerak</b> (H) masih boleh dipilih secara kekal. Scroll / dua jari untuk zoom-pan.</li><li>Masukkan warna HEX, pilih swatch, dan laraskan kekuatan warna. Tambah Area untuk bahagian lain. <b>Double-click pada nama layer di senarai kiri</b> untuk rename terus; <b>Enter</b> untuk simpan, <b>Esc</b> untuk batal, atau klik di luar untuk simpan. Nama layer turut tersimpan dalam fail projek. <b>Tarik layer naik/turun</b> untuk susun urutan warna bila kawasan bertindih (atas = depan). Pada telefon, tarik ikon ⠿. Tekan <b>Alt + ↑ / ↓</b> untuk ubah susunan menggunakan keyboard.</li><li><b>Hide / Show layer:</b> Ikon mata di kanan layer menyembunyikan atau menampilkan warna tanpa membuang mask. <b>Lock / Unlock:</b> Ikon mangga mengunci perubahan Polygon, Brush, Eraser, warna, opacity, rename, padam dan drag bagi layer itu. Klik mangga lagi untuk buka. Status tersimpan dalam projek.</li><li>Sistem bermula dengan <b>Scheme 1</b> sahaja. Klik <b>Duplikasi Scheme</b> untuk Scheme 2, 3 dan seterusnya tanpa masking semula. Projek lama yang masih ada Scheme A/B/C akan ditukar kepada nombor; salinan B/C default yang belum diubah dibuang, tetapi kombinasi warna lama yang berbeza dikekalkan.</li><li><b>Unselect Semua:</b> Pilih butang ◌ Unselect Semua di bar tools, lukis polygon kemudian klik titik awal atau Siap Polygon. Semua warna layer di dalam kawasan itu dipadam serentak tanpa perlu memilih layer. Layer yang dikunci dilangkau; tekan Ctrl+Z untuk Undo semua layer tersebut sekali gus.</li><li><b>Material Recolour V1:</b> Pilih layer dan tetapkan Jenis Kemasan sebagai Flat, Preserve Texture atau Metallic Tint. Kawalan Kekalkan Tekstur, Kurangkan Kesan Lama dan Kekalkan Highlight digunakan untuk gambar editor, Before/After serta semua Scheme dalam PDF A3. Clean-up ialah simulasi penurasan imej tanpa AI, bukan pemulihan gambar sebenar. Slider Gelap / Cerah Warna (-100% hingga +100%, asal 0%) hanya mengubah warna cat terpilih, bukan exposure foto asal. Ia disimpan mengikut layer dan turut digunakan dalam PDF. Tetapan disimpan dalam fail .bcsproj bagi setiap layer; projek lama menggunakan Flat secara automatik.</li><li><b>Produk Cat:</b> Di Urus Produk Cat, kategori kini boleh ditambah, dinamakan semula atau dibuang jika tidak digunakan. MultiProof 5000 dipadankan ke Roof Coating. Di Property Area pilih Kategori Permukaan dan Produk Cat pada setiap layer. Pilih siri secara manual supaya projek lama tidak tersalah label. Gunakan <b>Urus Produk Cat</b> untuk tambah/edit/padam siri dan Export/Import katalog JSON bagi staf. Logo rasmi produk digunakan automatik dalam Colour Legend PDF A3. Produk tanpa logo rasmi masih dipaparkan sebagai teks. Logo boleh ditukar dalam Urus Produk Cat. Warna yang dikongsi dua produk akan disenaraikan berasingan. Jika kumpulan warna melebihi ruang footer, sistem jana halaman sambungan.</li><li><b>Simpan Lokal</b> hanya untuk pelayar/peranti semasa. Gunakan <b>Fail Projek</b> untuk menghantar fail kerja kepada staf melalui Google Drive. Staf gunakan <b>Buka → Import Fail Projek</b>.</li><li><b>Rujukan Dokumen:</b> CSBP kekal, tarikh Malaysia dijana automatik, dan staf isi Disediakan Oleh, Nama Sale dan No. Folder. Contoh: CSBP/18/10/26/FAEZI/SHAFIT/10. Rujukan penuh tertera pada PDF dan disimpan dalam fail projek.</li><li><b>Before / After:</b> Tekan butang Before / After pada toolbar untuk membandingkan foto asal (kiri) dengan hasil warna Scheme aktif (kanan). Tekan Kembali ke Editor untuk sambung masking. Perbandingan ialah pratonton sahaja dan tidak mengubah atau menyimpan apa-apa mask baharu.</li><li><b>Export</b> di bahagian atas kanan membuka submenu <b>Export A3</b> dan <b>View PDF</b>. Export A3 menjana dokumen A3 (cover + cadangan) dan membuka pilihan Print / Save as PDF. Susun Gambar A3 membuka Layout Designer untuk drag, resize dan crop gambar serta menggunakan layout sama bagi semua Scheme. View PDF membuka pratonton A3 tanpa dialog cetak automatik; gunakan butang Print / Save as PDF dalam pratonton apabila bersedia.</li></ol><p><b>Shortcut:</b> <span class="shortcut">V</span> Polygon · <span class="shortcut">C</span> Unselect · <span class="shortcut">X</span> Isi Kosong · <span class="shortcut">B</span> Brush · <span class="shortcut">E</span> Eraser · <span class="shortcut">H</span> Gerak · <span class="shortcut">Tekan lama Polygon</span> Buka submenu Polygon / Unselect / Isi Kosong · <span class="shortcut">ALT + Polygon</span> Unselect kawasan · <span class="shortcut">Ctrl + Alt + Polygon</span> Isi kawasan kosong sahaja · <span class="shortcut">Klik luar gambar</span> Titik akan melekat pada tepi gambar · <span class="shortcut">SPACE + Drag</span> Gerak sementara · <span class="shortcut">Alt + Right Drag</span> Saiz Eraser/Brush · <span class="shortcut">Backspace</span> Undur titik Polygon · <span class="shortcut">Ctrl+Z</span> Undo mask · <span class="shortcut">Ctrl+Y / Ctrl+Shift+Z</span> Redo mask.</p><p><b>Had V1:</b> Masking masih manual; pengesanan dinding automatik, akaun staf dan sync automatik akan memerlukan pembangunan cloud.</p>`);
 function isTyping(ev){const e=ev.target;return ['input','textarea','select'].includes(e?.tagName?.toLowerCase())||e?.isContentEditable;}
 function resetTemporaryPan(){if(!spaceHeld)return;spaceHeld=false;syncToolVisuals();updateHint();}
 document.addEventListener('keydown',ev=>{
