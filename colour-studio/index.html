@@ -2262,7 +2262,16 @@ function renderA3FreeFrames(photos){
  return `<div class="a3-free-stage">${items}</div>`;
 }
 // ---- A3 landscape client proposal ----
-function paletteMatchColor(hex){return customPalette.find(p=>p.hex.toUpperCase()===String(hex).toUpperCase())||null;}
+function paletteMatchColor(hex,productId=''){
+ const target=String(hex||'').trim().toUpperCase();
+ // Glomel shades are kept outside customPalette. Resolve those catalog codes
+ // first for Glomel products, otherwise the PDF legend would have no text.
+ if(productIdAlias(productId)==='glomel'){
+  const glomel=GLOMEL_PALETTE.find(p=>p.hex.toUpperCase()===target);
+  if(glomel)return glomel;
+ }
+ return customPalette.find(p=>String(p.hex||'').toUpperCase()===target)||null;
+}
 let lastProposalSelection=null;
 function proposalOptions(){
  if(!hasProjectPhoto){toast('Upload gambar dahulu.');return;}
@@ -2334,7 +2343,7 @@ function proposalLegend(scheme,usageByArea){
   const key=category+'|'+productId;
   if(!groupsByKey.has(key))groupsByKey.set(key,{category,categoryLabel:categoryName(category),productId,productName,colors:new Map(),pixels:0});
   const group=groupsByKey.get(key);group.pixels+=pixels;
-  const hex=(scheme.colors[a.id]||'#E5DED2').toUpperCase(),pal=paletteMatchColor(hex);
+  const hex=(scheme.colors[a.id]||'#E5DED2').toUpperCase(),pal=paletteMatchColor(hex,productId);
   if(!group.colors.has(hex))group.colors.set(hex,{hex,code:pal?.code||'',name:pal?.name||'',pixels:0,layerNames:[]});
   const c=group.colors.get(hex);c.pixels+=pixels;
   const layerName=String(a.name||'').trim()||'Area';
@@ -2352,7 +2361,7 @@ function coverHtml(name,meta,cover){
  const asset=new URL('assets/cover-reference.webp',window.location.href).href;
  return `<section class="page reference-static-cover"><img class="reference-static-cover-image" src="${asset}" alt="Bina Paint Colour Scheme Proposal"/><div class="reference-static-cover-project">${escapeText((name||'PROJEK BAHARU').toUpperCase())}</div></section>`;
 }
-function legendTitle(c){const code=String(c.code||'').trim();const rawName=String(c.name||'').trim();const name=rawName&&rawName.toUpperCase()!=='CUSTOM COLOUR'?rawName:'';if(code&&name)return `${code} ${name}`.toUpperCase();if(code)return code.toUpperCase();if(name)return name.toUpperCase();return '';}
+function legendTitle(c){const code=String(c.code||'').trim();const rawName=String(c.name||'').trim();const name=rawName&&rawName.toUpperCase()!=='CUSTOM COLOUR'?rawName:'';if(code&&name)return `${code} ${name}`.toUpperCase();if(code)return code.toUpperCase();if(name)return name.toUpperCase();return /^#[0-9A-F]{6}$/i.test(c.hex||'')?'HEX '+String(c.hex).toUpperCase():'';}
 function pageMontage(photos){if(views.length){const map=new Map(views.map((v,i)=>[v.id,photos[i]]));return renderA3FreeFrames(map);}const n=photos.length;
  if(n===1)return `<div class="montage solo"><img src="${photos[0]}"/></div>`;
  if(n<=3)return `<div class="montage simple" style="grid-template-columns:repeat(${n},1fr)">${photos.map(src=>`<img src="${src}"/>`).join('')}</div>`;
