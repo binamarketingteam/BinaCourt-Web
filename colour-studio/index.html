@@ -274,7 +274,7 @@
    <div class="workspace-footer"><div id="statusText">Sedia · Polygon untuk garisan lurus, Brush untuk bentuk bebas</div><div><span id="zoomText">100%</span> · <span id="resolutionText">1200 × 760 px</span></div></div>
   </main>
   <aside class="sidebar right" id="rightSidebar">
-   <section class="section"><div class="secttitle">04 · Property Area</div><div id="propertyEmpty" class="property-empty">Pilih Area untuk edit.</div><div id="propertyFields" hidden><div class="field"><label for="areaName">Nama Kawasan</label><input id="areaName" type="text"/></div><div class="field"><label for="colorInput">Warna Area</label><div class="split"><input type="color" id="colorInput" style="width:55px;height:39px;border:1px solid var(--border);border-radius:7px;padding:3px;background:white"/><input class="wide" id="hexInput" type="text" placeholder="#FFFFFF" maxlength="7"/></div></div><div class="product-assign"><div class="field"><label for="areaCategory">Kategori Permukaan</label><select id="areaCategory" aria-label="Kategori permukaan"></select></div><div class="field"><label for="areaProduct">Produk Cat</label><select id="areaProduct" aria-label="Produk cat"></select><div id="selectedProductLogo" class="selected-product-logo" hidden></div></div></div><div class="material-panel" id="materialPanel"><div class="material-title">MATERIAL RECOLOUR <span>V1 · Tanpa AI</span></div><div class="field"><label for="materialMode">Jenis Kemasan</label><select id="materialMode"><option value="flat">Flat · Dinding biasa</option><option value="texture">Preserve Texture · Bumbung / Konkrit</option><option value="metallic">Metallic Tint · Kubah / Besi</option></select></div><div id="materialSliders"><div class="field"><div class="line"><label for="textureAmount">Kekalkan Tekstur</label><output id="textureAmountVal">80%</output></div><input id="textureAmount" type="range" min="0" max="100" step="5" value="80"/></div><div class="field"><div class="line"><label for="cleanupAmount">Kurangkan Kesan Lama</label><output id="cleanupAmountVal">45%</output></div><input id="cleanupAmount" type="range" min="0" max="100" step="5" value="45"/></div><div class="field"><div class="line"><label for="highlightAmount">Kekalkan Highlight</label><output id="highlightAmountVal">60%</output></div><input id="highlightAmount" type="range" min="0" max="100" step="5" value="60"/></div></div><div class="material-hint" id="materialHint">Flat menggunakan kaedah warna asal.</div></div><div class="property-preview" id="colorPreview">Warna pilihan</div><div class="field"><div class="line"><label for="opacityInput">Kekuatan Warna</label><output id="opacityVal">95%</output></div><input id="opacityInput" type="range" min="20" max="100" value="95" style="width:100%;accent-color:var(--blue)"/></div><div class="split" style="margin-top:8px"><button class="btn wide" id="toggleArea">Sembunyikan</button><button class="btn warn" id="deleteArea">Buang</button></div></div></section>
+   <section class="section"><div class="secttitle">04 · Property Area</div><div id="propertyEmpty" class="property-empty">Pilih Area untuk edit.</div><div id="propertyFields" hidden><div class="field"><label for="areaName">Nama Kawasan</label><input id="areaName" type="text"/></div><div class="field"><label for="colorInput">Warna Area</label><div class="split"><input type="color" id="colorInput" style="width:55px;height:39px;border:1px solid var(--border);border-radius:7px;padding:3px;background:white"/><input class="wide" id="hexInput" type="text" placeholder="#FFFFFF" maxlength="7"/></div></div><div class="product-assign"><div class="field"><label for="areaCategory">Kategori Permukaan</label><select id="areaCategory" aria-label="Kategori permukaan"></select></div><div class="field"><label for="areaProduct">Produk Cat</label><select id="areaProduct" aria-label="Produk cat"></select><div id="selectedProductLogo" class="selected-product-logo" hidden></div></div></div><div class="material-panel" id="materialPanel"><div class="material-title">MATERIAL RECOLOUR <span>V1 · Tanpa AI</span></div><div class="field"><label for="materialMode">Jenis Kemasan</label><select id="materialMode"><option value="flat">Flat · Dinding biasa</option><option value="texture">Preserve Texture · Bumbung / Konkrit</option><option value="metallic">Metallic Tint · Kubah / Besi</option></select></div><div id="materialSliders"><div class="field"><div class="line"><label for="textureAmount">Kekalkan Tekstur</label><output id="textureAmountVal">80%</output></div><input id="textureAmount" type="range" min="0" max="100" step="5" value="80"/></div><div class="field"><div class="line"><label for="cleanupAmount">Kurangkan Kesan Lama</label><output id="cleanupAmountVal">45%</output></div><input id="cleanupAmount" type="range" min="0" max="100" step="5" value="45"/></div><div class="field"><div class="line"><label for="highlightAmount">Kekalkan Highlight</label><output id="highlightAmountVal">60%</output></div><input id="highlightAmount" type="range" min="0" max="100" step="5" value="60"/></div><div class="field" id="shadowDetailField"><div class="line"><label for="shadowDetailAmount">Detail Shadow</label><output id="shadowDetailAmountVal">0%</output></div><input id="shadowDetailAmount" type="range" min="0" max="100" step="5" value="0" title="Jelaskan tekstur dan lekuk kawasan bayang tanpa menggelapkan seluruh dinding"/></div></div><div class="material-hint" id="materialHint">Flat menggunakan kaedah warna asal.</div></div><div class="property-preview" id="colorPreview">Warna pilihan</div><div class="field"><div class="line"><label for="opacityInput">Kekuatan Warna</label><output id="opacityVal">95%</output></div><input id="opacityInput" type="range" min="20" max="100" value="95" style="width:100%;accent-color:var(--blue)"/></div><div class="split" style="margin-top:8px"><button class="btn wide" id="toggleArea">Sembunyikan</button><button class="btn warn" id="deleteArea">Buang</button></div></div></section>
    <section class="section product-catalog-section"><div class="secttitle">Produk Cat Bina Paint</div><div class="tiny" id="productManagerCount">10 produk · 6 kategori</div><button class="btn block" id="productManageBtn" style="margin-top:9px">⚙ Urus Produk Cat</button></section><section class="section"><div class="secttitle">Palette Warna · 120 Katalog</div><input type="search" id="paletteSearch" aria-label="Cari warna dalam palette" placeholder="Cari nama / kod warna..." style="width:100%;font-size:12px;padding:8px;border:1px solid var(--border);border-radius:7px;margin-bottom:9px"/><div class="palette" id="palette"></div><div class="tiny" style="margin:8px 0" id="paletteCount">Memuatkan warna daripada katalog...</div><div class="split"><button class="btn wide" id="paletteManage">＋ Tambah / Urus</button><button class="btn wide" id="paletteImportBtn">↑ Import</button></div></section>
    
   </aside>
@@ -608,13 +608,13 @@ const CATALOG_PALETTE=[{"code":"AP55-1","name":"Warm Silver","hex":"#EBECED"},{"
 let customPalette=[]; // {code,name,hex}, 120 catalog colors as defaults; user can edit/import/export
 const currentScheme=()=>schemes.find(s=>s.id===schemeId)||schemes[0];
 const selectedArea=()=>areas.find(a=>a.id===selectedId)||null;
-const MATERIAL_DEFAULTS=Object.freeze({mode:'flat',texture:80,cleanup:45,highlight:60});
+const MATERIAL_DEFAULTS=Object.freeze({mode:'flat',texture:80,cleanup:45,highlight:60,shadowDetail:0});
 function normalMaterial(raw){
  const src=raw||{};
  const clamp=(value,defaultValue)=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Math.round(Number(value)))):defaultValue;
- return {mode:['flat','texture','metallic'].includes(src.mode)?src.mode:'flat',texture:clamp(src.texture,80),cleanup:clamp(src.cleanup,45),highlight:clamp(src.highlight,60)};
+ return {mode:['flat','texture','metallic'].includes(src.mode)?src.mode:'flat',texture:clamp(src.texture,80),cleanup:clamp(src.cleanup,45),highlight:clamp(src.highlight,60),shadowDetail:clamp(src.shadowDetail,0)};
 }
-function materialKey(a){const m=normalMaterial(a.material);return [m.mode,m.texture,m.cleanup,m.highlight].join(':');}
+function materialKey(a){const m=normalMaterial(a.material);return [m.mode,m.texture,m.cleanup,m.highlight,m.shadowDetail].join(':');}
 const makeMask=()=>{let c=document.createElement('canvas');c.width=width;c.height=height;return c};
 function makeId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function toast(msg){let e=$('toast');e.textContent=msg;e.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.hidden=true,3600)}
@@ -836,8 +836,45 @@ function updateHint(){
  $('statusText').textContent=tool==='polygon'?polygonModeMeta(activePolyMode).label+' · '+polygon.length+' titik':'Mode: '+tool;
 }
 function updatePolygonControls(){const mode=polygon.length?polygonMode:polygonPresetMode;$('finishPolygon').disabled=polygon.length<3;$('cancelPolygon').disabled=polygon.length===0;$('finishPolygon').textContent=mode==='transfer'?'⇄ Pilih Destinasi':mode==='subtract'&&polygon.length?'✓ Buang Kawasan':(mode==='add-empty'&&polygon.length?'✓ Isi Kawasan Kosong':'✓ Siap Polygon');updatePolygonToolButton();}
-function updateShade(){loupeSourceDirty=true;shadeCanvas.width=width;shadeCanvas.height=height;let src=imageCtx.getImageData(0,0,width,height),pix=src.data;for(let i=0;i<pix.length;i+=4){const lum=(0.2126*pix[i]+0.7152*pix[i+1]+0.0722*pix[i+2])/255;const shade=Math.min(255,Math.round(255*(.56+.63*lum)));pix[i]=shade;pix[i+1]=shade;pix[i+2]=shade;pix[i+3]=255;}shadeCtx.putImageData(src,0,0);}
+function updateShade(){shadowDetailCache=new WeakMap();loupeSourceDirty=true;shadeCanvas.width=width;shadeCanvas.height=height;let src=imageCtx.getImageData(0,0,width,height),pix=src.data;for(let i=0;i<pix.length;i+=4){const lum=(0.2126*pix[i]+0.7152*pix[i+1]+0.0722*pix[i+2])/255;const shade=Math.min(255,Math.round(255*(.56+.63*lum)));pix[i]=shade;pix[i+1]=shade;pix[i+2]=shade;pix[i+3]=255;}shadeCtx.putImageData(src,0,0);}
 function invalidateAll(){loupeSourceDirty=true;for(const a of areas)a.dirty=true;requestRender()}
+/* Detail Shadow V2: locally enhance only dark and mid-shadow image details.
+   This map is shared by layers from the same photo and remains neutral in highlights.
+   The map is separate from paint colour/masks so it can be adjusted non-destructively. */
+let shadowDetailCache=new WeakMap();
+function studioShadowDetailMap(photo,w,h){
+ const prior=shadowDetailCache.get(photo);
+ if(prior&&prior.w===w&&prior.h===h)return prior.canvas;
+ const scale=Math.min(1,1800/Math.max(w,h));
+ const mw=Math.max(1,Math.round(w*scale)),mh=Math.max(1,Math.round(h*scale));
+ const source=document.createElement('canvas');source.width=mw;source.height=mh;
+ const sourceCtx=source.getContext('2d',{willReadFrequently:true});
+ sourceCtx.drawImage(photo,0,0,mw,mh);
+ const original=sourceCtx.getImageData(0,0,mw,mh);
+ const blurredCanvas=document.createElement('canvas');blurredCanvas.width=mw;blurredCanvas.height=mh;
+ const blurredCtx=blurredCanvas.getContext('2d',{willReadFrequently:true});
+ // Local reference around each pixel. A modest radius keeps beams and column edges crisp.
+ blurredCtx.filter='blur('+Math.max(3,Math.round(Math.min(mw,mh)*.009))+'px)';
+ blurredCtx.drawImage(source,0,0);
+ blurredCtx.filter='none';
+ const blurred=blurredCtx.getImageData(0,0,mw,mh).data;
+ const result=sourceCtx.createImageData(mw,mh);
+ const src=original.data,dst=result.data;
+ for(let i=0;i<src.length;i+=4){
+  const lum=(.2126*src[i]+.7152*src[i+1]+.0722*src[i+2])/255;
+  const local=(.2126*blurred[i]+.7152*blurred[i+1]+.0722*blurred[i+2])/255;
+  // Smoothly fade out the enhancement before reaching bright surfaces.
+  const t=Math.max(0,Math.min(1,(.83-lum)/.65));
+  const weight=t*t*(3-2*t);
+  const edge=Math.max(-80,Math.min(80,(lum-local)*390));
+  const lifted=(1-lum)*26;
+  const value=Math.max(45,Math.min(224,Math.round(128+weight*(edge+lifted))));
+  dst[i]=dst[i+1]=dst[i+2]=value;dst[i+3]=255;
+ }
+ sourceCtx.putImageData(result,0,0);
+ shadowDetailCache.set(photo,{w,h,canvas:source});
+ return source;
+}
 /* Material Recolour System V1: deterministic local pixel processing, no image AI.
    Flat is the original overlay. For textured materials, retain source luminance,
    gently neutralise uneven lighting and optionally soften weathering; original photo
@@ -887,6 +924,15 @@ function renderMaterialLayer(photo,shade,mask,col,rawMaterial,w,h){
    dst[i+3]=255;
   }
   c.putImageData(result,0,0);
+ }
+ // Apply to ALL finish types, including Flat (other texture sliders remain inactive there).
+ // Soft-light makes the map neutral at grey=128; highlights and base paint hue stay protected.
+ if(material.shadowDetail>0){
+  c.globalCompositeOperation='soft-light';
+  c.globalAlpha=material.shadowDetail/100;
+  c.drawImage(studioShadowDetailMap(photo,w,h),0,0,w,h);
+  c.globalAlpha=1;
+  c.globalCompositeOperation='source-over';
  }
  c.globalCompositeOperation='destination-in';c.drawImage(mask,0,0,w,h);c.globalCompositeOperation='source-over';
  return layer;
@@ -1346,14 +1392,16 @@ function refreshMaterialControls(){
  const a=selectedArea();if(!a)return;
  const m=normalMaterial(a.material);a.material=m;
  $('materialMode').value=m.mode;
- for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount']]){
-  $(id).value=m[key];$(id+'Val').textContent=m[key]+'%';$(id).disabled=!!a.locked||m.mode==='flat';
+ for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount'],['shadowDetail','shadowDetailAmount']]){
+  $(id).value=m[key];$(id+'Val').textContent=m[key]+'%';
+  $(id).disabled=!!a.locked||(m.mode==='flat'&&key!=='shadowDetail');
+  $(id).closest('.field').style.opacity=$(id).disabled?.43:1;
  }
  $('materialMode').disabled=!!a.locked;
- $('materialSliders').style.opacity=m.mode==='flat'?.43:1;
- $('materialHint').textContent=m.mode==='flat'?'Flat: kaedah warna asal untuk dinding biasa.':m.mode==='metallic'?'Metallic: kekalkan garis panel, bayang dan kilauan. Sesuai untuk kubah / besi.':'Texture: kekalkan urat permukaan dan bayang. Clean-up hanya melembutkan kesan kotoran, bukan membuang karat sepenuhnya.';
+ $('materialSliders').style.opacity=1;
+ $('materialHint').textContent=m.mode==='flat'?'Flat: warna dinding biasa. Detail Shadow menjelaskan lekuk dan bayang tanpa mengubah warna utama (cadangan 30%).':m.mode==='metallic'?'Metallic: kekalkan garis panel dan kilauan. Detail Shadow menonjolkan bentuk di kawasan gelap.':'Texture: kekalkan tekstur asal. Detail Shadow tambah perincian bayang pada struktur tanpa menenggelamkan highlight.';
 }
-for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount']]){
+for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount'],['shadowDetail','shadowDetailAmount']]){
  $(id).addEventListener('input',ev=>{
   const a=selectedArea();if(!a||a.locked)return;a.material=normalMaterial(a.material);a.material[key]=Number(ev.target.value);
   $(id+'Val').textContent=ev.target.value+'%';a.dirty=true;setDirty();requestRender();
