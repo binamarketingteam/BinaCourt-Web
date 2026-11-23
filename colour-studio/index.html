@@ -11,7 +11,7 @@
 .workspace-footer{display:flex;align-items:center;justify-content:space-between;gap:9px;background:#f8fafc;border-top:1px solid #d5dee6;padding:8px 12px;color:#66788b;font-size:11px;flex:none}.property-preview{height:72px;border-radius:10px;border:1px solid #cfd7df;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:750}.split{display:flex;gap:7px;align-items:center}.split>*{min-width:0}.split .wide{flex:1}.palette{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.swatch{aspect-ratio:1;border-radius:7px;border:1px solid rgba(0,0,0,.13);padding:0}.swatch.active{outline:3px solid var(--blue);outline-offset:2px}.line{display:flex;justify-content:space-between;align-items:center;gap:10px}.line span{font-size:12px}.line output{font-weight:800;color:var(--navy);font-size:12px}.divider{height:1px;background:var(--border);margin:13px 0}.property-empty{border:1px dashed #b6c4cf;border-radius:10px;padding:15px;font-size:12px;color:#617587;text-align:center;line-height:1.5}.toast{position:fixed;z-index:30;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:var(--navy);padding:11px 16px;border-radius:10px;box-shadow:0 10px 30px #1e3a5660;font-size:12px;max-width:90vw}.overlay{position:fixed;z-index:25;inset:0;background:#0d1d2dbb;display:flex;align-items:center;justify-content:center;padding:15px}.overlay[hidden]{display:none!important}.modal{max-width:640px;width:100%;max-height:90dvh;overflow-y:auto;background:white;border-radius:16px;box-shadow:0 20px 60px #0007;padding:22px}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.modal h2{font-size:19px;margin:0}.local-project{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border);border-radius:9px;padding:11px;margin:9px 0}.local-project strong{font-size:13px}.local-project small{font-size:11px;color:var(--muted)}.modal p,.modal li{font-size:13px;color:#435366;line-height:1.6}.shortcut{display:inline-block;padding:3px 6px;background:#ebf0f4;border-radius:4px;font-weight:750;font-size:11px}.save-status{font-size:11px;color:#9fc1d8;display:none}.danger{color:var(--red)}
 /* Pointer preview: the circle measures the actual brush/eraser diameter on screen. */
 .brush-cursor{position:absolute;left:0;top:0;width:32px;height:32px;box-sizing:border-box;border:1.6px solid #111f2a;border-radius:50%;box-shadow:0 0 0 1px #fff, inset 0 0 0 1px rgba(255,255,255,.9);transform:translate(-50%,-50%);pointer-events:none;z-index:8;will-change:left,top,width,height}
-.brush-cursor[hidden],.brush-cursor-size[hidden]{display:none!important}
+.brush-cursor[hidden],.brush-cursor-size[hidden]{display:none!important}.brush-cursor.line-cursor{border-radius:2px}
 .brush-cursor-size{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);background:rgba(16,40,68,.93);color:#fff;font-size:12px;font-weight:750;border-radius:6px;padding:4px 7px;white-space:nowrap;box-shadow:0 2px 8px #0003}
 .polygon-loupe{position:absolute;left:0;top:0;width:144px;height:144px;pointer-events:none;z-index:9;border-radius:50%;overflow:hidden;border:3px solid rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(9,20,33,.32),0 0 0 1px rgba(18,42,68,.18);background:#fff;display:grid;place-items:center;will-change:left,top}.polygon-loupe[hidden]{display:none!important}.polygon-loupe canvas{width:100%;height:100%;display:block}.polygon-loupe::before,.polygon-loupe::after{content:'';position:absolute;background:rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(13,36,58,.32)}.polygon-loupe::before{left:50%;top:14px;bottom:14px;width:1px;transform:translateX(-50%)}.polygon-loupe::after{top:50%;left:14px;right:14px;height:1px;transform:translateY(-50%)}.polygon-loupe-target{position:absolute;left:50%;top:50%;width:2px;height:2px;background:#1479bd;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 .65px #fff;z-index:3}
 /* V3.29: precise touch placement; only the work canvas prevents page gestures. */
@@ -265,7 +265,7 @@
    <section class="section" style="flex:1"><div class="secttitle">03 · Kawasan / Layer</div><div class="split" id="layerCopyPasteActions" style="margin:0 0 11px;gap:7px"><button class="btn wide" id="copySelectedArea" type="button" title="Copy layer terpilih untuk paste ke Option lain">⧉ Copy Layer</button><button class="btn wide" id="pasteCopiedArea" type="button" disabled title="Paste layer yang disalin ke Option aktif">▣ Paste Layer</button></div><div id="layerClipboardNote" class="tiny" hidden aria-live="polite" style="margin:-3px 0 10px;color:#446178;line-height:1.4"></div><div class="area-list" id="areaList"></div><div class="split" style="margin-top:7px"><button class="btn wide primary" id="addArea">＋ Tambah Area</button><button class="btn wide" id="duplicateSelectedArea" title="Duplicate layer dalam option semasa">⧉ Duplicate</button></div></section>
   </aside>
   <main class="center">
-   <div class="tools"><div class="tool-menu" id="polygonToolMenu"><button class="tool active" id="polygonToolBtn" data-tool="polygon" title="Polygon (V)">⬡ Polygon</button><div class="tool-submenu" id="polygonSubmenu" role="menu" aria-label="5 alat pilihan kawasan" hidden></div></div><button class="tool" data-tool="brush" title="Brush (B)">🖌 Brush</button><button class="tool" data-tool="eraser" title="Eraser (E)">◇ Eraser</button><button class="tool" data-tool="hand" title="Gerak (H) · Tahan Spacebar + Drag untuk gerak sementara">✥ Gerak</button><button class="btn" id="finishPolygon" disabled>✓ Siap Polygon</button><button class="btn" id="cancelPolygon" disabled>✕ Batal</button><button class="btn microscope-toggle" id="microscopeToggle" type="button" aria-pressed="true" title="Hidup atau matikan Microscope Zoom">🔍 Zoom ON</button><div class="tool-group"><label for="brushSize">Saiz</label><input id="brushSize" type="range" min="3" max="600" value="32"/><span id="brushVal" style="font-size:11px;width:35px">32</span></div><div class="tool-group"><button class="btn" id="undoBtn" title="Undo mask (Ctrl+Z)">↶ Undo</button><button class="btn" id="redoBtn" title="Redo mask (Ctrl+Y / Ctrl+Shift+Z)" disabled>↷ Redo</button><button class="btn" id="fitBtn">⛶ Fit</button></div><div class="tool-group"><button type="button" class="btn compare-toggle" id="compareBtn" aria-pressed="false" title="Lihat gambar asal di sebelah hasil Colour Scheme">◧ Before / After</button></div></div>
+   <div class="tools"><div class="tool-menu" id="polygonToolMenu"><button class="tool active" id="polygonToolBtn" data-tool="polygon" title="Polygon (V)">⬡ Polygon</button><div class="tool-submenu" id="polygonSubmenu" role="menu" aria-label="5 alat pilihan kawasan" hidden></div></div><button class="tool" data-tool="brush" title="Brush (B)">🖌 Brush</button><button class="tool" data-tool="line" title="Line (L) · Klik dan seret untuk panjang · Saiz untuk ketebalan · Shift untuk mendatar/menegak">▰ Line</button><button class="tool" data-tool="eraser" title="Eraser (E)">◇ Eraser</button><button class="tool" data-tool="hand" title="Gerak (H) · Tahan Spacebar + Drag untuk gerak sementara">✥ Gerak</button><button class="btn" id="finishPolygon" disabled>✓ Siap Polygon</button><button class="btn" id="cancelPolygon" disabled>✕ Batal</button><button class="btn microscope-toggle" id="microscopeToggle" type="button" aria-pressed="true" title="Hidup atau matikan Microscope Zoom">🔍 Zoom ON</button><div class="tool-group"><label for="brushSize" id="brushSizeLabel">Saiz</label><input id="brushSize" type="range" min="3" max="600" value="32"/><span id="brushVal" style="font-size:11px;width:35px">32</span></div><div class="tool-group"><button class="btn" id="undoBtn" title="Undo mask (Ctrl+Z)">↶ Undo</button><button class="btn" id="redoBtn" title="Redo mask (Ctrl+Y / Ctrl+Shift+Z)" disabled>↷ Redo</button><button class="btn" id="fitBtn">⛶ Fit</button></div><div class="tool-group"><button type="button" class="btn compare-toggle" id="compareBtn" aria-pressed="false" title="Lihat gambar asal di sebelah hasil Colour Scheme">◧ Before / After</button></div></div>
    <div class="workspace" id="workspace"><button type="button" id="emptyUpload" class="empty-upload" hidden>↑ Upload Gambar</button><div id="brushCursor" class="brush-cursor" hidden aria-hidden="true"><span id="brushCursorSize" class="brush-cursor-size" hidden></span></div><div id="polygonLoupe" class="polygon-loupe" hidden aria-hidden="true"><canvas id="polygonLoupeCanvas" width="144" height="144"></canvas><span class="polygon-loupe-target"></span><div class="polygon-loupe-label">Zoom</div></div><div class="canvas-overlay-message" id="helpText">Pilih area kemudian klik bucu-bucu dinding menggunakan Polygon. Klik di luar gambar juga dibenarkan — titik akan melekat pada tepi gambar.</div><div class="canvas-shell" id="shell"><canvas id="editorCanvas" width="1200" height="760"></canvas></div>
     <div class="compare-view" id="compareView" hidden aria-label="Perbandingan sebelum dan selepas">
       <section class="compare-pane"><div class="compare-heading"><span>SEBELUM</span><small>GAMBAR ASAL</small></div><div class="compare-photo"><canvas id="compareBefore" width="1200" height="760" aria-label="Gambar asal"></canvas></div><div class="compare-footnote">Original Photo</div></section>
@@ -599,7 +599,8 @@ setStudioProjectBar(proposalMeta);
 let viewSwitching=false;
 
 // Temporary Alt+right-drag size adjustment (no paint/erase while resizing).
-let cursorPointer=null,brushSizeDrag=null,brushStroke=null;
+let cursorPointer=null,brushSizeDrag=null,brushStroke=null,lineDrag=null;
+let lineToolSize=16,freehandToolSize=Number($('brushSize').value);
 const brushCursor=$('brushCursor'),brushCursorSize=$('brushCursorSize');
 const polygonLoupe=$('polygonLoupe'),polygonLoupeCanvas=$('polygonLoupeCanvas'),polygonLoupeCtx=polygonLoupeCanvas.getContext('2d');
 const MICROSCOPE_PREF_KEY='bina-colour-studio-microscope-v329';
@@ -732,7 +733,7 @@ function toast(msg){let e=$('toast');e.textContent=msg;e.hidden=false;clearTimeo
 function escapeText(s){return String(s).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function setDirty(){dirty=true;loupeSourceDirty=true;$('saveStatus').style.display='inline';$('saveStatus').textContent='Perubahan belum disimpan';}
 function activeTool(){return spaceHeld?'hand':tool;}
-function brushToolIsActive(){return !spaceHeld&&(tool==='brush'||tool==='eraser');}
+function brushToolIsActive(){return !spaceHeld&&(tool==='brush'||tool==='eraser'||tool==='line');}
 function setBrushSize(value){
  const slider=$('brushSize'); const next=Math.max(Number(slider.min),Math.min(Number(slider.max),Math.round(Number(value)||Number(slider.min))));
  slider.value=String(next);$('brushVal').textContent=String(next);updateBrushCursor();return next;
@@ -810,12 +811,13 @@ function trackPolygonMenuPress(ev){
 }
 function finishPolygonMenuPress(){clearPolygonMenuTimer();}
 function updateBrushCursor(){
- if(!brushToolIsActive()||!cursorPointer||cursorPointer.pointerType==='touch'){
+ if(!brushToolIsActive()||!cursorPointer||cursorPointer.pointerType==='touch'||(tool==='line'&&lineDrag)){
   brushCursor.hidden=true;brushCursorSize.hidden=true;return;
  }
  const bounds=workspace.getBoundingClientRect(),size=Math.max(3,Number($('brushSize').value)*zoom);
  brushCursor.style.left=(cursorPointer.x-bounds.left)+'px';brushCursor.style.top=(cursorPointer.y-bounds.top)+'px';
  brushCursor.style.width=size+'px';brushCursor.style.height=size+'px';
+ brushCursor.classList.toggle('line-cursor',tool==='line');
  brushCursor.hidden=false;brushCursorSize.hidden=!brushSizeDrag;
  if(brushSizeDrag)brushCursorSize.textContent=$('brushSize').value+' px';
 }
@@ -835,6 +837,7 @@ function startPinchFromPointers(){
  touchGestureMulti=true;
  // Two fingers mean navigation only; undo the ENTIRE in-progress touch stroke.
  if(brushStroke)finishBrushStroke(false);
+ if(lineDrag){lineDrag=null;requestRender();updateBrushCursor();}
  clearTouchPolygonPress();
  const points=[...activePointers.values()],a=points[0],b=points[1];
  pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom,startCenter:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},startPanX:panX,startPanY:panY};
@@ -958,7 +961,7 @@ function finishBrushSizeDrag(ev){
  updateBrushCursor();syncToolVisuals();return true;
 }
 
-function syncToolVisuals(){const shown=activeTool();document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===shown));canvas.style.cursor=panning?'grabbing':shown==='hand'?'grab':(shown==='brush'||shown==='eraser')?'none':'crosshair';workspace.style.cursor=spaceHeld?(panning?'grabbing':'grab'):'default';updateBrushCursor();updatePolygonLoupe();updatePolygonToolButton();}
+function syncToolVisuals(){const shown=activeTool();document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===shown));canvas.style.cursor=panning?'grabbing':shown==='hand'?'grab':(shown==='brush'||shown==='eraser'||shown==='line')?'none':'crosshair';workspace.style.cursor=spaceHeld?(panning?'grabbing':'grab'):'default';updateBrushCursor();updatePolygonLoupe();updatePolygonToolButton();}
 function cancelPolygon(){polygon=[];polygonMode=polygonPresetMode;mouseImg=null;updatePolygonControls();updateHint();requestRender();}
 // Backspace removes only the latest uncommitted Polygon point; completed masks are untouched.
 function stepBackPolygonPoint(){
@@ -967,11 +970,21 @@ function stepBackPolygonPoint(){
  if(polygon.length===0){polygonMode=polygonPresetMode;mouseImg=null;}
  updatePolygonControls();updateHint();requestRender();
 }
-function selectTool(t){finishBrushStroke(true);clearTouchPolygonPress();closePolygonSubmenu();tool=t;cancelPolygon();syncToolVisuals()}
+function selectTool(t){
+ if(tool==='line')lineToolSize=Number($('brushSize').value);
+ else if(tool==='brush'||tool==='eraser')freehandToolSize=Number($('brushSize').value);
+ finishBrushStroke(true);if(lineDrag){lineDrag=null;requestRender();}
+ clearTouchPolygonPress();closePolygonSubmenu();tool=t;
+ $('brushSize').min=t==='line'?'1':'3';
+ $('brushSizeLabel').textContent=t==='line'?'Tebal':'Saiz';
+ if(t==='line')setBrushSize(lineToolSize);
+ else if(t==='brush'||t==='eraser')setBrushSize(freehandToolSize);
+ cancelPolygon();syncToolVisuals();
+}
 function updateHint(){
  if(spaceHeld){$('helpText').textContent='SPACE ditekan: Seret untuk gerakkan gambar · Lepaskan SPACE untuk kembali ke '+tool.toUpperCase();$('statusText').textContent='Gerak sementara (SPACE) · Tool asal: '+tool;return;}
  const activePolyMode=polygon.length?polygonMode:polygonPresetMode;
- const hints={polygon:activePolyMode==='transfer'?'Pindah Layer: tandakan bahagian berwarna dalam layer sumber, kemudian pilih layer destinasi.':activePolyMode==='subtract-all'?'Unselect Semua: tandakan satu kawasan untuk buang warna daripada SEMUA layer yang tidak dikunci.':activePolyMode==='subtract'?'Unselect: pilih kawasan untuk dibuang pada layer aktif.':activePolyMode==='add-empty'?'Isi Kosong: pilih hanya ruang belum berwarna.':'Polygon: klik bucu untuk tambah kawasan.',brush:'Brush: satu jari mewarna; dua jari hanya zoom/pan.',eraser:'Eraser: satu jari memadam; dua jari hanya zoom/pan.',hand:'Seret untuk gerakkan gambar.'};
+ const hints={polygon:activePolyMode==='transfer'?'Pindah Layer: tandakan bahagian berwarna dalam layer sumber, kemudian pilih layer destinasi.':activePolyMode==='subtract-all'?'Unselect Semua: tandakan satu kawasan untuk buang warna daripada SEMUA layer yang tidak dikunci.':activePolyMode==='subtract'?'Unselect: pilih kawasan untuk dibuang pada layer aktif.':activePolyMode==='add-empty'?'Isi Kosong: pilih hanya ruang belum berwarna.':'Polygon: klik bucu untuk tambah kawasan.',brush:'Brush: satu jari mewarna; dua jari hanya zoom/pan.',line:'Line: klik dan seret dari satu hujung ke hujung lain. Ubah ketebalan dengan Saiz, tahan Shift untuk garis mendatar/menegak.',eraser:'Eraser: satu jari memadam; dua jari hanya zoom/pan.',hand:'Seret untuk gerakkan gambar.'};
  $('helpText').textContent=hints[tool]+(tool==='polygon'&&activePolyMode==='subtract-all'?' Tidak perlu pilih layer dahulu.':(selectedArea()?' Area: '+selectedArea().name:' Tambah / pilih Area dahulu.'));
  $('statusText').textContent=tool==='polygon'?polygonModeMeta(activePolyMode).label+' · '+polygon.length+' titik':'Mode: '+tool;
 }
@@ -1093,7 +1106,14 @@ function layerCache(a,sch){const col=sch.colors[a.id]||'#E5DED2',key=materialKey
  return a.cache;
 }
 function drawImageTo(out,guide){out.clearRect(0,0,width,height);out.drawImage(imageCanvas,0,0);const sch=currentScheme();for(const a of schemeAreas(sch)){if(!schemeAreaVisible(a,sch))continue;out.globalAlpha=schemeAreaOpacity(a,sch);out.drawImage(layerCache(a,sch),0,0);out.globalAlpha=1;}
- if(guide && polygon.length){out.save();const strokeColor=polygonMode==='transfer'?'#31c9ec':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#ff5261':(polygonMode==='add-empty'?'#4ee0b6':'#ffe164');const pointStroke=polygonMode==='transfer'?'#137a92':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#a11c35':(polygonMode==='add-empty'?'#0a6b57':'#184a6c');out.strokeStyle=strokeColor;out.lineWidth=1.25/zoom;out.setLineDash([4/zoom,3/zoom]);out.beginPath();out.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)out.lineTo(polygon[i].x,polygon[i].y);if(mouseImg&&tool==='polygon')out.lineTo(mouseImg.x,mouseImg.y);if((polygonMode==='subtract'||polygonMode==='subtract-all'||polygonMode==='add-empty')&&polygon.length>=3){out.closePath();out.fillStyle=(polygonMode==='subtract'||polygonMode==='subtract-all')?'rgba(245,47,70,.14)':'rgba(54,210,166,.14)';out.fill()}out.stroke();out.setLineDash([]);for(const p of polygon){out.beginPath();out.arc(p.x,p.y,1.5/zoom,0,Math.PI*2);out.fillStyle='#fff';out.fill();out.strokeStyle=pointStroke;out.lineWidth=.65/zoom;out.stroke();}out.restore();}}
+ if(guide && polygon.length){out.save();const strokeColor=polygonMode==='transfer'?'#31c9ec':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#ff5261':(polygonMode==='add-empty'?'#4ee0b6':'#ffe164');const pointStroke=polygonMode==='transfer'?'#137a92':(polygonMode==='subtract'||polygonMode==='subtract-all')?'#a11c35':(polygonMode==='add-empty'?'#0a6b57':'#184a6c');out.strokeStyle=strokeColor;out.lineWidth=1.25/zoom;out.setLineDash([4/zoom,3/zoom]);out.beginPath();out.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)out.lineTo(polygon[i].x,polygon[i].y);if(mouseImg&&tool==='polygon')out.lineTo(mouseImg.x,mouseImg.y);if((polygonMode==='subtract'||polygonMode==='subtract-all'||polygonMode==='add-empty')&&polygon.length>=3){out.closePath();out.fillStyle=(polygonMode==='subtract'||polygonMode==='subtract-all')?'rgba(245,47,70,.14)':'rgba(54,210,166,.14)';out.fill()}out.stroke();out.setLineDash([]);for(const p of polygon){out.beginPath();out.arc(p.x,p.y,1.5/zoom,0,Math.PI*2);out.fillStyle='#fff';out.fill();out.strokeStyle=pointStroke;out.lineWidth=.65/zoom;out.stroke();}out.restore();}
+ if(guide && lineDrag){
+  out.save();lineRectanglePath(out,lineDrag.start,lineDrag.end,lineDrag.size);
+  out.fillStyle='rgba(28,165,215,.20)';out.fill();
+  out.strokeStyle='#066a91';out.lineWidth=1.5/Math.max(zoom,.075);
+  out.setLineDash([6/Math.max(zoom,.075),4/Math.max(zoom,.075)]);out.stroke();out.restore();
+ }
+}
 function refreshComparison(){
  if(!compareActive)return;
  if(compareBefore.width!==width||compareBefore.height!==height){compareBefore.width=width;compareBefore.height=height;}
@@ -1110,7 +1130,7 @@ function toggleComparison(force){
  compareBtn.classList.toggle('is-on',compareActive);
  compareBtn.setAttribute('aria-pressed',String(compareActive));
  compareBtn.textContent=compareActive?'◧ Kembali ke Editor':'◧ Before / After';
- if(compareActive){clearTouchPolygonPress();cursorPointer=null;mouseImg=null;updateBrushCursor();updatePolygonLoupe();refreshComparison();}
+ if(compareActive){if(lineDrag){lineDrag=null;requestRender();}clearTouchPolygonPress();cursorPointer=null;mouseImg=null;updateBrushCursor();updatePolygonLoupe();refreshComparison();}
  else{requestRender();}
 }
 function render(){frameRequested=false;drawImageTo(ctx,true);updatePolygonLoupe();if(compareActive)refreshComparison()}
@@ -1894,6 +1914,39 @@ async function travelTransferredLayers(from,to,label){
 }
 
 function finishPolygon(){if(polygonMode==='transfer'){openLayerTransfer();return;}if(polygonMode==='subtract-all'){finishSubtractAllPolygon();return;}if(historyBusy){toast('Tunggu Undo / Redo selesai dahulu.');return;}const a=selectedArea();if(!a||polygon.length<3)return;if(a.locked){cancelPolygon();toast('Layer dikunci. Polygon tidak mengubah mask.');return;}rememberMask(a);const ac=a.mask.getContext('2d');if(polygonMode==='subtract'){ac.globalCompositeOperation='destination-out';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}else if(polygonMode==='add-empty'){const temp=document.createElement('canvas');temp.width=width;temp.height=height;const tc=temp.getContext('2d');tc.fillStyle='white';tc.beginPath();tc.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)tc.lineTo(polygon[i].x,polygon[i].y);tc.closePath();tc.fill();tc.globalCompositeOperation='destination-out';for(const other of schemeAreas()){if(other.mask)tc.drawImage(other.mask,0,0);}tc.globalCompositeOperation='source-over';ac.drawImage(temp,0,0);}else{ac.globalCompositeOperation='source-over';ac.fillStyle='white';ac.beginPath();ac.moveTo(polygon[0].x,polygon[0].y);for(let i=1;i<polygon.length;i++)ac.lineTo(polygon[i].x,polygon[i].y);ac.closePath();ac.fill();ac.globalCompositeOperation='source-over';}a.dirty=true;const didSubtract=polygonMode==='subtract';const didAddEmpty=polygonMode==='add-empty';polygonMode=polygonPresetMode;clearFinishedPolygonLines();setDirty();requestRender();if(didSubtract)toast('Kawasan dipadam daripada Area aktif (ALT).');if(didAddEmpty)toast('Hanya kawasan yang belum diwarnakan ditambah ke Area aktif (Ctrl+Alt).');}
+// Line paints a straight rectangle on the active layer mask, with square ends.
+// The preview is non-destructive, with one Undo operation recorded on release.
+function lineRectanglePath(c,start,end,size){
+ const dx=end.x-start.x,dy=end.y-start.y,len=Math.hypot(dx,dy),half=size/2;
+ c.beginPath();
+ if(len<.5){c.rect(start.x-half,start.y-half,size,size);return;}
+ const nx=-dy/len*half,ny=dx/len*half;
+ c.moveTo(start.x+nx,start.y+ny);c.lineTo(end.x+nx,end.y+ny);
+ c.lineTo(end.x-nx,end.y-ny);c.lineTo(start.x-nx,start.y-ny);c.closePath();
+}
+function lineEndPoint(start,end,constrain){
+ if(!constrain)return end;
+ const dx=end.x-start.x,dy=end.y-start.y;
+ return Math.abs(dx)>=Math.abs(dy)?{x:end.x,y:start.y}:{x:start.x,y:end.y};
+}
+function startLineStroke(ev,area,point){
+ if(historyBusy||lineDrag||brushStroke||!area||area.locked||pinch||touchGestureMulti)return false;
+ lineDrag={pointerId:ev.pointerId,areaId:area.id,start:point,end:point,size:Number($('brushSize').value)};
+ updateBrushCursor();requestRender();return true;
+}
+function finishLineStroke(commit=true,ev=null){
+ const stroke=lineDrag;if(!stroke)return false;
+ if(ev&&ev.pointerId!==stroke.pointerId)return false;
+ if(commit&&ev)stroke.end=lineEndPoint(stroke.start,mapPoint(ev),ev.shiftKey);
+ lineDrag=null;updateBrushCursor();
+ if(!commit){requestRender();return true;}
+ const area=areas.find(a=>a.id===stroke.areaId);
+ if(!area||area.locked||!areaBelongsToScheme(area.id)||historyBusy){requestRender();return false;}
+ rememberMask(area);
+ const m=area.mask.getContext('2d');m.globalCompositeOperation='source-over';
+ m.fillStyle='#fff';lineRectanglePath(m,stroke.start,stroke.end,stroke.size);m.fill();
+ area.dirty=true;loupeSourceDirty=true;setDirty();requestRender();return true;
+}
 function drawBrush(a,point,prev,erase){
  if(a.locked)return;
  const m=a.mask.getContext('2d');
@@ -1966,6 +2019,7 @@ canvas.addEventListener('pointerdown',ev=>{
   handlePolygonPoint(ev,pt);return;
  }
  if(tool==='brush'||tool==='eraser')startBrushStroke(ev,area,pt);
+ else if(tool==='line')startLineStroke(ev,area,pt);
 });
 canvas.addEventListener('pointermove',ev=>{
  if(brushSizeDrag){
@@ -1994,6 +2048,11 @@ canvas.addEventListener('pointermove',ev=>{
   drawBrush(area,pt,brushStroke.point,tool==='eraser');
   brushStroke.point=pt;lastPoint=pt;return;
  }
+ if(lineDrag){
+  if(lineDrag.pointerId!==ev.pointerId)return;
+  lineDrag.end=lineEndPoint(lineDrag.start,mapPoint(ev),ev.shiftKey);
+  requestRender();return;
+ }
  if(ev.pointerType==='touch'&&!activePointers.has(ev.pointerId))return;
  const pt=mapPoint(ev);mouseImg=pt;updatePolygonLoupe();
  if(tool==='polygon'&&polygon.length)requestRender();
@@ -2002,6 +2061,7 @@ function endPointer(ev){
  if(brushSizeDrag&&finishBrushSizeDrag(ev))return;
  if(ev.pointerType==='touch')finishTouchPolygonPress(ev,ev.type==='pointercancel');
  if(brushStroke?.pointerId===ev.pointerId)finishBrushStroke(ev.type==='pointerup'&&!pinch&&!touchGestureMulti);
+  if(lineDrag?.pointerId===ev.pointerId)finishLineStroke(ev.type==='pointerup'&&!pinch&&!touchGestureMulti,ev);
  if(panning&&dragFrom?.pointerId===ev.pointerId){panning=false;dragFrom=null;syncToolVisuals();}
  if(ev.pointerType==='touch')releaseActiveTouchPointer(ev.pointerId);
 }
@@ -2014,6 +2074,7 @@ canvas.addEventListener('contextmenu',ev=>{if(brushSizeDrag || tool==='polygon' 
 canvas.addEventListener('lostpointercapture',ev=>{
  if(brushSizeDrag&&ev.pointerId===brushSizeDrag.pointerId)finishBrushSizeDrag(null);
  if(brushStroke?.pointerId===ev.pointerId)finishBrushStroke(false);
+  if(lineDrag?.pointerId===ev.pointerId)finishLineStroke(false,ev);
  if(ev.pointerType==='touch'&&activePointers.has(ev.pointerId))releaseActiveTouchPointer(ev.pointerId);
 });
 // Space+drag also works on the grey workspace surrounding the photo.
@@ -2056,7 +2117,7 @@ workspace.addEventListener('dblclick',ev=>{if(compareActive)return;if(ev.target=
 workspace.addEventListener('wheel',ev=>{ev.preventDefault();if(compareActive)return;zoomAt(ev.clientX,ev.clientY,zoom*(ev.deltaY<0?1.12:.89));},{passive:false});
 compareBtn.onclick=()=>toggleComparison();
 $('finishPolygon').onclick=finishPolygon;$('cancelPolygon').onclick=cancelPolygon;
-document.querySelectorAll('[data-tool]').forEach(b=>{if(b.id==='polygonToolBtn')return;b.onclick=()=>selectTool(b.dataset.tool)});polygonToolBtn.onclick=ev=>{ev.preventDefault();if(polygonMenuIgnoreClick){polygonMenuIgnoreClick=false;ev.stopPropagation();return;}if(polygonSubmenu.hidden)openPolygonSubmenu();else closePolygonSubmenu();};polygonToolBtn.addEventListener('pointerdown',startPolygonMenuPress);polygonToolBtn.addEventListener('pointermove',trackPolygonMenuPress);['pointerup','pointercancel','pointerleave'].forEach(evt=>polygonToolBtn.addEventListener(evt,finishPolygonMenuPress));polygonToolBtn.addEventListener('contextmenu',ev=>{ev.preventDefault();openPolygonSubmenu()});polygonSubmenu.querySelectorAll('[data-polygon-mode]').forEach(btn=>btn.onclick=ev=>{ev.preventDefault();setPolygonPresetMode(btn.dataset.polygonMode);selectTool('polygon');closePolygonSubmenu();});document.addEventListener('pointerdown',ev=>{if(!polygonToolMenu.contains(ev.target)&&!polygonSubmenu.contains(ev.target))closePolygonSubmenu();});document.querySelector('.tools')?.addEventListener('scroll',()=>closePolygonSubmenu(),{passive:true});window.addEventListener('resize',()=>closePolygonSubmenu());$('brushSize').oninput=()=>{$('brushVal').textContent=$('brushSize').value;updateBrushCursor()};$('fitBtn').onclick=fitView;$('undoBtn').onclick=undoMask;$('redoBtn').onclick=redoMask;updateHistoryButtons();
+document.querySelectorAll('[data-tool]').forEach(b=>{if(b.id==='polygonToolBtn')return;b.onclick=()=>selectTool(b.dataset.tool)});polygonToolBtn.onclick=ev=>{ev.preventDefault();if(polygonMenuIgnoreClick){polygonMenuIgnoreClick=false;ev.stopPropagation();return;}if(polygonSubmenu.hidden)openPolygonSubmenu();else closePolygonSubmenu();};polygonToolBtn.addEventListener('pointerdown',startPolygonMenuPress);polygonToolBtn.addEventListener('pointermove',trackPolygonMenuPress);['pointerup','pointercancel','pointerleave'].forEach(evt=>polygonToolBtn.addEventListener(evt,finishPolygonMenuPress));polygonToolBtn.addEventListener('contextmenu',ev=>{ev.preventDefault();openPolygonSubmenu()});polygonSubmenu.querySelectorAll('[data-polygon-mode]').forEach(btn=>btn.onclick=ev=>{ev.preventDefault();setPolygonPresetMode(btn.dataset.polygonMode);selectTool('polygon');closePolygonSubmenu();});document.addEventListener('pointerdown',ev=>{if(!polygonToolMenu.contains(ev.target)&&!polygonSubmenu.contains(ev.target))closePolygonSubmenu();});document.querySelector('.tools')?.addEventListener('scroll',()=>closePolygonSubmenu(),{passive:true});window.addEventListener('resize',()=>closePolygonSubmenu());$('brushSize').oninput=()=>{$('brushVal').textContent=$('brushSize').value;if(tool==='line')lineToolSize=Number($('brushSize').value);else freehandToolSize=Number($('brushSize').value);updateBrushCursor()};$('fitBtn').onclick=fitView;$('undoBtn').onclick=undoMask;$('redoBtn').onclick=redoMask;updateHistoryButtons();
 $('addArea').onclick=()=>{if(!hasProjectPhoto)return toast('Upload gambar dahulu.');addArea();};$('duplicateSelectedArea').onclick=()=>duplicateAreaById(selectedId);$('copySelectedArea').onclick=copySelectedLayer;$('pasteCopiedArea').onclick=pasteCopiedLayer;$('addScheme').onclick=()=>{if(schemes.length>=10)return toast('Maksimum 10 scheme dalam V1');duplicateSchemeWithLayers(currentScheme());};
 $('areaName').onchange=ev=>{if(!selectedArea()||selectedArea().locked)return;selectedArea().name=ev.target.value.trim()||'Area';renderAreaList();updateHint();setDirty()};
 $('colorInput').oninput=ev=>setColor(ev.target.value);$('hexInput').onchange=ev=>{const s=ev.target.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(s))setColor(s);else{toast('Masukkan warna HEX seperti #E5DED2');refreshProperties();}};
@@ -2984,7 +3045,7 @@ document.addEventListener('keydown',ev=>{
  if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='y'){ev.preventDefault();redoMask();return}
  if(ev.key==='Escape'){cancelPolygon();return}
  if(ev.ctrlKey||ev.metaKey||ev.altKey)return;
- const key=ev.key.toLowerCase();const t={v:'polygon',c:'polygon',x:'polygon',b:'brush',e:'eraser',h:'hand'}[key];if(t){if(key==='v')setPolygonPresetMode('add');else if(key==='c')setPolygonPresetMode('subtract');else if(key==='x')setPolygonPresetMode('add-empty');selectTool(t)}
+ const key=ev.key.toLowerCase();const t={v:'polygon',c:'polygon',x:'polygon',b:'brush',l:'line',e:'eraser',h:'hand'}[key];if(t){if(key==='v')setPolygonPresetMode('add');else if(key==='c')setPolygonPresetMode('subtract');else if(key==='x')setPolygonPresetMode('add-empty');selectTool(t)}
 });
 document.addEventListener('keyup',ev=>{if(ev.code==='Space'||ev.key===' '){if(!isTyping(ev))ev.preventDefault();resetTemporaryPan();}});
 window.addEventListener('blur',()=>{finishBrushStroke(false);clearTouchPolygonPress();activePointers.clear();pinch=null;touchGestureMulti=false;resetTemporaryPan();finishBrushSizeDrag(null);});
