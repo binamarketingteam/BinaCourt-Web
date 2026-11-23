@@ -657,6 +657,10 @@ function duplicateSchemeWithLayers(base){
    view.materialRecolour ||= {};
    view.materialRecolour[next.id] ||= {};
    view.materialRecolour[next.id][clone.id]=normalMaterial(materialForView(src,base,view.id));
+   view.layerAppearance ||= {};
+   view.layerAppearance[next.id] ||= {};
+   const appearance=appearanceForView(src,base,view.id);
+   view.layerAppearance[next.id][clone.id]={opacity:appearance.opacity,visible:appearance.visible};
   }
   if(src.id===selectedId)newSelected=clone.id;
  }
@@ -684,6 +688,10 @@ function migrateIndependentSchemeLayers(){
     for(const view of views){
      if(!view.masks)view.masks={};
      if(view.masks[sourceId])view.masks[destination.id]=view.masks[sourceId];
+     view.layerAppearance ||= {};
+     view.layerAppearance[scheme.id] ||= {};
+     const appearance=appearanceForView(source,scheme,view.id);
+     view.layerAppearance[scheme.id][destination.id]={opacity:appearance.opacity,visible:appearance.visible};
     }
    }
    reserved.add(destination.id);kept.push(destination.id);
@@ -724,11 +732,29 @@ function cloneSchemeLayerStyle(area,scheme=currentScheme()){
  const style=schemeLayerStyle(area,scheme);
  return {material:{...normalMaterial(style.material)},opacity:style.opacity,visible:style.visible};
 }
-function schemeAreaVisible(area,scheme=currentScheme()){return schemeLayerStyle(area,scheme).visible;}
-function schemeAreaOpacity(area,scheme=currentScheme()){return schemeLayerStyle(area,scheme).opacity;}
+/* Opacity and hide/show belong to each individual photo within each option.
+   Shared option style remains the fallback for older project files. */
+function appearanceForView(area,scheme=currentScheme(),viewId=activeViewId){
+ const base=schemeLayerStyle(area,scheme);
+ const view=views.find(v=>v.id===viewId);
+ if(!view)return base;
+ view.layerAppearance ||= {};
+ view.layerAppearance[scheme.id] ||= {};
+ const scoped=view.layerAppearance[scheme.id];
+ if(!scoped[area.id]||typeof scoped[area.id]!=='object'){
+  scoped[area.id]={opacity:base.opacity,visible:base.visible};
+ }
+ const result=scoped[area.id];
+ if(!Number.isFinite(result.opacity))result.opacity=base.opacity;
+ result.opacity=Math.max(0,Math.min(1,result.opacity));
+ if(typeof result.visible!=='boolean')result.visible=base.visible;
+ return result;
+}
+function schemeAreaVisible(area,scheme=currentScheme(),viewId=activeViewId){return appearanceForView(area,scheme,viewId).visible;}
+function schemeAreaOpacity(area,scheme=currentScheme(),viewId=activeViewId){return appearanceForView(area,scheme,viewId).opacity;}
 /* Material Recolour is independent for every photo and every Colour Scheme.
-   Existing scheme.layerStyles retain the legacy/default material only;
-   opacity, visibility, paint colours and masks remain untouched. */
+   Existing scheme.layerStyles retain the legacy/default material;
+   paint colours, masks and other layer metadata remain untouched. */
 function materialForView(area,scheme=currentScheme(),viewId=activeViewId){
  const base=schemeLayerStyle(area,scheme).material;
  const view=views.find(v=>v.id===viewId);
@@ -1334,7 +1360,11 @@ function deleteSchemeById(id){
  const stillUsed=new Set(schemes.flatMap(s=>schemeLayerIds(s)));
  const removedIds=new Set([...doomed].filter(id=>!stillUsed.has(id)));
  areas=areas.filter(a=>!removedIds.has(a.id));
- for(const view of views)for(const id of removedIds)if(view.masks)delete view.masks[id];
+ for(const view of views){
+  for(const itemId of removedIds)if(view.masks)delete view.masks[itemId];
+  if(view.layerAppearance)delete view.layerAppearance[id];
+  if(view.materialRecolour)delete view.materialRecolour[id];
+ }
  if(schemeId===id)schemeId=schemes[Math.min(index,schemes.length-1)].id;
  if(!areaBelongsToScheme(selectedId))selectedId=schemeAreas()[0]?.id||null;
  resetMaskHistory();cancelPolygon();
@@ -1486,7 +1516,10 @@ function deleteAreaById(areaId){
  const active=schemeAreas(scheme),index=active.findIndex(item=>item.id===a.id);
  scheme.layerIds=schemeLayerIds(scheme).filter(id=>id!==a.id);
  delete scheme.colors[a.id];if(scheme.layerStyles)delete scheme.layerStyles[a.id];
- for(const view of views)if(view.materialRecolour?.[scheme.id])delete view.materialRecolour[scheme.id][a.id];
+ for(const view of views){
+  if(view.materialRecolour?.[scheme.id])delete view.materialRecolour[scheme.id][a.id];
+  if(view.layerAppearance?.[scheme.id])delete view.layerAppearance[scheme.id][a.id];
+ }
  const referenced=schemes.some(s=>schemeLayerIds(s).includes(a.id));
  if(!referenced){
   areas=areas.filter(item=>item.id!==a.id);
@@ -1527,6 +1560,10 @@ function duplicateAreaById(sourceId){
   v.materialRecolour ||= {};
   v.materialRecolour[scheme.id] ||= {};
   v.materialRecolour[scheme.id][id]=normalMaterial(materialForView(src,scheme,v.id));
+  v.layerAppearance ||= {};
+  v.layerAppearance[scheme.id] ||= {};
+  const appearance=appearanceForView(src,scheme,v.id);
+  v.layerAppearance[scheme.id][id]={opacity:appearance.opacity,visible:appearance.visible};
  }
  selectedId=id;cancelPolygon();setDirty();refreshUI();
  toast('Duplicate siap: '+name+'. Layer asal tidak berubah.');
@@ -1551,18 +1588,20 @@ function copySelectedLayer(){
  if(!hasProjectPhoto||viewSwitching||historyBusy||layerPasteBusy)return toast('Tunggu operasi semasa selesai dahulu.');
  const src=selectedArea();if(!src)return toast('Pilih layer untuk Copy dahulu.');
  const style=cloneSchemeLayerStyle(src,currentScheme());
- const masks={},materials={};
+ const masks={},materials={},appearances={};
  for(const v of views){
   // Current canvas mask may be newer than the last saved view snapshot.
   const data=v.id===activeViewId?src.mask.toDataURL('image/png'):(v.masks?.[src.id]||null);
   if(data)masks[v.id]=data;
   materials[v.id]=normalMaterial(materialForView(src,currentScheme(),v.id));
+  const appearance=appearanceForView(src,currentScheme(),v.id);
+  appearances[v.id]={opacity:appearance.opacity,visible:appearance.visible};
  }
  layerClipboard={
   projectId,sourceSchemeId:schemeId,sourceSchemeName:currentScheme().name,
   name:src.name,category:src.category,productId:src.productId||'',
   color:getColor(src),material:normalMaterial(materialForView(src)),
-  opacity:style.opacity,visible:style.visible,masks,materials
+  opacity:style.opacity,visible:style.visible,masks,materials,appearances
  };
  updateLayerClipboardControls();
  toast('Layer "'+src.name+'" disalin. Pilih Option 2 atau 3 dan tekan Paste Layer.');
@@ -1605,6 +1644,10 @@ async function pasteCopiedLayer(){
    view.materialRecolour ||= {};
    view.materialRecolour[targetScheme.id] ||= {};
    view.materialRecolour[targetScheme.id][id]=normalMaterial(clip.materials?.[view.id]||clip.material);
+   view.layerAppearance ||= {};
+   view.layerAppearance[targetScheme.id] ||= {};
+   const appearance=clip.appearances?.[view.id]||clip;
+   view.layerAppearance[targetScheme.id][id]={opacity:appearance.opacity,visible:appearance.visible};
   }
   selectedId=id;resetMaskHistory();cancelPolygon();
   setDirty();refreshUI();
@@ -1623,7 +1666,7 @@ function renderAreaList(){
  list.innerHTML=schemeAreas().slice().reverse().map(a=>`<div class="area ${a.id===selectedId?'active':''} ${schemeAreaVisible(a)?'':'is-hidden'} ${a.locked?'is-locked':''}" role="button" tabindex="0" data-area="${a.id}" title="Drag untuk susun · Double-click nama untuk rename"><span class="area-drag-handle" title="Tarik untuk susun layer">⠿</span><span class="area-color" style="background:${getColor(a)};opacity:${schemeAreaVisible(a)?1:.3}"></span><span class="area-name" title="${escapeText(a.name)}">${escapeText(a.name)}</span><span class="area-actions"><button type="button" class="area-action area-eye ${schemeAreaVisible(a)?'':'is-off'}" aria-label="${schemeAreaVisible(a)?'Hide':'Show'} ${escapeText(a.name)}" title="${schemeAreaVisible(a)?'Hide / Sembunyikan':'Show / Tunjukkan'} layer">${schemeAreaVisible(a)?eyeOpen:eyeOff}</button><button type="button" class="area-action area-lock ${a.locked?'is-locked':''}" aria-label="${a.locked?'Unlock':'Lock'} ${escapeText(a.name)}" title="${a.locked?'Unlock / Buka Kunci':'Lock / Kunci'} layer">${a.locked?lockClosed:lockOpen}</button><button type="button" class="area-action area-duplicate" aria-label="Duplicate ${escapeText(a.name)}" title="Duplicate Layer">${duplicateIcon}</button><button type="button" class="area-action area-delete" aria-label="Padam ${escapeText(a.name)}" title="${a.locked?'Buka kunci layer sebelum padam':'Padam layer'}" ${a.locked?'disabled':''}>${trashIcon}</button></span></div>`).join('');
  list.querySelectorAll('[data-area]').forEach(row=>{
   const area=areas.find(a=>a.id===row.dataset.area);
-  row.querySelector('.area-eye').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const st=schemeLayerStyle(area);st.visible=!st.visible;setDirty();renderAreaList();refreshProperties();requestRender();});
+  row.querySelector('.area-eye').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const st=appearanceForView(area);st.visible=!st.visible;setDirty();renderAreaList();refreshProperties();requestRender();});
   row.querySelector('.area-lock').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();area.locked=!area.locked;if(area.locked&&selectedId===area.id)cancelPolygon();setDirty();renderAreaList();refreshProperties();updateHint();toast(area.name+(area.locked?' dikunci.':' dibuka kunci.'));});
   row.querySelector('.area-delete').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();deleteAreaById(area.id);});
   row.querySelector('.area-duplicate').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();duplicateAreaById(area.id);});
@@ -1720,7 +1763,7 @@ $('materialMode').addEventListener('change',ev=>{
  const m=materialForView(a);m.mode=ev.target.value;a.dirty=true;
  refreshMaterialControls();setDirty();requestRender();
 });
-function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=schemeLayerStyle(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
+function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=appearanceForView(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
 function isDark(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return .2126*r+.7152*g+.0722*b<155}
 function refreshUI(){if(!areaBelongsToScheme(selectedId))selectedId=schemeAreas()[0]?.id||null;refreshSchemes();renderAreaList();$('duplicateSelectedArea').disabled=!hasProjectPhoto||!selectedArea()||viewSwitching;refreshProperties();refreshProductCount();updateLayerClipboardControls();updatePolygonControls();updateHint();requestRender()}
 function updateHistoryButtons(){
@@ -2145,8 +2188,8 @@ document.querySelectorAll('[data-tool]').forEach(b=>{if(b.id==='polygonToolBtn')
 $('addArea').onclick=()=>{if(!hasProjectPhoto)return toast('Upload gambar dahulu.');addArea();};$('duplicateSelectedArea').onclick=()=>duplicateAreaById(selectedId);$('copySelectedArea').onclick=copySelectedLayer;$('pasteCopiedArea').onclick=pasteCopiedLayer;$('addScheme').onclick=()=>{if(schemes.length>=10)return toast('Maksimum 10 scheme dalam V1');duplicateSchemeWithLayers(currentScheme());};
 $('areaName').onchange=ev=>{if(!selectedArea()||selectedArea().locked)return;selectedArea().name=ev.target.value.trim()||'Area';renderAreaList();updateHint();setDirty()};
 $('colorInput').oninput=ev=>setColor(ev.target.value);$('hexInput').onchange=ev=>{const s=ev.target.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(s))setColor(s);else{toast('Masukkan warna HEX seperti #E5DED2');refreshProperties();}};
-$('opacityInput').oninput=ev=>{const a=selectedArea();if(!a||a.locked)return;schemeLayerStyle(a).opacity=Number(ev.target.value)/100;$('opacityVal').textContent=ev.target.value+'%';setDirty();requestRender()};
-$('toggleArea').onclick=()=>{const a=selectedArea();if(!a)return;const st=schemeLayerStyle(a);st.visible=!st.visible;refreshUI();setDirty()};
+$('opacityInput').oninput=ev=>{const a=selectedArea();if(!a||a.locked)return;appearanceForView(a).opacity=Number(ev.target.value)/100;$('opacityVal').textContent=ev.target.value+'%';setDirty();requestRender()};
+$('toggleArea').onclick=()=>{const a=selectedArea();if(!a)return;const st=appearanceForView(a);st.visible=!st.visible;refreshUI();setDirty()};
 $('deleteArea').onclick=()=>{const a=selectedArea();if(a)deleteAreaById(a.id)};
 // Palette manager: replaces all example swatches from earlier versions.
 function validHex(input){const v=String(input||'').trim().toUpperCase();return /^#[0-9A-F]{6}$/.test(v)?v:/^[0-9A-F]{6}$/.test(v)?'#'+v:null;}
@@ -2627,9 +2670,9 @@ async function renderViewForScheme(view,scheme){
  const shade=document.createElement('canvas');shade.width=ww;shade.height=hh;const sc=shade.getContext('2d',{willReadFrequently:true});sc.drawImage(photo,0,0,ww,hh);
  const d=sc.getImageData(0,0,ww,hh),pix=d.data;for(let i=0;i<pix.length;i+=4){const lum=(.2126*pix[i]+.7152*pix[i+1]+.0722*pix[i+2])/255;const sh=Math.min(255,Math.round(255*(.56+.63*lum)));pix[i]=pix[i+1]=pix[i+2]=sh;pix[i+3]=255;}sc.putImageData(d,0,0);
  const usageByArea={};
- for(const a of schemeAreas(scheme)){if(!schemeAreaVisible(a,scheme))continue;const maskSrc=view.masks?.[a.id];if(!maskSrc)continue;const im=await loadImage(maskSrc);const mask=document.createElement('canvas');mask.width=ww;mask.height=hh;const mc=mask.getContext('2d',{willReadFrequently:true});mc.drawImage(im,0,0,ww,hh);
+ for(const a of schemeAreas(scheme)){if(!schemeAreaVisible(a,scheme,view.id))continue;const maskSrc=view.masks?.[a.id];if(!maskSrc)continue;const im=await loadImage(maskSrc);const mask=document.createElement('canvas');mask.width=ww;mask.height=hh;const mc=mask.getContext('2d',{willReadFrequently:true});mc.drawImage(im,0,0,ww,hh);
   const pixelCount=countMaskPixels(mask); if(pixelCount<=0)continue; usageByArea[a.id]=(usageByArea[a.id]||0)+pixelCount;
-  const layer=renderMaterialLayer(photo,shade,mask,scheme.colors[a.id]||'#E5DED2',materialForView(a,scheme,view.id),ww,hh);oc.globalAlpha=schemeAreaOpacity(a,scheme);oc.drawImage(layer,0,0);oc.globalAlpha=1;
+  const layer=renderMaterialLayer(photo,shade,mask,scheme.colors[a.id]||'#E5DED2',materialForView(a,scheme,view.id),ww,hh);oc.globalAlpha=schemeAreaOpacity(a,scheme,view.id);oc.drawImage(layer,0,0);oc.globalAlpha=1;
  }
  return{photo:out.toDataURL('image/jpeg',.89),usageByArea};
 }
