@@ -644,12 +644,13 @@ function copyLayerArea(src,newId=makeId(),style=schemeLayerStyle(src)){
 function duplicateSchemeWithLayers(base){
  syncActiveView();
  const number=schemes.length+1;
- const next={id:makeId(),name:'Scheme '+number,colors:{},layerStyles:{},layerIds:[]};
+ const next={id:makeId(),name:'Scheme '+number,colors:{},paletteRefs:{},layerStyles:{},layerIds:[]};
  let newSelected=null;
  for(const src of schemeAreas(base)){
   const style=cloneSchemeLayerStyle(src,base),clone=copyLayerArea(src,makeId(),style);
   areas.push(clone);next.layerIds.push(clone.id);
   next.colors[clone.id]=base.colors[src.id]||'#E5DED2';
+  if(base.paletteRefs?.[src.id])next.paletteRefs[clone.id]={...base.paletteRefs[src.id]};
   next.layerStyles[clone.id]=style;
   for(const view of views){
    if(!view.masks)view.masks={};
@@ -676,7 +677,7 @@ function migrateIndependentSchemeLayers(){
  const reserved=new Set();let copied=0;
  for(const scheme of schemes){
   const requested=Array.isArray(scheme.layerIds)?scheme.layerIds.slice():originalAreas.map(a=>a.id);
-  const kept=[],colors={},styles={},seen=new Set();
+  const kept=[],colors={},refs={},styles={},seen=new Set();
   for(const sourceId of requested){
    if(seen.has(sourceId))continue;seen.add(sourceId);
    const source=sourceById.get(sourceId);if(!source)continue;
@@ -696,9 +697,10 @@ function migrateIndependentSchemeLayers(){
    }
    reserved.add(destination.id);kept.push(destination.id);
    colors[destination.id]=scheme.colors?.[sourceId]||'#E5DED2';
+   if(scheme.paletteRefs?.[sourceId])refs[destination.id]={...scheme.paletteRefs[sourceId]};
    styles[destination.id]=style;
   }
-  scheme.layerIds=kept;scheme.colors=colors;scheme.layerStyles=styles;
+  scheme.layerIds=kept;scheme.colors=colors;scheme.paletteRefs=refs;scheme.layerStyles=styles;
  }
  areas=areas.filter(a=>reserved.has(a.id));
  for(const view of views)for(const id of Object.keys(view.masks||{}))if(!reserved.has(id))delete view.masks[id];
@@ -1328,8 +1330,34 @@ function handlePolygonPoint(ev,pt){
 function clampZoom(z){return Math.min(Math.max(z,.075),8)}
 function zoomAt(clientX,clientY,z){const box=workspace.getBoundingClientRect(),px=clientX-box.left,py=clientY-box.top;let old=zoom;zoom=clampZoom(z);panX=px-(px-panX)/old*zoom;panY=py-(py-panY)/old*zoom;applyTransform()}
 function getColor(a){return currentScheme().colors[a.id]||'#E5DED2'}
+/* A catalogue colour is identified by code + name + HEX, not HEX alone.
+   Two named whites can look identical but represent different specifications. */
+function paletteEntryKey(item){
+ if(!item)return '';
+ return [String(item.code||'').trim().toLowerCase(),String(item.name||'').trim().toLowerCase(),String(item.hex||'').toUpperCase()].join('|');
+}
+function selectedPaletteEntry(area,scheme=currentScheme()){
+ if(!area)return null;
+ const hex=String(scheme.colors[area.id]||'#E5DED2').toUpperCase();
+ const saved=scheme.paletteRefs?.[area.id];
+ if(saved&&String(saved.hex||'').toUpperCase()===hex)return saved;
+ return paletteMatchColor(hex,area.productId||'');
+}
 function updateAreaListSwatches(){for(const row of $('areaList').querySelectorAll('[data-area]')){const a=areas.find(v=>v.id===row.dataset.area);const swatch=row.querySelector('.area-color');if(a&&swatch){swatch.style.background=getColor(a);swatch.style.opacity=schemeAreaVisible(a)?1:.3;}}}
-function setColor(c){if(!selectedArea()||selectedArea().locked||!/^#[0-9a-fA-F]{6}$/.test(c))return;c=c.toUpperCase();if(getColor(selectedArea()).toUpperCase()===c){refreshProperties();return;}currentScheme().colors[selectedId]=c;selectedArea().dirty=true;setDirty();refreshProperties();updateAreaListSwatches();requestRender()}
+function setColor(c,paletteEntry=null){
+ const area=selectedArea();if(!area||area.locked||!/^#[0-9a-fA-F]{6}$/.test(c))return;
+ c=c.toUpperCase();
+ const scheme=currentScheme(),before=String(scheme.colors[area.id]||'#E5DED2').toUpperCase();
+ const next=paletteEntry?normalizePaletteEntry(paletteEntry):null;
+ const old=scheme.paletteRefs?.[area.id]||null;
+ const identityChanged=paletteEntryKey(old)!==paletteEntryKey(next);
+ if(before===c&&!identityChanged){refreshProperties();return;}
+ scheme.colors[area.id]=c;scheme.paletteRefs ||= {};
+ if(next)scheme.paletteRefs[area.id]=next;else delete scheme.paletteRefs[area.id];
+ if(before!==c)area.dirty=true;
+ setDirty();refreshProperties();renderPalette();updateAreaListSwatches();
+ if(before!==c)requestRender();
+}
 function addArea(name){
  const scheme=currentScheme(),id=makeId();
  const area={id,name:name||'Area '+(schemeAreas(scheme).length+1),mask:makeMask(),opacity:.97,visible:true,locked:false,dirty:true,
@@ -1515,7 +1543,7 @@ function deleteAreaById(areaId){
  if(!window.confirm('Padam layer "'+a.name+'" daripada '+scheme.name+'?\\nTindakan ini tidak boleh di-undo.'))return false;
  const active=schemeAreas(scheme),index=active.findIndex(item=>item.id===a.id);
  scheme.layerIds=schemeLayerIds(scheme).filter(id=>id!==a.id);
- delete scheme.colors[a.id];if(scheme.layerStyles)delete scheme.layerStyles[a.id];
+ delete scheme.colors[a.id];if(scheme.paletteRefs)delete scheme.paletteRefs[a.id];if(scheme.layerStyles)delete scheme.layerStyles[a.id];
  for(const view of views){
   if(view.materialRecolour?.[scheme.id])delete view.materialRecolour[scheme.id][a.id];
   if(view.layerAppearance?.[scheme.id])delete view.layerAppearance[scheme.id][a.id];
@@ -1549,7 +1577,7 @@ function duplicateAreaById(sourceId){
  const i=areas.findIndex(a=>a.id===src.id);
  areas.splice(i+1,0,clone); // immediately above original in composition
  const scheme=currentScheme();schemeLayerIds(scheme).push(id);
- scheme.colors[id]=scheme.colors[src.id]||'#E5DED2';scheme.layerStyles ||= {};scheme.layerStyles[id]=cloneSchemeLayerStyle(src,scheme);
+ scheme.colors[id]=scheme.colors[src.id]||'#E5DED2';scheme.paletteRefs ||= {};if(scheme.paletteRefs[src.id])scheme.paletteRefs[id]={...scheme.paletteRefs[src.id]};scheme.layerStyles ||= {};scheme.layerStyles[id]=cloneSchemeLayerStyle(src,scheme);
  // Immutable PNG dataURLs keep each angle independent once masks are edited.
  const currentPNG=src.mask.toDataURL('image/png');
  for(const v of views){
@@ -1600,7 +1628,7 @@ function copySelectedLayer(){
  layerClipboard={
   projectId,sourceSchemeId:schemeId,sourceSchemeName:currentScheme().name,
   name:src.name,category:src.category,productId:src.productId||'',
-  color:getColor(src),material:normalMaterial(materialForView(src)),
+  color:getColor(src),paletteRef:currentScheme().paletteRefs?.[src.id]?{...currentScheme().paletteRefs[src.id]}:null,material:normalMaterial(materialForView(src)),
   opacity:style.opacity,visible:style.visible,masks,materials,appearances
  };
  updateLayerClipboardControls();
@@ -1635,6 +1663,8 @@ async function pasteCopiedLayer(){
    category:clip.category,productId:clip.category==='scheme-only'?'':clip.productId,material:normalMaterial(style.material)};
   areas.push(area);schemeLayerIds(targetScheme).push(id);
   targetScheme.colors[id]=clip.color;
+  targetScheme.paletteRefs ||= {};
+  if(clip.paletteRef)targetScheme.paletteRefs[id]={...clip.paletteRef};
   targetScheme.layerStyles||={};targetScheme.layerStyles[id]=style;
   // Save independent snapshot per camera angle. No reference to the source IDs.
   for(const view of views){
@@ -1763,7 +1793,7 @@ $('materialMode').addEventListener('change',ev=>{
  const m=materialForView(a);m.mode=ev.target.value;a.dirty=true;
  refreshMaterialControls();setDirty();requestRender();
 });
-function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=appearanceForView(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
+function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=appearanceForView(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{const entry=visiblePaletteForProduct().find(p=>paletteEntryKey(p)===b.dataset.paletteKey);if(entry)b.classList.toggle('active',paletteEntryKey(entry)===paletteEntryKey(selectedPaletteEntry(a)));b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
 function isDark(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return .2126*r+.7152*g+.0722*b<155}
 function refreshUI(){if(!areaBelongsToScheme(selectedId))selectedId=schemeAreas()[0]?.id||null;refreshSchemes();renderAreaList();$('duplicateSelectedArea').disabled=!hasProjectPhoto||!selectedArea()||viewSwitching;refreshProperties();refreshProductCount();updateLayerClipboardControls();updatePolygonControls();updateHint();requestRender()}
 function updateHistoryButtons(){
@@ -2228,8 +2258,15 @@ function visiblePaletteForProduct(){
 function renderPalette(){
  const q=($('paletteSearch').value||'').trim().toLowerCase();const all=visiblePaletteForProduct();const rows=all.filter(item=>!q||[item.name,item.code,item.hex].some(s=>s.toLowerCase().includes(q)));
  $('paletteCount').textContent=all.length?`${rows.length} daripada ${all.length} warna${rows.length>120&&productIdAlias(selectedArea()?.productId||'')!=='glomel'?' · Papar 120 terawal, guna carian':''}`:'Palette masih kosong. Klik Tambah / Urus atau Import.';
- $('palette').innerHTML=(productIdAlias(selectedArea()?.productId||'')==='glomel'?rows:rows.slice(0,120)).map(item=>`<button class="swatch" data-swatch="${item.hex}" title="${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' · '))}" style="background:${item.hex}" aria-label="Pilih ${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' '))}"></button>`).join('');
- $('palette').querySelectorAll('[data-swatch]').forEach(b=>{b.onclick=()=>setColor(b.dataset.swatch);b.disabled=!!selectedArea()?.locked;b.classList.toggle('active',!!selectedArea()&&b.dataset.swatch.toLowerCase()===getColor(selectedArea()).toLowerCase());});
+ const shown=productIdAlias(selectedArea()?.productId||'')==='glomel'?rows:rows.slice(0,120);
+ $('palette').innerHTML=shown.map((item,index)=>`<button class="swatch" data-swatch="${item.hex}" data-palette-index="${index}" title="${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' · '))}" style="background:${item.hex}" aria-label="Pilih ${escapeText([item.code,item.name,item.hex].filter(Boolean).join(' '))}"></button>`).join('');
+ const chosen=selectedPaletteEntry(selectedArea()),chosenKey=paletteEntryKey(chosen);
+ $('palette').querySelectorAll('[data-palette-index]').forEach(b=>{
+  const item=shown[Number(b.dataset.paletteIndex)];
+  b.onclick=()=>setColor(item.hex,item);
+  b.disabled=!!selectedArea()?.locked;
+  b.classList.toggle('active',!!selectedArea()&&chosenKey!==''&&paletteEntryKey(item)===chosenKey);
+ });
 }
 function updatePalette(items,mode='add'){
  const clean=uniquePalette(items);if(!clean.length)return 0;
@@ -2687,9 +2724,12 @@ function proposalLegend(scheme,usageByArea){
   const key=category+'|'+productId;
   if(!groupsByKey.has(key))groupsByKey.set(key,{category,categoryLabel:categoryName(category),productId,productName,colors:new Map(),pixels:0});
   const group=groupsByKey.get(key);group.pixels+=pixels;
-  const hex=(scheme.colors[a.id]||'#E5DED2').toUpperCase(),pal=paletteMatchColor(hex,productId);
-  if(!group.colors.has(hex))group.colors.set(hex,{hex,code:pal?.code||'',name:pal?.name||'',pixels:0,layerNames:[]});
-  const c=group.colors.get(hex);c.pixels+=pixels;
+  const hex=(scheme.colors[a.id]||'#E5DED2').toUpperCase();
+  const saved=scheme.paletteRefs?.[a.id];
+  const pal=saved&&String(saved.hex||'').toUpperCase()===hex?saved:paletteMatchColor(hex,productId);
+  const identity=paletteEntryKey(pal)||hex;
+  if(!group.colors.has(identity))group.colors.set(identity,{hex,code:pal?.code||'',name:pal?.name||'',pixels:0,layerNames:[]});
+  const c=group.colors.get(identity);c.pixels+=pixels;
   const layerName=String(a.name||'').trim()||'Area';
   if(!c.layerNames.some(n=>n.toLowerCase()===layerName.toLowerCase()))c.layerNames.push(layerName);
  }
@@ -2853,7 +2893,7 @@ async function buildA3Html(name,meta,ids,onProgress,autoPrint=true){
  ${autoPrint?`<script>window.addEventListener('load',async function(){await Promise.all(Array.from(document.images).map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=r;i.onerror=r;})));await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1800))]);setTimeout(()=>window.print(),450);});<\/script>`:''}</body></html>`;
 }
 
-function projectObject(){syncActiveView();return{app:'Bina Colour Scheme Studio',version:1,id:projectId,name:$('projectName').value||'Projek Baharu',type:projectLegacyType,updatedAt:new Date().toISOString(),width,height,photo:imageCanvas.toDataURL('image/jpeg',.9),areas:areas.map(a=>({id:a.id,name:a.name,opacity:schemeAreaOpacity(a),visible:schemeAreaVisible(a),locked:!!a.locked,category:categoryOf(a),productId:a.productId||'',material:normalMaterial(schemeLayerStyle(a).material),mask:a.mask.toDataURL('image/png')})),schemes:schemes.map(s=>({id:s.id,name:s.name,layerIds:[...schemeLayerIds(s)],colors:{...s.colors},layerStyles:Object.fromEntries(schemeAreas(s).map(a=>[a.id,cloneSchemeLayerStyle(a,s)]))})),schemeId,productCatalog:paintProducts.map(p=>({...p})),productCategories:PAINT_CATEGORIES.map(c=>({...c})),palette:customPalette.map(p=>({...p})),views:views.map(v=>({...v,masks:{...v.masks}})),activeViewId,proposalMeta:currentProposalMeta(),a3Layout:a3Layout?{version:1,frames:a3Layout.frames.map(f=>({...f}))}:null};}
+function projectObject(){syncActiveView();return{app:'Bina Colour Scheme Studio',version:1,id:projectId,name:$('projectName').value||'Projek Baharu',type:projectLegacyType,updatedAt:new Date().toISOString(),width,height,photo:imageCanvas.toDataURL('image/jpeg',.9),areas:areas.map(a=>({id:a.id,name:a.name,opacity:schemeAreaOpacity(a),visible:schemeAreaVisible(a),locked:!!a.locked,category:categoryOf(a),productId:a.productId||'',material:normalMaterial(schemeLayerStyle(a).material),mask:a.mask.toDataURL('image/png')})),schemes:schemes.map(s=>({id:s.id,name:s.name,layerIds:[...schemeLayerIds(s)],colors:{...s.colors},paletteRefs:{...(s.paletteRefs||{})},layerStyles:Object.fromEntries(schemeAreas(s).map(a=>[a.id,cloneSchemeLayerStyle(a,s)]))})),schemeId,productCatalog:paintProducts.map(p=>({...p})),productCategories:PAINT_CATEGORIES.map(c=>({...c})),palette:customPalette.map(p=>({...p})),views:views.map(v=>({...v,masks:{...v.masks}})),activeViewId,proposalMeta:currentProposalMeta(),a3Layout:a3Layout?{version:1,frames:a3Layout.frames.map(f=>({...f}))}:null};}
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 function fileName(){return($('projectName').value||'colour-scheme').replace(/[^a-zA-Z0-9_\- ]/g,'').trim().replace(/\s+/g,'_').slice(0,55)||'colour-scheme'}
 $('fileSaveBtn').onclick=()=>{if(!hasProjectPhoto)return toast('Upload gambar dahulu sebelum simpan projek.');try{const data=JSON.stringify(projectObject());downloadBlob(new Blob([data],{type:'application/json'}),fileName()+'.bcsproj');toast('Fail projek dieksport. Boleh disimpan dalam Google Drive untuk staf.');}catch(err){toast('Gagal eksport: '+err.message)}};
@@ -2870,7 +2910,7 @@ async function localDelete(id){const store=await dbStore('projects','readwrite')
 // Hanya salinan default yang tidak diubah dibuang, agar warna yang diedit tidak hilang.
 function normalizeProjectSchemes(source, chosenId){
  const incoming=Array.isArray(source)&&source.length?source:[{id:'s1',name:'Scheme 1',colors:{}}];
- const safe=incoming.map((v,i)=>({id:String(v?.id||makeId()),name:String(v?.name||`Scheme ${i+1}`),layerIds:Array.isArray(v?.layerIds)?[...v.layerIds]:null,colors:{...(v?.colors||{})},layerStyles:Object.fromEntries(Object.entries(v?.layerStyles||{}).map(([id,style])=>[id,{...(style||{}),...(style?.material?{material:normalMaterial(style.material)}:{})}]))}));
+ const safe=incoming.map((v,i)=>({id:String(v?.id||makeId()),name:String(v?.name||`Scheme ${i+1}`),layerIds:Array.isArray(v?.layerIds)?[...v.layerIds]:null,colors:{...(v?.colors||{})},paletteRefs:{...(v?.paletteRefs||{})},layerStyles:Object.fromEntries(Object.entries(v?.layerStyles||{}).map(([id,style])=>[id,{...(style||{}),...(style?.material?{material:normalMaterial(style.material)}:{})}]))}));
  const colorsEqual=(a,b)=>{
   const ka=Object.keys(a||{}).sort(),kb=Object.keys(b||{}).sort();
   return ka.length===kb.length && ka.every((k,i)=>k===kb[i] && String(a[k]).toUpperCase()===String(b[k]).toUpperCase());
