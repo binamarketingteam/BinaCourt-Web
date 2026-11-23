@@ -1793,7 +1793,7 @@ $('materialMode').addEventListener('change',ev=>{
  const m=materialForView(a);m.mode=ev.target.value;a.dirty=true;
  refreshMaterialControls();setDirty();requestRender();
 });
-function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=appearanceForView(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{const entry=visiblePaletteForProduct().find(p=>paletteEntryKey(p)===b.dataset.paletteKey);if(entry)b.classList.toggle('active',paletteEntryKey(entry)===paletteEntryKey(selectedPaletteEntry(a)));b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
+function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=appearanceForView(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
 function isDark(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return .2126*r+.7152*g+.0722*b<155}
 function refreshUI(){if(!areaBelongsToScheme(selectedId))selectedId=schemeAreas()[0]?.id||null;refreshSchemes();renderAreaList();$('duplicateSelectedArea').disabled=!hasProjectPhoto||!selectedArea()||viewSwitching;refreshProperties();refreshProductCount();updateLayerClipboardControls();updatePolygonControls();updateHint();requestRender()}
 function updateHistoryButtons(){
@@ -2920,7 +2920,7 @@ function normalizeProjectSchemes(source, chosenId){
  let kept=safe;
  if(legacyDefaults){
   kept=safe.filter((sch,i)=>{
-   if((i===1||i===2)&&colorsEqual(sch.colors,safe[0].colors)&&JSON.stringify(sch.layerStyles||{})===JSON.stringify(safe[0].layerStyles||{})){removed++;return false;}
+   if((i===1||i===2)&&colorsEqual(sch.colors,safe[0].colors)&&JSON.stringify(sch.paletteRefs||{})===JSON.stringify(safe[0].paletteRefs||{})&&JSON.stringify(sch.layerStyles||{})===JSON.stringify(safe[0].layerStyles||{})){removed++;return false;}
    return true;
   });
  }
