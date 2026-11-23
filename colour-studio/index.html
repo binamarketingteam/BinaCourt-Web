@@ -654,6 +654,9 @@ function duplicateSchemeWithLayers(base){
   for(const view of views){
    if(!view.masks)view.masks={};
    if(view.masks[src.id])view.masks[clone.id]=view.masks[src.id];
+   view.materialRecolour ||= {};
+   view.materialRecolour[next.id] ||= {};
+   view.materialRecolour[next.id][clone.id]=normalMaterial(materialForView(src,base,view.id));
   }
   if(src.id===selectedId)newSelected=clone.id;
  }
@@ -723,8 +726,21 @@ function cloneSchemeLayerStyle(area,scheme=currentScheme()){
 }
 function schemeAreaVisible(area,scheme=currentScheme()){return schemeLayerStyle(area,scheme).visible;}
 function schemeAreaOpacity(area,scheme=currentScheme()){return schemeLayerStyle(area,scheme).opacity;}
+/* Material Recolour is independent for every photo and every Colour Scheme.
+   Existing scheme.layerStyles retain the legacy/default material only;
+   opacity, visibility, paint colours and masks remain untouched. */
+function materialForView(area,scheme=currentScheme(),viewId=activeViewId){
+ const base=schemeLayerStyle(area,scheme).material;
+ const view=views.find(v=>v.id===viewId);
+ if(!view)return base;
+ view.materialRecolour ||= {};
+ view.materialRecolour[scheme.id] ||= {};
+ const scoped=view.materialRecolour[scheme.id];
+ if(!scoped[area.id])scoped[area.id]=normalMaterial(base);
+ return scoped[area.id];
+}
 function materialKey(a,sch=currentScheme()){
- const m=normalMaterial(schemeLayerStyle(a,sch).material);
+ const m=normalMaterial(materialForView(a,sch));
  return [m.mode,m.texture,m.cleanup,m.highlight,m.shadowDetail,m.colorTone].join(':');
 }
 const makeMask=()=>{let c=document.createElement('canvas');c.width=width;c.height=height;return c};
@@ -1100,7 +1116,7 @@ function renderMaterialLayer(photo,shade,mask,col,rawMaterial,w,h){
 }
 function layerCache(a,sch){const col=sch.colors[a.id]||'#E5DED2',key=materialKey(a,sch);
  if(!a.cache||a.cache.width!==width||a.cache.height!==height||a.dirty||a.lastColor!==col||a.lastMaterialKey!==key){
-  a.cache=renderMaterialLayer(imageCanvas,shadeCanvas,a.mask,col,schemeLayerStyle(a,sch).material,width,height);
+  a.cache=renderMaterialLayer(imageCanvas,shadeCanvas,a.mask,col,materialForView(a,sch),width,height);
   a.lastColor=col;a.lastMaterialKey=key;a.dirty=false;
  }
  return a.cache;
@@ -1470,6 +1486,7 @@ function deleteAreaById(areaId){
  const active=schemeAreas(scheme),index=active.findIndex(item=>item.id===a.id);
  scheme.layerIds=schemeLayerIds(scheme).filter(id=>id!==a.id);
  delete scheme.colors[a.id];if(scheme.layerStyles)delete scheme.layerStyles[a.id];
+ for(const view of views)if(view.materialRecolour?.[scheme.id])delete view.materialRecolour[scheme.id][a.id];
  const referenced=schemes.some(s=>schemeLayerIds(s).includes(a.id));
  if(!referenced){
   areas=areas.filter(item=>item.id!==a.id);
@@ -1507,6 +1524,9 @@ function duplicateAreaById(sourceId){
   if(v.id===activeViewId){v.masks[src.id]=currentPNG;v.masks[id]=currentPNG;}
   else if(v.masks[src.id])v.masks[id]=v.masks[src.id];
   else delete v.masks[id];
+  v.materialRecolour ||= {};
+  v.materialRecolour[scheme.id] ||= {};
+  v.materialRecolour[scheme.id][id]=normalMaterial(materialForView(src,scheme,v.id));
  }
  selectedId=id;cancelPolygon();setDirty();refreshUI();
  toast('Duplicate siap: '+name+'. Layer asal tidak berubah.');
@@ -1531,17 +1551,18 @@ function copySelectedLayer(){
  if(!hasProjectPhoto||viewSwitching||historyBusy||layerPasteBusy)return toast('Tunggu operasi semasa selesai dahulu.');
  const src=selectedArea();if(!src)return toast('Pilih layer untuk Copy dahulu.');
  const style=cloneSchemeLayerStyle(src,currentScheme());
- const masks={};
+ const masks={},materials={};
  for(const v of views){
   // Current canvas mask may be newer than the last saved view snapshot.
   const data=v.id===activeViewId?src.mask.toDataURL('image/png'):(v.masks?.[src.id]||null);
   if(data)masks[v.id]=data;
+  materials[v.id]=normalMaterial(materialForView(src,currentScheme(),v.id));
  }
  layerClipboard={
   projectId,sourceSchemeId:schemeId,sourceSchemeName:currentScheme().name,
   name:src.name,category:src.category,productId:src.productId||'',
-  color:getColor(src),material:normalMaterial(style.material),
-  opacity:style.opacity,visible:style.visible,masks
+  color:getColor(src),material:normalMaterial(materialForView(src)),
+  opacity:style.opacity,visible:style.visible,masks,materials
  };
  updateLayerClipboardControls();
  toast('Layer "'+src.name+'" disalin. Pilih Option 2 atau 3 dan tekan Paste Layer.');
@@ -1581,6 +1602,9 @@ async function pasteCopiedLayer(){
    view.masks ||= {};
    if(view.id===targetViewId)view.masks[id]=mask.toDataURL('image/png');
    else if(clip.masks[view.id])view.masks[id]=clip.masks[view.id];
+   view.materialRecolour ||= {};
+   view.materialRecolour[targetScheme.id] ||= {};
+   view.materialRecolour[targetScheme.id][id]=normalMaterial(clip.materials?.[view.id]||clip.material);
   }
   selectedId=id;resetMaskHistory();cancelPolygon();
   setDirty();refreshUI();
@@ -1661,7 +1685,7 @@ function renderAreaList(){
 }
 function refreshMaterialControls(){
  const a=selectedArea();if(!a)return;
- const style=schemeLayerStyle(a),m=normalMaterial(style.material);style.material=m;
+ const m=materialForView(a);
  $('materialMode').value=m.mode;
  for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount'],['shadowDetail','shadowDetailAmount']]){
   $(id).value=m[key];$(id+'Val').textContent=m[key]+'%';
@@ -1678,25 +1702,25 @@ function refreshMaterialControls(){
 }
 for(const [key,id] of [['texture','textureAmount'],['cleanup','cleanupAmount'],['highlight','highlightAmount'],['shadowDetail','shadowDetailAmount']]){
  $(id).addEventListener('input',ev=>{
-  const a=selectedArea();if(!a||a.locked)return;const st=schemeLayerStyle(a);st.material=normalMaterial(st.material);st.material[key]=Number(ev.target.value);
+  const a=selectedArea();if(!a||a.locked)return;const m=materialForView(a);m[key]=Number(ev.target.value);
   $(id+'Val').textContent=ev.target.value+'%';a.dirty=true;setDirty();requestRender();
  });
 }
 $('colorToneAmount').addEventListener('input',ev=>{
  const a=selectedArea();if(!a||a.locked)return;
- const st=schemeLayerStyle(a);st.material=normalMaterial(st.material);st.material.colorTone=Number(ev.target.value);
- $('colorToneAmountVal').textContent=colorToneLabel(st.material.colorTone);
- const painted=adjustPaintTone(getColor(a),st.material.colorTone);
+ const m=materialForView(a);m.colorTone=Number(ev.target.value);
+ $('colorToneAmountVal').textContent=colorToneLabel(m.colorTone);
+ const painted=adjustPaintTone(getColor(a),m.colorTone);
  $('colorPreview').style.background=painted;
  $('colorPreview').style.color=isDark(painted)?'#fff':'#253645';
  a.dirty=true;setDirty();requestRender();
 });
 $('materialMode').addEventListener('change',ev=>{
  const a=selectedArea();if(!a||a.locked)return;
- const st=schemeLayerStyle(a);st.material=normalMaterial({...st.material,mode:ev.target.value});a.dirty=true;
+ const m=materialForView(a);m.mode=ev.target.value;a.dirty=true;
  refreshMaterialControls();setDirty();requestRender();
 });
-function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=schemeLayerStyle(a),color=getColor(a),painted=adjustPaintTone(color,style.material.colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
+function refreshProperties(){const a=selectedArea();$('propertyEmpty').hidden=!!a;$('propertyFields').hidden=!a;if(!a)return;updateProductControls();renderPalette();refreshMaterialControls();const style=schemeLayerStyle(a),color=getColor(a),painted=adjustPaintTone(color,materialForView(a).colorTone);$('areaName').value=a.name;$('colorInput').value=color;$('hexInput').value=color;$('colorPreview').style.background=painted;$('colorPreview').textContent=color;$('colorPreview').style.color=isDark(painted)?'#fff':'#253645';$('opacityInput').value=Math.round(style.opacity*100);$('opacityVal').textContent=Math.round(style.opacity*100)+'%';$('toggleArea').textContent=style.visible?'◉ Sembunyikan':'○ Tunjukkan';for(const id of ['areaName','colorInput','hexInput','opacityInput','deleteArea'])$(id).disabled=!!a.locked;document.querySelectorAll('[data-swatch]').forEach(b=>{b.classList.toggle('active',b.dataset.swatch.toLowerCase()===color.toLowerCase());b.disabled=!!a.locked;});$('propertyFields').title=a.locked?'Layer dikunci: buka mangga untuk edit.':'';}
 function isDark(hex){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return .2126*r+.7152*g+.0722*b<155}
 function refreshUI(){if(!areaBelongsToScheme(selectedId))selectedId=schemeAreas()[0]?.id||null;refreshSchemes();renderAreaList();$('duplicateSelectedArea').disabled=!hasProjectPhoto||!selectedArea()||viewSwitching;refreshProperties();refreshProductCount();updateLayerClipboardControls();updatePolygonControls();updateHint();requestRender()}
 function updateHistoryButtons(){
@@ -2605,7 +2629,7 @@ async function renderViewForScheme(view,scheme){
  const usageByArea={};
  for(const a of schemeAreas(scheme)){if(!schemeAreaVisible(a,scheme))continue;const maskSrc=view.masks?.[a.id];if(!maskSrc)continue;const im=await loadImage(maskSrc);const mask=document.createElement('canvas');mask.width=ww;mask.height=hh;const mc=mask.getContext('2d',{willReadFrequently:true});mc.drawImage(im,0,0,ww,hh);
   const pixelCount=countMaskPixels(mask); if(pixelCount<=0)continue; usageByArea[a.id]=(usageByArea[a.id]||0)+pixelCount;
-  const layer=renderMaterialLayer(photo,shade,mask,scheme.colors[a.id]||'#E5DED2',schemeLayerStyle(a,scheme).material,ww,hh);oc.globalAlpha=schemeAreaOpacity(a,scheme);oc.drawImage(layer,0,0);oc.globalAlpha=1;
+  const layer=renderMaterialLayer(photo,shade,mask,scheme.colors[a.id]||'#E5DED2',materialForView(a,scheme,view.id),ww,hh);oc.globalAlpha=schemeAreaOpacity(a,scheme);oc.drawImage(layer,0,0);oc.globalAlpha=1;
  }
  return{photo:out.toDataURL('image/jpeg',.89),usageByArea};
 }
